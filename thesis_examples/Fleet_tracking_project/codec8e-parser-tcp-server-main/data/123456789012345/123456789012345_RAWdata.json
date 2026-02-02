@@ -1,0 +1,2271 @@
+{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:43:15 27-09-2025 (local) / 22:43:15 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998831e666000e34b8181697ff6c005100bf08001f000000000000010000af1d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:43:20 27-09-2025 (local) / 22:43:20 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998831f9cb000e1ac31f16ac928c0003011e05006b0000000000000100008228"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:43:24 27-09-2025 (local) / 22:43:24 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883208fe000e12756416a4fb9b011400f80800470000000000000100003481"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:43:29 27-09-2025 (local) / 22:43:29 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988321c6d000e127be216aae5fc005701430c0044000000000000010000bfb8"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:43:34 27-09-2025 (local) / 22:43:34 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988322fda000e2baf3016979246004a001506004c0000000000000100001f21"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:43:39 27-09-2025 (local) / 22:43:39 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883243a9000e1e033c16a644ce003b00f607004d000000000000010000623c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:43:44 27-09-2025 (local) / 22:43:44 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883256ff000e1f071416a5074b0053000d040070000000000000010000fa9b"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:43:49 27-09-2025 (local) / 22:43:49 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988326a76000e1241b6169a5371009c0140060065000000000000010000a784"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:43:54 27-09-2025 (local) / 22:43:54 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988327e57000e19f3b416985dc5006a000d0b0056000000000000010000f338"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:43:58 27-09-2025 (local) / 22:43:58 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988328dc8000e25947e16973cda00ac00e40a001b0000000000000100009c1e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:44:03 27-09-2025 (local) / 22:44:03 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998832a161000e18af83169cf261001c012f0700120000000000000100008bc9"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:44:08 27-09-2025 (local) / 22:44:08 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998832b50e000e2ab71c16a314a2005801570a005b00000000000001000046d0"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:44:13 27-09-2025 (local) / 22:44:13 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998832c8fa000e32bd99169767a0008201040c006c000000000000010000617d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:44:18 27-09-2025 (local) / 22:44:18 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998832dcea000e1302af16a65c0000e6008004000f000000000000010000a9f0"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:44:23 27-09-2025 (local) / 22:44:23 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998832f070000e26e0fc169d699e00570031080041000000000000010000324b"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:44:27 27-09-2025 (local) / 22:44:27 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998832ffa3000e182f3116a49a0c0006000e08001e000000000000010000f726"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:44:32 27-09-2025 (local) / 22:44:32 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998833130c000e1695ad16a33a2c010b015009001a000000000000010000554e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:44:37 27-09-2025 (local) / 22:44:37 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883326ca000e1f6f021699855b00f40063040070000000000000010000f5f5"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:44:42 27-09-2025 (local) / 22:44:42 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988333ae1000e2a1b4416a978ca0065010307003c000000000000010000e572"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:44:47 27-09-2025 (local) / 22:44:47 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988334eb5000e275bb4169d85bc005f0092050039000000000000010000b1be"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:44:53 27-09-2025 (local) / 22:44:53 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883362c0000e2ef0fb16acf217010e00a20700270000000000000100003190"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:44:58 27-09-2025 (local) / 22:44:58 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883376a8000e26ab3e169e518500f7005e090014000000000000010000b111"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:45:01 27-09-2025 (local) / 22:45:01 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988338591000e24164b16a34b6400e4013e0800330000000000000100007dc4"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:45:06 27-09-2025 (local) / 22:45:06 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988339922000e24ba5c16a071fa00d901360500150000000000000100009556"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:45:12 27-09-2025 (local) / 22:45:12 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998833ad20000e25e7eb169e5aaf00f701370c003b0000000000000100000fe2"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:45:17 27-09-2025 (local) / 22:45:17 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998833c0a1000e19127016a204e4002800d10600230000000000000100001579"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:45:22 27-09-2025 (local) / 22:45:22 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998833d469000e2f604816a0e78b00a40059070024000000000000010000e6fc"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:45:27 27-09-2025 (local) / 22:45:27 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998833e837000e1b63a116a4128f005700990a002e0000000000000100000f1a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:45:31 27-09-2025 (local) / 22:45:31 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998833f7dc000e14f383169bfa0200120021050052000000000000010000c5ca"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:45:36 27-09-2025 (local) / 22:45:36 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988340b55000e229c8616a192420036008a0700530000000000000100003c29"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:45:41 27-09-2025 (local) / 22:45:41 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988341f19000e2fefe816a95fa100ac007a040033000000000000010000a134"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:45:46 27-09-2025 (local) / 22:45:46 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883432a1000e2ff61816ac8a2e00cc006406003f000000000000010000548f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:45:51 27-09-2025 (local) / 22:45:51 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988344608000e238d8616a45d99005d001e07002d0000000000000100001b64"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:45:56 27-09-2025 (local) / 22:45:56 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988345a10000e1bcc6c16a9a20a001400600c003c0000000000000100007fcc"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:46:00 27-09-2025 (local) / 22:46:00 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998834697a000e1142c016a32e5f010d001e070027000000000000010000370f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:46:05 27-09-2025 (local) / 22:46:05 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988347cd9000e2dd1cb16a2d59f00c3000505002a0000000000000100002a12"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:46:10 27-09-2025 (local) / 22:46:10 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883490d0000e1e945616a8587a006b006d0a006e00000000000001000022da"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:46:15 27-09-2025 (local) / 22:46:15 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998834a482000e30d290169dd9f90005009d0600600000000000000100003d7d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:46:20 27-09-2025 (local) / 22:46:20 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998834b83d000e35d9cf16a31d25009800f905001f000000000000010000c192"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:46:25 27-09-2025 (local) / 22:46:25 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998834cc10000e1ed9c3169ddbf20126006409003f0000000000000100007029"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:46:30 27-09-2025 (local) / 22:46:30 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998834df99000e27da5e16ac98620040005007004300000000000001000037d4"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:46:34 27-09-2025 (local) / 22:46:34 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998834eec0000e1f9e3216a6e45d007f0138090077000000000000010000b992"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:46:39 27-09-2025 (local) / 22:46:39 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883502a3000e214cab16ad96d80121009003000e00000000000001000006b8"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:46:44 27-09-2025 (local) / 22:46:44 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883516b1000e32c20816a34a49011801490300080000000000000100005eb6"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:46:49 27-09-2025 (local) / 22:46:49 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988352aa3000e2a258b1698cf55003e010303001c000000000000010000f5c8"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:46:54 27-09-2025 (local) / 22:46:54 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988353e38000e28ae5416a6974a0103006609003d000000000000010000b2e1"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:46:59 27-09-2025 (local) / 22:46:59 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883551b4000e17ba15169d8e8b005200a608003c0000000000000100003d38"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:47:03 27-09-2025 (local) / 22:47:03 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998835606b000e36fcf9169fb3b90124016404001a0000000000000100007c52"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:47:08 27-09-2025 (local) / 22:47:08 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988357478000e15b7d016a51c9f001c0112040048000000000000010000f656"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:47:13 27-09-2025 (local) / 22:47:13 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883587cf000e35e63b169a9fa20062000905001d000000000000010000b881"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:47:18 27-09-2025 (local) / 22:47:18 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988359ba7000e21db53169fdbd70011005d080011000000000000010000a88f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:47:23 27-09-2025 (local) / 22:47:23 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998835afb1000e16a16116a3213600b4000907003e0000000000000100006a5d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:47:28 27-09-2025 (local) / 22:47:28 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998835c32e000e1e52471698263d0092004808002b00000000000001000040a2"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:47:33 27-09-2025 (local) / 22:47:33 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998835d714000e2857b116a30ffd00dc00e8080038000000000000010000651a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:47:37 27-09-2025 (local) / 22:47:37 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998835e5f4000e2389f216a332a600c8001e0b0075000000000000010000a400"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:47:42 27-09-2025 (local) / 22:47:42 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998835f9b2000e1f2b9316ab9f140053005b0b002d000000000000010000b17b"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:47:47 27-09-2025 (local) / 22:47:47 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988360d52000e1e2498169d6c01010700a2050066000000000000010000a4ec"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:47:52 27-09-2025 (local) / 22:47:52 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998836210e000e2403ec16ab9cdb011d012709006a000000000000010000229e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:47:57 27-09-2025 (local) / 22:47:57 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988363461000e183e8a16aca43f00ae01480a00460000000000000100008c54"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:48:02 27-09-2025 (local) / 22:48:02 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883647dc000e1b203716988d8c0089006c09002b0000000000000100003053"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:48:06 27-09-2025 (local) / 22:48:06 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988365723000e253613169db9d9008a00ed0b001b000000000000010000e707"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:48:11 27-09-2025 (local) / 22:48:11 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988366ac6000e1df5e816ada2b6010600c2070023000000000000010000784a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:48:16 27-09-2025 (local) / 22:48:16 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988367eb2000e1c842d169eba1f0003000d05003e000000000000010000d5ef"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:48:21 27-09-2025 (local) / 22:48:21 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998836921d000e27eb38169cba7a010e00eb03000400000000000001000083aa"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:48:26 27-09-2025 (local) / 22:48:26 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998836a5e6000e2e5a1a16a0e4f10122013e070063000000000000010000957f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:48:31 27-09-2025 (local) / 22:48:31 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998836b989000e249b4316aa7c86001d005709005000000000000001000052a6"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:48:35 27-09-2025 (local) / 22:48:35 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998836c902000e2e8aa116ab90c0005801550300550000000000000100008bcf"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:48:40 27-09-2025 (local) / 22:48:40 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998836dcc8000e1abed9169945c60072003408007700000000000001000004d2"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:48:46 27-09-2025 (local) / 22:48:46 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998836f0ec000e1a48df16ab210a00c500580a004d000000000000010000e33c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:48:51 27-09-2025 (local) / 22:48:51 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988370495000e1a5e88169e6ff200be0071030050000000000000010000f71f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:48:56 27-09-2025 (local) / 22:48:56 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988371856000e303056169aaa7d00b1014b0400270000000000000100001524"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:49:01 27-09-2025 (local) / 22:49:01 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988372bde000e16b2a916acb6f7012900500b0046000000000000010000b6f7"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:49:06 27-09-2025 (local) / 22:49:06 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988373f71000e1754d016a1d5e9011a00ea090022000000000000010000ae05"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:49:09 27-09-2025 (local) / 22:49:09 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988374e42000e15c7cc169ab8030024003e0900500000000000000100000cac"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:49:14 27-09-2025 (local) / 22:49:14 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883761b8000e1867d616a3b12200a00031060070000000000000010000d155"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:49:20 27-09-2025 (local) / 22:49:20 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998837759f000e24682416a9966a00a000340c005400000000000001000035fb"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:49:25 27-09-2025 (local) / 22:49:25 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883789a9000e28e58916a4d5f50120007c06004b0000000000000100005634"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:49:30 27-09-2025 (local) / 22:49:30 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988379d76000e2cf5fb16a1d91e002d00c00a0074000000000000010000803c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:49:35 27-09-2025 (local) / 22:49:35 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998837b15a000e13153b169d6670009500500a002d000000000000010000f792"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:49:39 27-09-2025 (local) / 22:49:39 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998837c0e0000e278c4916a9893d011a00cf0a003f0000000000000100002e21"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:49:44 27-09-2025 (local) / 22:49:44 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998837d486000e2d9b7d16ad18ca00a7013504006e000000000000010000fcac"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:49:49 27-09-2025 (local) / 22:49:49 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998837e869000e12c3da16a6e9b20069012d0600290000000000000100007de6"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:49:54 27-09-2025 (local) / 22:49:54 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998837fbed000e27f32416a985ed00de004105004b000000000000010000ca9d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:49:59 27-09-2025 (local) / 22:49:59 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988380fc8000e13267416adb5ec0120008f040002000000000000010000b77e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:50:04 27-09-2025 (local) / 22:50:04 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988382341000e1692e316a0dbf000e300d607004e00000000000001000093aa"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:50:09 27-09-2025 (local) / 22:50:09 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988383711000e1482d7169f5dc7007e01260c00730000000000000100007820"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:50:13 27-09-2025 (local) / 22:50:13 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988384652000e279891169a7ab000ec008808001f00000000000001000033ff"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:50:18 27-09-2025 (local) / 22:50:18 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883859df000e1b87a316a2193e002d004707005100000000000001000043d2"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:50:23 27-09-2025 (local) / 22:50:23 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988386d8d000e253f2c16a8a13e002300cd08003f000000000000010000145c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:50:28 27-09-2025 (local) / 22:50:28 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883881ab000e13b7ab169b2b4300e3011c0800100000000000000100002e3e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:50:33 27-09-2025 (local) / 22:50:33 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988389559000e13f5fe16a52d9800ba00290900750000000000000100000fdc"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:50:38 27-09-2025 (local) / 22:50:38 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998838a8f5000e1b527616a4a2690035008a07006f000000000000010000abce"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:50:42 27-09-2025 (local) / 22:50:42 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998838b83f000e226f1e16ab8930001d004a0900080000000000000100005a61"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:50:47 27-09-2025 (local) / 22:50:47 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998838cc0c000e2a6d92169a9658002300ae0c007700000000000001000001c0"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:50:52 27-09-2025 (local) / 22:50:52 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998838dfda000e2c674c16a9d3e600e3015d04001a000000000000010000c8ca"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:50:57 27-09-2025 (local) / 22:50:57 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998838f3d7000e1230d9169876e6006a000a06002c0000000000000100007e0c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:51:02 27-09-2025 (local) / 22:51:02 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883907a0000e2f5ee916a67ef7008d00400800590000000000000100007d10"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:51:07 27-09-2025 (local) / 22:51:07 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988391b46000e3179b9169c920600f101140a000d000000000000010000660f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:51:11 27-09-2025 (local) / 22:51:11 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988392ace000e16118716a9dd550027012c09005d000000000000010000de4e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:51:17 27-09-2025 (local) / 22:51:17 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988393e9e000e119959169d97ed002f00d80b00400000000000000100003b66"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:51:22 27-09-2025 (local) / 22:51:22 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988395261000e35988016a77ebc0123006904000200000000000001000031b6"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:51:27 27-09-2025 (local) / 22:51:27 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883965bf000e26fcc816a80e0c00d900e90900320000000000000100000c3a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:51:32 27-09-2025 (local) / 22:51:32 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883979ab000e2784fd169b6eda005e007d0700480000000000000100004e77"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:51:37 27-09-2025 (local) / 22:51:37 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988398d3d000e2a05e716a72d44010d00d3040009000000000000010000499c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:51:42 27-09-2025 (local) / 22:51:42 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998839a09a000e12a0d716ac2bae00de00770c0065000000000000010000a067"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:51:46 27-09-2025 (local) / 22:51:46 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998839afe2000e19f6a516a6b1ab00c700880400110000000000000100006ca5"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:51:51 27-09-2025 (local) / 22:51:51 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998839c3b2000e239c9b16abe911004200ff0c001b000000000000010000b724"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:51:56 27-09-2025 (local) / 22:51:56 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998839d735000e2ffe2e169af65c00d300970a00320000000000000100001df7"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:52:01 27-09-2025 (local) / 22:52:01 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998839eb24000e14f1bc1697ec22006000010a0078000000000000010000b115"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:52:06 27-09-2025 (local) / 22:52:06 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998839ff0e000e17bd8a169c6728002e01140c00440000000000000100002a51"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:52:11 27-09-2025 (local) / 22:52:11 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883a12bc000e2909d916a9642400110000040056000000000000010000b16e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:52:15 27-09-2025 (local) / 22:52:15 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883a21bb000e2dfc3b1699609b00ac01390b00280000000000000100007235"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:52:20 27-09-2025 (local) / 22:52:20 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883a359f000e19f73616a4fbc0008400cb08005f000000000000010000bdb7"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:52:25 27-09-2025 (local) / 22:52:25 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883a4987000e27cab916abc19900e700000500110000000000000100000170"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:52:30 27-09-2025 (local) / 22:52:30 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883a5d5e000e17b89516aac525004d0062030071000000000000010000d9a8"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:52:35 27-09-2025 (local) / 22:52:35 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883a712d000e1158fc16a0a7ca00c50116090001000000000000010000976a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:52:40 27-09-2025 (local) / 22:52:40 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883a8510000e2a852e16a859ff0052005a08006b000000000000010000796d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:52:44 27-09-2025 (local) / 22:52:44 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883a947e000e2aa4c5169f24a0005c00d60400630000000000000100004b58"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:52:49 27-09-2025 (local) / 22:52:49 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883aa828000e1e0ce11699660f00b3004a060065000000000000010000c62a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:52:54 27-09-2025 (local) / 22:52:54 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883abc1b000e1ae16216a1172600c5006c0a006b000000000000010000a9d4"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:52:59 27-09-2025 (local) / 22:52:59 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883acfad000e21e8fd16ad6aa4000000e1080041000000000000010000ab09"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:53:04 27-09-2025 (local) / 22:53:04 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883ae35a000e2d874a16a04d1b00cd010c0c0047000000000000010000617a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:53:09 27-09-2025 (local) / 22:53:09 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883af6e5000e1e9e6b16a57113000200800c00620000000000000100003675"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:53:14 27-09-2025 (local) / 22:53:14 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883b0ae5000e318e46169a1078007100ce0700640000000000000100007c02"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:53:18 27-09-2025 (local) / 22:53:18 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883b19ee000e1856f916ac5f0a007300400c0073000000000000010000a0cd"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:53:23 27-09-2025 (local) / 22:53:23 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883b2db0000e17d8a716a7a433010b004e080018000000000000010000ca99"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:53:28 27-09-2025 (local) / 22:53:28 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883b4147000e1dc86316a4b352011a005803003c0000000000000100009eb3"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:53:33 27-09-2025 (local) / 22:53:33 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883b5553000e368d0c16a5ad2c00020105080004000000000000010000c828"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:53:38 27-09-2025 (local) / 22:53:38 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883b68c1000e1a7b7716986c6100bf00490a005e000000000000010000bd26"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:53:43 27-09-2025 (local) / 22:53:43 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883b7c37000e26de6b16983d84006b014b070056000000000000010000e118"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:53:47 27-09-2025 (local) / 22:53:47 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883b8ba9000e36e66516a5c4f100b101660c000c0000000000000100005c1a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:53:52 27-09-2025 (local) / 22:53:52 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883b9f5f000e325d4a16aca80400df0058060026000000000000010000e87a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:53:58 27-09-2025 (local) / 22:53:58 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883bb375000e1395a416a263af0045011d0300000000000000000100001e99"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:54:03 27-09-2025 (local) / 22:54:03 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883bc71d000e22558f16aae63c0047007a040016000000000000010000c2e8"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:54:08 27-09-2025 (local) / 22:54:08 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883bdac1000e2ed1d616a8840600cd004f07002a000000000000010000267e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:54:13 27-09-2025 (local) / 22:54:13 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883bee9d000e1eca71169a3d8601110084080038000000000000010000453a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:54:18 27-09-2025 (local) / 22:54:18 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883c02aa000e26d744169758d100a500e209002900000000000001000006c2"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:54:22 27-09-2025 (local) / 22:54:22 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883c1190000e120049169a4d55004200880c0055000000000000010000b838"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:54:27 27-09-2025 (local) / 22:54:27 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883c2521000e24bafb169f59cb000e002107001c0000000000000100008a06"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:54:32 27-09-2025 (local) / 22:54:32 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883c387b000e17395816a15883006401520300320000000000000100005c19"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:54:37 27-09-2025 (local) / 22:54:37 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883c4c22000e344c6d169f9a2c0069000206004a000000000000010000a507"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:54:42 27-09-2025 (local) / 22:54:42 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883c5f96000e2fecf5169fc62100a70056090002000000000000010000b510"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:54:47 27-09-2025 (local) / 22:54:47 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883c72fc000e2fefc616a7ad7e005200d80c0006000000000000010000d189"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:54:50 27-09-2025 (local) / 22:54:50 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883c81fe000e239b4116a1a21500110167050034000000000000010000679c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:54:55 27-09-2025 (local) / 22:54:55 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883c9567000e335d9716a237fd00db008c050058000000000000010000bc51"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:55:00 27-09-2025 (local) / 22:55:00 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883ca8ee000e1eb50516a7ad11003b005d0800110000000000000100008852"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:55:05 27-09-2025 (local) / 22:55:05 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883cbc5b000e1acd5816a9e1d300fd00830b00480000000000000100004dec"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:55:10 27-09-2025 (local) / 22:55:10 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883ccfd6000e183da4169d39d100bd015103003b0000000000000100001dea"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:55:15 27-09-2025 (local) / 22:55:15 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883ce377000e126e5716a31bea0088001b0600310000000000000100001acf"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:55:19 27-09-2025 (local) / 22:55:19 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883cf316000e1d0100169dda8400800044060073000000000000010000438f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:55:24 27-09-2025 (local) / 22:55:24 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883d0701000e2261fd16a44569001e00fb0300090000000000000100003081"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:55:29 27-09-2025 (local) / 22:55:29 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883d1a74000e1e7ded16acb0e300d001420300690000000000000100007046"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:55:34 27-09-2025 (local) / 22:55:34 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883d2e46000e25b36616a7f0f8007600870700500000000000000100007a7f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:55:40 27-09-2025 (local) / 22:55:40 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883d423c000e21ae1d16a10657006500f005001700000000000001000027b7"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:55:45 27-09-2025 (local) / 22:55:45 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883d565a000e14a4bf169de4bd0083012f03000b0000000000000100006775"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:55:50 27-09-2025 (local) / 22:55:50 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883d6a28000e315d7d1698c98800c2006a0400260000000000000100008819"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:55:54 27-09-2025 (local) / 22:55:54 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883d7966000e2c71a116addfe100af004208004600000000000001000035eb"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:55:59 27-09-2025 (local) / 22:55:59 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883d8cd3000e2f0a4f16a6b175003101040a00670000000000000100006ebc"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:56:04 27-09-2025 (local) / 22:56:04 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883da0db000e33d131169d53e700e701540a007600000000000001000029d9"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:56:09 27-09-2025 (local) / 22:56:09 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883db4ef000e142f1916a23995003400990600090000000000000100003801"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:56:14 27-09-2025 (local) / 22:56:14 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883dc8b5000e28355316ac3b0e003500b00400630000000000000100008745"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:56:19 27-09-2025 (local) / 22:56:19 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883ddcd0000e2de650169aef50002b010104006b000000000000010000e7b6"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:56:23 27-09-2025 (local) / 22:56:23 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883dec3a000e33c204169bd3ce012500ed030047000000000000010000cb1e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:56:28 27-09-2025 (local) / 22:56:28 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883e0045000e14703516ab47e0003600460c00450000000000000100005cd6"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:56:33 27-09-2025 (local) / 22:56:33 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883e13c7000e2e265d1699162d011e01590400520000000000000100006479"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:56:38 27-09-2025 (local) / 22:56:38 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883e277b000e2bb07c169c6db1007e009d050058000000000000010000146a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:56:43 27-09-2025 (local) / 22:56:43 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883e3adc000e1b0f9916a55a0b00cf01330400000000000000000100004b31"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:56:48 27-09-2025 (local) / 22:56:48 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883e4e66000e319b8b169719cd0124013b0800410000000000000100001a75"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:56:52 27-09-2025 (local) / 22:56:52 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883e5de5000e348b37169c001101250144040070000000000000010000da45"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:56:57 27-09-2025 (local) / 22:56:57 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883e7179000e28f3191699edad011f00990a000f0000000000000100006088"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:57:02 27-09-2025 (local) / 22:57:02 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883e854b000e1bc36f16a13dae002d006807007000000000000001000024bd"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:57:07 27-09-2025 (local) / 22:57:07 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883e992e000e368b9f16a4537e001601090400720000000000000100001cb7"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:57:13 27-09-2025 (local) / 22:57:13 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883ead46000e2c274116a5613300110061070049000000000000010000792a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:57:18 27-09-2025 (local) / 22:57:18 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883ec110000e3141c4169782be0103011b0c00060000000000000100002bbd"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:57:23 27-09-2025 (local) / 22:57:23 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883ed4c5000e24af5016a7fe8c0024013c08003d000000000000010000e5bb"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:57:27 27-09-2025 (local) / 22:57:27 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883ee44b000e297eb316a37b760086013309003e0000000000000100002bf2"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:57:32 27-09-2025 (local) / 22:57:32 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883ef800000e1dd31c169de6c3011c009d060042000000000000010000ddd0"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:57:37 27-09-2025 (local) / 22:57:37 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883f0b81000e18e45016a3b69a002300500b004c000000000000010000d71f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:57:42 27-09-2025 (local) / 22:57:42 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883f1f63000e1a6ac616ac31600058001a09001c000000000000010000af42"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:57:47 27-09-2025 (local) / 22:57:47 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883f32da000e1b734516a6050c00c00094070066000000000000010000b951"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:57:52 27-09-2025 (local) / 22:57:52 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883f468a000e20fdaf169e4e72000401310a0040000000000000010000e86e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:57:56 27-09-2025 (local) / 22:57:56 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883f560f000e32505d169fbc72002101360c005a0000000000000100006060"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:58:01 27-09-2025 (local) / 22:58:01 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883f69bc000e1933df16a3a24800880165040006000000000000010000a9bd"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:58:06 27-09-2025 (local) / 22:58:06 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883f7d9b000e1f943d16a9e192005c01320a003f0000000000000100004db3"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:58:11 27-09-2025 (local) / 22:58:11 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883f915c000e224a4d16a64f22009400ae090015000000000000010000c7fe"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:58:16 27-09-2025 (local) / 22:58:16 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883fa508000e32c28a16a382610078004f090043000000000000010000c881"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:58:21 27-09-2025 (local) / 22:58:21 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883fb8ed000e24ebce16a492d0010900f30b000e0000000000000100002628"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:58:26 27-09-2025 (local) / 22:58:26 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883fccd8000e224e7916a5f580006500370c0076000000000000010000c3eb"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:58:30 27-09-2025 (local) / 22:58:30 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883fdc3c000e29f18e16a541370109011b08006b000000000000010000a08b"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:58:35 27-09-2025 (local) / 22:58:35 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199883fefa0000e2d851f16a121ac008c00f4030018000000000000010000cd75"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:58:40 27-09-2025 (local) / 22:58:40 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988400370000e3080f916ab5b0900f5003204003a0000000000000100005121"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:58:45 27-09-2025 (local) / 22:58:45 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988401768000e2ed30816a1603a0054010c04004e000000000000010000ef85"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:58:50 27-09-2025 (local) / 22:58:50 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988402abb000e154c6816a9ee4000fd00a8070050000000000000010000d5aa"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:58:56 27-09-2025 (local) / 22:58:56 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988404016000e319c7916ad3cf3001400ba040058000000000000010000d688"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:58:59 27-09-2025 (local) / 22:58:59 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988404ec9000e1e61f2169d46b70066014706000a000000000000010000b6b0"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:59:05 27-09-2025 (local) / 22:59:05 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884062aa000e2b31b9169f7f2d00a500560800050000000000000100002155"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:59:10 27-09-2025 (local) / 22:59:10 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988407662000e17c884169d5a280051004a0400440000000000000100006768"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:59:15 27-09-2025 (local) / 22:59:15 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884089e8000e36a7d616ab7694002d00f90900470000000000000100002b64"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:59:20 27-09-2025 (local) / 22:59:20 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988409d8d000e18868516a3fdbc006a00950700690000000000000100002959"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:59:25 27-09-2025 (local) / 22:59:25 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998840b0e8000e267ffe169af3bd0118015b0b00160000000000000100009efe"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:59:28 27-09-2025 (local) / 22:59:28 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998840c02f000e1fa15d169ed5540103007e03003800000000000001000062f4"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:59:33 27-09-2025 (local) / 22:59:33 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998840d3db000e115d4916a0623600d1000405001e000000000000010000bec6"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:59:38 27-09-2025 (local) / 22:59:38 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998840e730000e207492169d7332009b001c0c004a0000000000000100004087"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:59:43 27-09-2025 (local) / 22:59:43 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998840fad5000e16a97c169dea43000600bd0c0025000000000000010000f162"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:59:48 27-09-2025 (local) / 22:59:48 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988410e7c000e29a42016a23ba600b70123090071000000000000010000a1ac"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:59:54 27-09-2025 (local) / 22:59:54 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998841229d000e230c011699bb0a00dd0017050050000000000000010000502f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "01:59:59 27-09-2025 (local) / 22:59:59 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998841369a000e25f2a5169ca6cb0043000f0a006b000000000000010000ffb0"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:00:05 27-09-2025 (local) / 23:00:05 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988414f13000e2cbd5816a1528800ae00d10c00030000000000000100005b77"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:00:10 27-09-2025 (local) / 23:00:10 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884162cf000e14a83616a743dd009c00800600450000000000000100001f61"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:00:14 27-09-2025 (local) / 23:00:14 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988417036000e1d2e7916ab78e100f30097050060000000000000010000792a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:00:19 27-09-2025 (local) / 23:00:19 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988418549000e1246af169b48ba00dc00a608004b0000000000000100002a84"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:00:24 27-09-2025 (local) / 23:00:24 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988419939000e19a73f16aa0c50000f005a090063000000000000010000a1fd"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:00:29 27-09-2025 (local) / 23:00:29 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998841acff000e3554b516a9733c007d013c08003300000000000001000077d9"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:00:34 27-09-2025 (local) / 23:00:34 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998841c122000e2673fc16a7388a004e00f306005a000000000000010000faf0"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:00:39 27-09-2025 (local) / 23:00:39 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998841d521000e3633c9169de72000f900fc08006e000000000000010000e96c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:00:44 27-09-2025 (local) / 23:00:44 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998841e89f000e35f58816a6c06f0126014e040023000000000000010000211c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:00:49 27-09-2025 (local) / 23:00:49 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998841f8f6000e266b8d16a212a300150006060071000000000000010000adb1"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:00:54 27-09-2025 (local) / 23:00:54 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988420ccf000e22be7616a9e7500123015805003a000000000000010000dbfe"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:00:59 27-09-2025 (local) / 23:00:59 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988422052000e1cfca016ac1a3c00c2013c0a0071000000000000010000ab08"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:01:04 27-09-2025 (local) / 23:01:04 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988423538000e2449ac169d9193004500e208003300000000000001000072ac"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:01:09 27-09-2025 (local) / 23:01:09 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988424963000e1fd3f716a016bd012500860700750000000000000100004f68"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:01:14 27-09-2025 (local) / 23:01:14 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988425d0e000e2688671699426100d80127090033000000000000010000ec4f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:01:18 27-09-2025 (local) / 23:01:18 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988426df7000e1824cc169da69b0061004f080031000000000000010000b174"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:01:24 27-09-2025 (local) / 23:01:24 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998842820f000e19a1d01697ad460024004905002100000000000001000052d4"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:01:29 27-09-2025 (local) / 23:01:29 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998842957b000e245f2716a5734c006600e808006d00000000000001000063a0"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:01:34 27-09-2025 (local) / 23:01:34 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998842a90c000e2b94961699a74b00e600610700330000000000000100000c45"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:01:39 27-09-2025 (local) / 23:01:39 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998842bce3000e1a6e561697488e011b00f309003d0000000000000100005850"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:01:44 27-09-2025 (local) / 23:01:44 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998842d067000e1bd1be16aa6e3d004d003b0b0046000000000000010000fb1d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:01:48 27-09-2025 (local) / 23:01:48 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998842df64000e2705be16a6ef3f00fe01570800120000000000000100008bb6"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:01:53 27-09-2025 (local) / 23:01:53 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998842f342000e34a1e716adc95e0052004903004a000000000000010000cdc3"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:01:58 27-09-2025 (local) / 23:01:58 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884306d3000e13dc1916ab1400002800b90a00390000000000000100007972"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:02:03 27-09-2025 (local) / 23:02:03 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988431aa2000e26558616a299c9010b011f0400640000000000000100009dbf"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:02:08 27-09-2025 (local) / 23:02:08 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988432eae000e2b53b4169f5e6e005600d70a0022000000000000010000a88a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:02:13 27-09-2025 (local) / 23:02:13 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884342b0000e19d454169b5d8300d8007206007000000000000001000030f3"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:02:18 27-09-2025 (local) / 23:02:18 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988435615000e2cba411699045c00b7007c080039000000000000010000d16b"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:02:22 27-09-2025 (local) / 23:02:22 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998843655c000e19011c16a042e00052015404004c000000000000010000c746"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:02:27 27-09-2025 (local) / 23:02:27 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884378e6000e3130ad16a17afd00a000af08001e000000000000010000bb1e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:02:32 27-09-2025 (local) / 23:02:32 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988438c4b000e2d2db6169f331d011b00aa080059000000000000010000a6bf"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:02:37 27-09-2025 (local) / 23:02:37 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998843a00b000e14c62716a8e0ca00ec014c050009000000000000010000c7d1"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:02:42 27-09-2025 (local) / 23:02:42 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998843b399000e2a2e5016a60eb40039010d090041000000000000010000fadb"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:02:47 27-09-2025 (local) / 23:02:47 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998843c77c000e321c8a16a210d7011300a40b003a000000000000010000c8b9"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:02:51 27-09-2025 (local) / 23:02:51 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998843d715000e2abb2d16a7068f00340130030015000000000000010000843a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:02:56 27-09-2025 (local) / 23:02:56 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998843eaa9000e2731b316a1240c007800b90a003a000000000000010000c1ab"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:03:01 27-09-2025 (local) / 23:03:01 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998843fe14000e1751301699b3490026009f05003e000000000000010000ffea"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:03:06 27-09-2025 (local) / 23:03:06 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884411f5000e1e44f0169b4c8f00d9005204000b000000000000010000458b"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:03:11 27-09-2025 (local) / 23:03:11 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884425f5000e164f1416a95eca001e00790c006e000000000000010000e534"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:03:16 27-09-2025 (local) / 23:03:16 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884439b4000e32f4de169c392f00bf01480500780000000000000100003a57"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:03:20 27-09-2025 (local) / 23:03:20 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884448f7000e2f133f16a01e4d00ff00280500610000000000000100000d4f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:03:25 27-09-2025 (local) / 23:03:25 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988445cc7000e2d144e16ac1e9f006200ef06006f0000000000000100009739"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:03:30 27-09-2025 (local) / 23:03:30 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998844704b000e19c2be169ecc20001e00430c0075000000000000010000da63"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:03:35 27-09-2025 (local) / 23:03:35 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884483e4000e16764616a134d8011e004b0b006c0000000000000100001010"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:03:40 27-09-2025 (local) / 23:03:40 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998844977e000e1fe530169730f900fc0155080035000000000000010000daf2"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:03:45 27-09-2025 (local) / 23:03:45 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998844ab68000e253ee416a1b8b10113003b0b0077000000000000010000bee5"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:03:50 27-09-2025 (local) / 23:03:50 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998844befc000e118dc116a4062b004100200b004b000000000000010000a00c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:03:54 27-09-2025 (local) / 23:03:54 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998844ce64000e28d7e916a71d72005500de07002e000000000000010000c65b"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:03:59 27-09-2025 (local) / 23:03:59 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998844e1a9000e1989291697420b00c4011308006200000000000001000057c8"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:04:04 27-09-2025 (local) / 23:04:04 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998844f560000e34730b169a567b0085004a0c00260000000000000100005e62"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:04:09 27-09-2025 (local) / 23:04:09 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884508a6000e344a5216aaf88900b100240b001f000000000000010000e353"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:04:14 27-09-2025 (local) / 23:04:14 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988451c2b000e127a0216a899d000fd01620b0055000000000000010000c024"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:04:19 27-09-2025 (local) / 23:04:19 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988453010000e18f76b169c0e9300f7006f04002b0000000000000100008fed"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:04:23 27-09-2025 (local) / 23:04:23 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988453f04000e16d918169e0362000b0107050017000000000000010000a833"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:04:28 27-09-2025 (local) / 23:04:28 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998845529e000e3114f3169a520700c2011e0c001f0000000000000100000a40"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:04:33 27-09-2025 (local) / 23:04:33 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988456647000e17abb516a47391005100440a000d0000000000000100009cdd"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:04:38 27-09-2025 (local) / 23:04:38 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884579da000e2d9eb816ac492b005d013b0500440000000000000100001b7e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:04:43 27-09-2025 (local) / 23:04:43 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988458df0000e29a2d0169ba60800d901550300390000000000000100009452"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:04:48 27-09-2025 (local) / 23:04:48 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998845a187000e34ff5f169b6a15010f00ca060070000000000000010000c0fd"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:04:53 27-09-2025 (local) / 23:04:53 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998845b500000e3592a3169f13a600020041080032000000000000010000e5f0"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:04:57 27-09-2025 (local) / 23:04:57 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998845c416000e28ac1116a726bf00db00810a0065000000000000010000e250"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:05:02 27-09-2025 (local) / 23:05:02 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998845d7d7000e27f4ea16a7cf19007d00d7090005000000000000010000273d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:05:07 27-09-2025 (local) / 23:05:07 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998845eb37000e16418d16a86f280061015d09001d000000000000010000748f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:05:12 27-09-2025 (local) / 23:05:12 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998845fef5000e24c71d169a1b5f012200b10c0010000000000000010000af40"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:05:17 27-09-2025 (local) / 23:05:17 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884612d3000e1932b5169f03d400b0004d05000a000000000000010000c6fc"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:05:22 27-09-2025 (local) / 23:05:22 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988462659000e25a1d416a417ac00d7013904007300000000000001000089e6"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:05:26 27-09-2025 (local) / 23:05:26 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998846355d000e33341c169fe1af003a00e209003b000000000000010000a3ea"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:05:31 27-09-2025 (local) / 23:05:31 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988464929000e338cdd16a626390038008b090000000000000000010000bd41"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:05:36 27-09-2025 (local) / 23:05:36 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988465ccd000e2cb0cd16a35709006f00ce0b0030000000000000010000123c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:05:41 27-09-2025 (local) / 23:05:41 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988467044000e25031e169f297700cd00d2040039000000000000010000151c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:05:46 27-09-2025 (local) / 23:05:46 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884683a0000e34eeb7169c4b0800aa00fe060033000000000000010000ecc6"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:05:51 27-09-2025 (local) / 23:05:51 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998846976f000e2532c816a84c100029001e04004f000000000000010000f828"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:05:56 27-09-2025 (local) / 23:05:56 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998846aae8000e280973169fbb5c009f00150300400000000000000100000dfe"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:06:01 27-09-2025 (local) / 23:06:01 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998846beaa000e2064411699ffea007a00810b002d000000000000010000a955"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:06:06 27-09-2025 (local) / 23:06:06 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998846d279000e11937916a58c7f0052013e08000e00000000000001000076ea"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:06:11 27-09-2025 (local) / 23:06:11 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998846e653000e33798d16a593bc003200f806006e000000000000010000633d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:06:15 27-09-2025 (local) / 23:06:15 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998846f319000e28c00c16ab7aee00430142030062000000000000010000aa20"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:06:20 27-09-2025 (local) / 23:06:20 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884706f0000e17a09f16accf8d005601500900030000000000000100004fee"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:06:25 27-09-2025 (local) / 23:06:25 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988471a51000e1fff6316a61060009300d908003f00000000000001000091a1"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:06:30 27-09-2025 (local) / 23:06:30 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988472e3c000e335d5a169818e20020002c040072000000000000010000512b"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:06:35 27-09-2025 (local) / 23:06:35 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998847422d000e34760916a058b3003a0131030054000000000000010000bfcc"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:06:40 27-09-2025 (local) / 23:06:40 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884755bf000e3199a4169aa67000ce001708000d000000000000010000adf9"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:06:44 27-09-2025 (local) / 23:06:44 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884764f2000e11d39f169993d200cf002409003700000000000001000054d5"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:06:49 27-09-2025 (local) / 23:06:49 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884778bb000e14975716a5c39a003c00f3090061000000000000010000fd55"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:06:54 27-09-2025 (local) / 23:06:54 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988478cb4000e35c720169a11dc000a012909006f000000000000010000d9e5"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:06:59 27-09-2025 (local) / 23:06:59 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998847a04c000e13f2da16a8739300e900cf090001000000000000010000042c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:07:04 27-09-2025 (local) / 23:07:04 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998847b3a5000e30303c1697b73200f300f40500540000000000000100009e59"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:07:09 27-09-2025 (local) / 23:07:09 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998847c7ae000e23c4a1169e26d30002004e030009000000000000010000c1aa"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:07:13 27-09-2025 (local) / 23:07:13 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998847d6ef000e2d54d916a0a989010d00be04003b000000000000010000ffe5"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:07:18 27-09-2025 (local) / 23:07:18 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998847ea5e000e3062e5169df40001090160080033000000000000010000074b"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:07:23 27-09-2025 (local) / 23:07:23 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998847fe48000e24ad06169e845300d000a70c00460000000000000100003fd4"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:07:28 27-09-2025 (local) / 23:07:28 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884811fc000e1d547416a882e4003d008205003300000000000001000081a7"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:07:33 27-09-2025 (local) / 23:07:33 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998848257d000e29f9bd169d034100720026050006000000000000010000bded"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:07:38 27-09-2025 (local) / 23:07:38 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998848391c000e1e085316aaa3e4009f0057060001000000000000010000e48e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:07:43 27-09-2025 (local) / 23:07:43 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988484c7d000e35304416a76c5e007b00f503006e0000000000000100004b0c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:07:47 27-09-2025 (local) / 23:07:47 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988485b4e000e1ddb1d16ab3ac00061004c030000000000000000010000936c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:07:52 27-09-2025 (local) / 23:07:52 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988486efb000e2a02ec169e99cc009700e40b000a00000000000001000045df"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:07:57 27-09-2025 (local) / 23:07:57 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998848829e000e36a2c216a041ef0048009b0c004e000000000000010000341d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:08:02 27-09-2025 (local) / 23:08:02 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998848962a000e13c71016ac42ac00d000fb0a005c000000000000010000f02d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:08:07 27-09-2025 (local) / 23:08:07 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998848a979000e33e60516abb06000e4015906002e000000000000010000c31a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:08:12 27-09-2025 (local) / 23:08:12 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998848bd4a000e14a9d71698a8b5002b009109006d000000000000010000ed90"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:08:16 27-09-2025 (local) / 23:08:16 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998848cc35000e14ac0116ac1bd00100012b0a005b000000000000010000ba9c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:08:21 27-09-2025 (local) / 23:08:21 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998848e032000e252bda16a382f400210000060021000000000000010000987d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:08:26 27-09-2025 (local) / 23:08:26 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998848f3f0000e133d7b16ab579800510121080068000000000000010000d081"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:08:31 27-09-2025 (local) / 23:08:31 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884907c7000e2b68b716a89ecf003400fc03003d000000000000010000cb5d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:08:36 27-09-2025 (local) / 23:08:36 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988491b60000e2202bd169ea24d0014008b0800430000000000000100009b51"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:08:41 27-09-2025 (local) / 23:08:41 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988492f47000e1168691698a16600e000380700120000000000000100005dc1"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:08:46 27-09-2025 (local) / 23:08:46 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884942c0000e1206ee16ac82a5003f0004050005000000000000010000f6af"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:08:50 27-09-2025 (local) / 23:08:50 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884951a0000e19858016a76dff002c00c509006c00000000000001000047de"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:08:55 27-09-2025 (local) / 23:08:55 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988496541000e2ab248169c21ab002c014b03006f00000000000001000082ce"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:09:00 27-09-2025 (local) / 23:09:00 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884978b2000e187f4316ab870c00b900ac0a000900000000000001000013c9"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:09:05 27-09-2025 (local) / 23:09:05 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988498cc2000e31034b16a4d7a00066005807003c0000000000000100007d31"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:09:10 27-09-2025 (local) / 23:09:10 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998849a052000e18e87c16ad2974005000a609006900000000000001000082a1"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:09:15 27-09-2025 (local) / 23:09:15 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998849b410000e1d349316a4d7730017004f07004500000000000001000046e3"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:09:19 27-09-2025 (local) / 23:09:19 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998849c32b000e23fbd816a997e200a501020b001200000000000001000006c1"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:09:24 27-09-2025 (local) / 23:09:24 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998849d746000e13fbe316a91cfb010f004007004b00000000000001000056be"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:09:29 27-09-2025 (local) / 23:09:29 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998849eb0f000e2d787e16a59dc7008d004b05000900000000000001000089d4"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:09:34 27-09-2025 (local) / 23:09:34 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998849fed8000e31327216a743d2001a004a04005a000000000000010000bfa3"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:09:39 27-09-2025 (local) / 23:09:39 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884a1270000e2e174016a5a32c0083004f050027000000000000010000ce40"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:09:44 27-09-2025 (local) / 23:09:44 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884a25c9000e146f18169979d300d7001a03005c0000000000000100009057"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:09:48 27-09-2025 (local) / 23:09:48 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884a3551000e128429169a9c1f0082011a08003d000000000000010000ef58"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:09:53 27-09-2025 (local) / 23:09:53 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884a490a000e2f6d2416a61b41004400520600230000000000000100002638"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:09:58 27-09-2025 (local) / 23:09:58 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884a5c46000e1267df169a5d690016012a090032000000000000010000326f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:10:03 27-09-2025 (local) / 23:10:03 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884a7044000e2bd92716a103c200a2004e0a007100000000000001000031ae"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:10:08 27-09-2025 (local) / 23:10:08 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884a8400000e1a356a16a106cc00b700450800040000000000000100001a19"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:10:13 27-09-2025 (local) / 23:10:13 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884a97d0000e2a814916ac187000c40114050053000000000000010000114d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:10:18 27-09-2025 (local) / 23:10:18 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884aab5b000e2f7465169771380098014d05001100000000000001000094c2"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:10:22 27-09-2025 (local) / 23:10:22 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884aba61000e125090169d452e00900164060010000000000000010000fee5"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:10:27 27-09-2025 (local) / 23:10:27 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884acdb9000e234e66169c1c9f00a9008d040055000000000000010000118b"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:10:32 27-09-2025 (local) / 23:10:32 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884ae1ac000e16a79016a79ea500b9009a0a000b0000000000000100009a40"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:10:38 27-09-2025 (local) / 23:10:38 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884af5cd000e15ce4f1697806b010a003f070026000000000000010000b257"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:10:43 27-09-2025 (local) / 23:10:43 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884b09a8000e2b96bd16a5665c0068004108003c000000000000010000618e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:10:48 27-09-2025 (local) / 23:10:48 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884b1d63000e16235616a7ef7c00e7014608000c0000000000000100007c9e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:10:52 27-09-2025 (local) / 23:10:52 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884b2cb0000e3281dd169e286b008200440300100000000000000100003cc9"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:10:57 27-09-2025 (local) / 23:10:57 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884b40a0000e2bb87516ad79bc004900c20800050000000000000100007ec6"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:11:02 27-09-2025 (local) / 23:11:02 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884b53e2000e1a999f16995477008600910b0020000000000000010000317c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:11:07 27-09-2025 (local) / 23:11:07 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884b67d4000e28e97a169b9e70007f01320b0045000000000000010000a534"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:11:12 27-09-2025 (local) / 23:11:12 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884b7b43000e2559b8169b03d500940123070055000000000000010000f758"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:11:17 27-09-2025 (local) / 23:11:17 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884b8e7c000e326c2c16aa702a005600dd03004f0000000000000100007818"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:11:22 27-09-2025 (local) / 23:11:22 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884ba1ed000e28a22816a421d300940120060061000000000000010000cb85"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:11:26 27-09-2025 (local) / 23:11:26 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884bb14d000e1604d616a73bb700a600da09000f000000000000010000abcd"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:11:30 27-09-2025 (local) / 23:11:30 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884bc48d000e34736216a95d2d00c0007705000e0000000000000100003b38"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:11:36 27-09-2025 (local) / 23:11:36 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884bd843000e2cda5e169cb4f3003d0010080040000000000000010000571c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:11:41 27-09-2025 (local) / 23:11:41 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884bec0e000e304ca316a7cfc3007000fb0400280000000000000100001ff3"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:11:46 27-09-2025 (local) / 23:11:46 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884bffbf000e1495c016a7f83d00540039070005000000000000010000431c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:11:51 27-09-2025 (local) / 23:11:51 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884c137e000e33c079169f06be004100f9040024000000000000010000f0d2"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:11:55 27-09-2025 (local) / 23:11:55 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884c22b0000e15e205169b447d003c01650400720000000000000100007a91"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:12:00 27-09-2025 (local) / 23:12:00 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884c3660000e18057f16a35250004201260a005f0000000000000100005997"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:12:05 27-09-2025 (local) / 23:12:05 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884c49b0000e2b0293169bada4006700b10800090000000000000100003d9a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:12:10 27-09-2025 (local) / 23:12:10 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884c5daa000e27a52416ac7e4700b2014c0700100000000000000100004025"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:12:15 27-09-2025 (local) / 23:12:15 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884c716a000e35d4d016a9d956008f00f60a001200000000000001000090d1"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:12:20 27-09-2025 (local) / 23:12:20 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884c84d0000e1eb16116a3f44e00eb00480300770000000000000100000d20"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:12:23 27-09-2025 (local) / 23:12:23 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884c9383000e14f294169d8b9b003600710c001c0000000000000100000c15"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:12:29 27-09-2025 (local) / 23:12:29 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884ca760000e26ff7d16a5ee0f0112013709000a0000000000000100007d7e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:12:34 27-09-2025 (local) / 23:12:34 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884cbb58000e190bad16a9554c00b000c6030030000000000000010000c8db"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:12:39 27-09-2025 (local) / 23:12:39 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884ccf57000e24b41d169bcbb700d00151030046000000000000010000d82d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:12:44 27-09-2025 (local) / 23:12:44 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884ce2cb000e29c8bd16972628012900f609001c000000000000010000cbbd"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:12:49 27-09-2025 (local) / 23:12:49 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884cf6a4000e3260e116a38aa800530167070023000000000000010000f45f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:12:54 27-09-2025 (local) / 23:12:54 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884d0a0b000e2ceac1169d3af9005400a4090014000000000000010000cc92"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:12:58 27-09-2025 (local) / 23:12:58 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884d18c0000e29384316a6162d008a001b080036000000000000010000e6a2"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:13:03 27-09-2025 (local) / 23:13:03 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884d2c84000e24ae1c16adf18e000f01240500360000000000000100000988"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:13:08 27-09-2025 (local) / 23:13:08 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884d4047000e2c63e116995184003700860b00770000000000000100009b79"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:13:13 27-09-2025 (local) / 23:13:13 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884d540c000e3519e816a900b100b8015008004a0000000000000100009c40"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:13:18 27-09-2025 (local) / 23:13:18 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884d67d4000e312d1616a742d6008200450c00060000000000000100003b80"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:13:23 27-09-2025 (local) / 23:13:23 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884d7bb7000e23fe4f169cb461005e009a0c0039000000000000010000a26a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:13:27 27-09-2025 (local) / 23:13:27 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884d8a99000e23da151697e2160086008e06006c00000000000001000013ca"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:13:32 27-09-2025 (local) / 23:13:32 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884d9e94000e31693b16a93676011b00fb0b001500000000000001000032bd"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:13:37 27-09-2025 (local) / 23:13:37 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884db22f000e2afaa81698f3c40036003a0b00360000000000000100000873"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:13:42 27-09-2025 (local) / 23:13:42 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884dc63f000e1371a916a1c47b006900060c0052000000000000010000a5a0"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:13:47 27-09-2025 (local) / 23:13:47 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884dda2c000e1615ae169a6797007c00530c00350000000000000100005768"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:13:52 27-09-2025 (local) / 23:13:52 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884ded63000e25d755169801ed0056010008002e0000000000000100009da0"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:13:57 27-09-2025 (local) / 23:13:57 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884e0124000e1f058416a1be01005f00a004005c00000000000001000097e8"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:14:01 27-09-2025 (local) / 23:14:01 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884e10c6000e1bc8e716aab49f00ab001c0500050000000000000100008f62"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:14:06 27-09-2025 (local) / 23:14:06 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884e24d5000e22d3541699bcec0048013f04002e000000000000010000b5e8"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:14:11 27-09-2025 (local) / 23:14:11 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884e38b4000e14485216ad357700ca00c30a0077000000000000010000afa1"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:14:16 27-09-2025 (local) / 23:14:16 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884e4c1d000e1506a316a3612100ed00b1090030000000000000010000a7cc"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:14:21 27-09-2025 (local) / 23:14:21 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884e5fe5000e2f8e39169beb3a000f013c0800670000000000000100000eba"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:14:26 27-09-2025 (local) / 23:14:26 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884e735b000e1e660b169d5101004900e608005a0000000000000100001dbf"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:14:30 27-09-2025 (local) / 23:14:30 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884e8229000e359107169b4459006a014007005f0000000000000100009c43"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:14:35 27-09-2025 (local) / 23:14:35 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884e9595000e23701816a33e2600d9003804004a000000000000010000ccaf"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:14:40 27-09-2025 (local) / 23:14:40 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884ea938000e28617916ab9b97011400640b003d0000000000000100000d68"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:14:45 27-09-2025 (local) / 23:14:45 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884ebcf8000e329acb169f83370113006008002e000000000000010000666d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:14:50 27-09-2025 (local) / 23:14:50 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884ed0b5000e2182ee16abd1a000e4004603005a0000000000000100004865"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:14:55 27-09-2025 (local) / 23:14:55 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884ee4b0000e2ffd50169fdd70003301350500290000000000000100002354"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:14:59 27-09-2025 (local) / 23:14:59 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884ef3dd000e33837f169e294e00e4007e0500320000000000000100001db9"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:15:04 27-09-2025 (local) / 23:15:04 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884f075d000e35210616a93f4600a60162090047000000000000010000213f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:15:09 27-09-2025 (local) / 23:15:09 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884f1b5f000e23990c16aadfa3007b00610900130000000000000100005b3f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:15:14 27-09-2025 (local) / 23:15:14 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884f2f2d000e2815ef16ab5388008300570400140000000000000100003f3c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:15:19 27-09-2025 (local) / 23:15:19 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884f4333000e238689169d5f49000000a20600170000000000000100004310"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:15:24 27-09-2025 (local) / 23:15:24 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884f5684000e15e542169d758d00b300910a005a00000000000001000006f1"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:15:29 27-09-2025 (local) / 23:15:29 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884f6a38000e2dd5aa16a92698001d000e060067000000000000010000c65d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:15:33 27-09-2025 (local) / 23:15:33 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884f7992000e20ed3916ad7aa50101008303003a0000000000000100004b68"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:15:38 27-09-2025 (local) / 23:15:38 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884f8cfb000e26193a16a2f662007800ab0300050000000000000100001f4f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:15:43 27-09-2025 (local) / 23:15:43 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884fa0b4000e3028601697c608006c00b303005d00000000000001000041ad"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:15:48 27-09-2025 (local) / 23:15:48 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884fb423000e1d14e8169a492c001c010e0c001800000000000001000027ba"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:15:53 27-09-2025 (local) / 23:15:53 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884fc78d000e2c813f169fdb26000f011b070033000000000000010000407f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:15:59 27-09-2025 (local) / 23:15:59 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884fdb97000e27d90c169d2ddd005300680400320000000000000100005dbe"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:16:02 27-09-2025 (local) / 23:16:02 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884feabd000e24528616a4e88300de004706007500000000000001000002f5"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:16:07 27-09-2025 (local) / 23:16:07 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199884ffe8a000e34e4261699044c00ba00b6080053000000000000010000fb7c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:16:12 27-09-2025 (local) / 23:16:12 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998850121e000e2c690a1697acfd00f8006b060015000000000000010000b66d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:16:17 27-09-2025 (local) / 23:16:17 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998850258f000e35a7dd1698c16800ca013808000a000000000000010000f568"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:16:23 27-09-2025 (local) / 23:16:23 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199885039aa000e1ccffc16aab67c00da00e70c0068000000000000010000134e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:16:28 27-09-2025 (local) / 23:16:28 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988504d92000e1be05c169b26c0007900b60c000e0000000000000100002095"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:16:31 27-09-2025 (local) / 23:16:31 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988505c35000e1e5ab516a870b400430118050005000000000000010000752e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:16:36 27-09-2025 (local) / 23:16:36 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988506f8d000e111b3116aca7d700bf01070b000e000000000000010000dd85"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:16:41 27-09-2025 (local) / 23:16:41 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988508301000e15ebcf169bc6ce00f10146060024000000000000010000c9ee"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:16:46 27-09-2025 (local) / 23:16:46 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988509657000e2e5d3d16abf73500f301060400050000000000000100004192"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:16:51 27-09-2025 (local) / 23:16:51 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998850a9f0000e329e0b16a54a68000e00b40600460000000000000100005717"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:16:56 27-09-2025 (local) / 23:16:56 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998850bd88000e222b9e169a4eb50001003406007200000000000001000057b3"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:17:01 27-09-2025 (local) / 23:17:01 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998850d0e9000e153820169e657d00a900a207003e0000000000000100003b27"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:17:05 27-09-2025 (local) / 23:17:05 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998850dfc1000e2c81ca16aa846a006d0154040049000000000000010000918f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:17:10 27-09-2025 (local) / 23:17:10 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998850f35e000e16f2aa169ed2af001e00e10b0047000000000000010000f753"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:17:15 27-09-2025 (local) / 23:17:15 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199885106f7000e2a63cb16a00215005800b90b000a000000000000010000f45c"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:17:20 27-09-2025 (local) / 23:17:20 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988511a9f000e1e469116a5ccc20071014203004e00000000000001000097a7"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:17:25 27-09-2025 (local) / 23:17:25 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988512df5000e2d2d1216a0e676010300720b0046000000000000010000d742"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:17:30 27-09-2025 (local) / 23:17:30 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988514203000e1d68c416a975ef004700e80c00000000000000000100003d48"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:17:34 27-09-2025 (local) / 23:17:34 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199885150fa000e25ad93169d829f00ad0058050065000000000000010000280f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:17:39 27-09-2025 (local) / 23:17:39 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998851644f000e233bb6169774aa002400eb0600280000000000000100009f57"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:17:44 27-09-2025 (local) / 23:17:44 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988517836000e34a42e16a4a230006400a10b001f000000000000010000a1bb"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:17:49 27-09-2025 (local) / 23:17:49 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988518be9000e3568dd169f84a000780140060001000000000000010000eb74"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:17:54 27-09-2025 (local) / 23:17:54 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988519f4d000e29c6b616a7897100ed007305004200000000000001000010dc"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:17:59 27-09-2025 (local) / 23:17:59 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998851b2b2000e17c54c16aa49970083010e06004000000000000001000016f2"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:18:04 27-09-2025 (local) / 23:18:04 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998851c623000e19995d16a49e09006900a208006a000000000000010000ba13"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:18:08 27-09-2025 (local) / 23:18:08 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998851d584000e1358e216a0c8ba00110161090067000000000000010000e457"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:18:13 27-09-2025 (local) / 23:18:13 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998851e964000e303c8416abb07400c8006d0a002f000000000000010000cdef"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:18:18 27-09-2025 (local) / 23:18:18 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998851fcc3000e1f4f8e169ce97b0028010f03002600000000000001000069eb"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:18:23 27-09-2025 (local) / 23:18:23 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988521095000e20939c16aa43de006600070c003a00000000000001000058af"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:18:28 27-09-2025 (local) / 23:18:28 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988522476000e158330169b92df000d011a03004e000000000000010000a219"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:18:33 27-09-2025 (local) / 23:18:33 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988523853000e20649f16a8408a01020115080043000000000000010000838b"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:18:37 27-09-2025 (local) / 23:18:37 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199885247a4000e20b2be169b5dc40087002c050000000000000000010000a8b1"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:18:42 27-09-2025 (local) / 23:18:42 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988525afa000e24002416a65ef5011c0031050068000000000000010000b40f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:18:47 27-09-2025 (local) / 23:18:47 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988526ef2000e27ba0f16981ebc0048002106004f0000000000000100005a7f"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:18:52 27-09-2025 (local) / 23:18:52 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199885282c0000e1308db16aa5cea010300f206007000000000000001000030b6"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:18:57 27-09-2025 (local) / 23:18:57 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "0000000000000021080100000199885296cb000e1b219116996109011d00bb0b0073000000000000010000affd"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:19:02 27-09-2025 (local) / 23:19:02 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998852aa42000e1b1e3216a5cb9d003c00aa0a00740000000000000100007a51"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:19:08 27-09-2025 (local) / 23:19:08 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998852be53000e32720a16981056011c003206000f0000000000000100003a75"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:19:11 27-09-2025 (local) / 23:19:11 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998852cd2f000e2ea072169b76a800a001050a0022000000000000010000d58d"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:19:17 27-09-2025 (local) / 23:19:17 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998852e117000e1fa51e16a48bde0080015a0400170000000000000100004ab5"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:19:22 27-09-2025 (local) / 23:19:22 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998852f4f6000e30d79716a8111c00fa011c05006e000000000000010000a27a"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:19:27 27-09-2025 (local) / 23:19:27 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988530860000e2c677316a17851009800e607006e0000000000000100008e95"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:19:32 27-09-2025 (local) / 23:19:32 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988531bfa000e2b277c16a533670121015d06003d000000000000010000265e"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:19:37 27-09-2025 (local) / 23:19:37 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988532fe5000e252f2b169fc751007c01510700030000000000000100005bdf"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:19:40 27-09-2025 (local) / 23:19:40 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988533ebf000e2d1afd169ff80a00b400230900100000000000000100008226"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:19:45 27-09-2025 (local) / 23:19:45 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998853522b000e2ec9e0169f6262011500030700190000000000000100004bb8"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:19:51 27-09-2025 (local) / 23:19:51 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "00000000000000210801000001998853660f000e26be5416a72b11005b00970500770000000000000100009c68"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:19:56 27-09-2025 (local) / 23:19:56 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988537986000e241650169791d00119010e05000900000000000001000064fd"
+}{
+    "device_IMEI": "123456789012345",
+    "server_time": "02:20:01 27-09-2025 (local) / 23:20:01 26-09-2025 (utc)",
+    "data_length": "Record length: 90 characters // 45 bytes",
+    "_raw_data__": "000000000000002108010000019988538d4f000e21a1c416a8a099006f003909003c000000000000010000f837"
+}

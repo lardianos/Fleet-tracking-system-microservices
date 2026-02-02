@@ -1,0 +1,1 @@
+print('O vasilis leventis kapote eipai: "pigenete na voskisete, provatakia tou Pasok  kai tis ND"')

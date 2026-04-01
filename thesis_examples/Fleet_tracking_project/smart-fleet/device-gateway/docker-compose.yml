@@ -1,0 +1,23 @@
+services:
+  device-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: device-gateway
+    environment:
+      GATEWAY_HOST: 0.0.0.0
+      GATEWAY_PORT: 7494
+    ports:
+      - "7494:7494"
+    restart: unless-stopped
+
+  teltonika-simulator:
+    image: python:3.11-slim
+    container_name: teltonika-simulator
+    working_dir: /app
+    volumes:
+      - ./simulator:/app
+    command: >
+      sh -c "python teltonika_simulator.py --host device-gateway --port 7494 --imei 123456789012345 --interval 5"
+    depends_on:
+      - device-gateway

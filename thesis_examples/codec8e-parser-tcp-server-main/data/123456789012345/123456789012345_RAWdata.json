@@ -2268,29 +2268,4 @@
     "server_time": "02:20:01 27-09-2025 (local) / 23:20:01 26-09-2025 (utc)",
     "data_length": "Record length: 90 characters // 45 bytes",
     "_raw_data__": "000000000000002108010000019988538d4f000e21a1c416a8a099006f003909003c000000000000010000f837"
-}{
-    "device_IMEI": "123456789012345",
-    "server_time": "17:18:58 28-11-2025 (local) / 15:18:58 28-11-2025 (utc)",
-    "data_length": "Record length: 90 characters // 45 bytes",
-    "_raw_data__": "000000000000002108010000019acb0bc78d000e34693816abd9410065012e060033000000000000010000cdb9"
-}{
-    "device_IMEI": "123456789012345",
-    "server_time": "17:19:03 28-11-2025 (local) / 15:19:03 28-11-2025 (utc)",
-    "data_length": "Record length: 90 characters // 45 bytes",
-    "_raw_data__": "000000000000002108010000019acb0bdb23000e1bc34f169e515d008b00960800240000000000000100007742"
-}{
-    "device_IMEI": "123456789012345",
-    "server_time": "17:19:08 28-11-2025 (local) / 15:19:08 28-11-2025 (utc)",
-    "data_length": "Record length: 90 characters // 45 bytes",
-    "_raw_data__": "000000000000002108010000019acb0beed0000e1fd23f169feba7009b009003001e00000000000001000037b3"
-}{
-    "device_IMEI": "123456789012345",
-    "server_time": "17:19:13 28-11-2025 (local) / 15:19:13 28-11-2025 (utc)",
-    "data_length": "Record length: 90 characters // 45 bytes",
-    "_raw_data__": "000000000000002108010000019acb0c0218000e164d6e16a3f3c900e201280800340000000000000100004b5b"
-}{
-    "device_IMEI": "123456789012345",
-    "server_time": "17:19:18 28-11-2025 (local) / 15:19:18 28-11-2025 (utc)",
-    "data_length": "Record length: 90 characters // 45 bytes",
-    "_raw_data__": "000000000000002108010000019acb0c1587000e189da216ac9af8006d00db07002a00000000000001000084ed"
 }

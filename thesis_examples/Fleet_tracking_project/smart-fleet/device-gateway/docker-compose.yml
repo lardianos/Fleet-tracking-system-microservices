@@ -66,9 +66,19 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_TOPIC_TELEMETRY: telemetry.positions
       KAFKA_CONSUMER_GROUP: position-processor-group
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       - kafka
-    restart: unless-stopped          
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
 
 volumes:
   kafka_data:

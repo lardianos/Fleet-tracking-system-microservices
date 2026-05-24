@@ -80,5 +80,19 @@ services:
       - "6379:6379"
     restart: unless-stopped
 
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: timescaledb
+    environment:
+      POSTGRES_DB: fleet_tracking
+      POSTGRES_USER: fleet_user
+      POSTGRES_PASSWORD: fleet_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
 volumes:
   kafka_data:
+  timescale_data:

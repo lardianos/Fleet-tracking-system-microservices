@@ -1,15 +1,16 @@
 """
 Position Processor Service.
 
-Αυτή η υπηρεσία παίρνει telemetry δεδομένα από τον Kafka
-και αποθηκεύει την τελευταία γνωστή θέση κάθε οχήματος στη Redis.
+Αυτή η υπηρεσία καταναλώνει telemetry δεδομένα από το Kafka,
+αποθηκεύει την τελευταία γνωστή θέση κάθε οχήματος στη Redis
+και αποθηκεύει το ιστορικό θέσεων στην TimescaleDB.
 
 Ροή:
 Kafka Topic: telemetry.positions
     ↓
 Position Processor
-    ↓
-Redis key: vehicle:latest:{imei}
+    ├── Redis key: vehicle:latest:{imei}
+    └── TimescaleDB table: vehicle_positions
 """
 
 import json
@@ -18,17 +19,15 @@ import logging
 from kafka import KafkaConsumer
 from redis import Redis
 
+from db_repository import PositionRepository
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 def main():
     # -------------------------
     # Kafka Configuration
     # -------------------------
-
-    # Διαβάζουμε τις ρυθμίσεις Kafka από environment variables,
-    # ώστε να μπορούμε να τις αλλάζουμε από το docker-compose.yml.
     kafka_bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
     topic = os.getenv("KAFKA_TOPIC_TELEMETRY", "telemetry.positions")
     group_id = os.getenv("KAFKA_CONSUMER_GROUP", "position-processor-group")
@@ -36,9 +35,6 @@ def main():
     # -------------------------
     # Redis Configuration
     # -------------------------
-
-    # Η Redis χρησιμοποιείται για γρήγορη αποθήκευση της τελευταίας θέσης
-    # κάθε οχήματος, ώστε αργότερα να μπορεί να τη διαβάζει το WebSocket Gateway.
     redis_host = os.getenv("REDIS_HOST", "redis")
     redis_port = int(os.getenv("REDIS_PORT", "6379"))
 
@@ -48,6 +44,11 @@ def main():
         decode_responses=True,
     )
 
+    # -------------------------
+    # TimescaleDB Repository
+    # -------------------------
+    position_repository = PositionRepository()
+
     logger.info("Starting Position Processor...")
     logger.info("Consuming topic: %s", topic)
     logger.info("Redis: %s:%s", redis_host, redis_port)
@@ -55,10 +56,6 @@ def main():
     # -------------------------
     # Kafka Consumer
     # -------------------------
-
-    # Δημιουργούμε Kafka consumer που ακούει το topic telemetry.positions.
-    # Το auto_offset_reset="earliest" σημαίνει ότι αν το consumer group είναι καινούργιο,
-    # θα ξεκινήσει να διαβάζει από τα παλιότερα διαθέσιμα μηνύματα.
     consumer = KafkaConsumer(
         topic,
         bootstrap_servers=kafka_bootstrap_servers,
@@ -72,26 +69,26 @@ def main():
     # -------------------------
     # Main Processing Loop
     # -------------------------
-
-    # Για κάθε μήνυμα που έρχεται από το Kafka:
-    # 1. παίρνουμε το IMEI από το Kafka key
-    # 2. παίρνουμε το telemetry payload από το Kafka value
-    # 3. αποθηκεύουμε το τελευταίο στίγμα στη Redis
     for message in consumer:
         imei = message.key
         telemetry = message.value
 
-        # Δημιουργούμε μοναδικό Redis key για κάθε συσκευή/όχημα.
-        # Παράδειγμα: vehicle:latest:123456789012345
+        # Αν για κάποιο λόγο το Kafka key λείπει, χρησιμοποιούμε το imei από το payload.
+        # Αυτό προστατεύει το service από μη πλήρη Kafka messages.
+        if not telemetry.get("imei"):
+            telemetry["imei"] = imei
+
         redis_key = f"vehicle:latest:{imei}"
 
-        # Αποθηκεύουμε όλο το telemetry object ως JSON string.
-        # Έτσι κρατάμε latitude, longitude, speed, timestamp κτλ.
+        # Αποθηκεύουμε την τελευταία γνωστή θέση στη Redis για live χρήση.
         redis_client.set(redis_key, json.dumps(telemetry, ensure_ascii=False))
 
+        # Αποθηκεύουμε το ίδιο telemetry record στην TimescaleDB για ιστορικό.
+        position_repository.save_position(telemetry)
+
         logger.info(
-            "Saved latest position to Redis: key=%s lat=%s lon=%s speed=%s",
-            redis_key,
+            "Processed telemetry: imei=%s lat=%s lon=%s speed=%s",
+            imei,
             telemetry.get("latitude"),
             telemetry.get("longitude"),
             telemetry.get("speed_kmh"),

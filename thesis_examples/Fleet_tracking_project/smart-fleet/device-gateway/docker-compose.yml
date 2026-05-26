@@ -63,6 +63,11 @@ services:
       dockerfile: Dockerfile
     container_name: position-processor
     environment:
+      TIMESCALE_HOST: timescaledb
+      TIMESCALE_PORT: 5432
+      TIMESCALE_DB: fleet_tracking
+      TIMESCALE_USER: fleet_user
+      TIMESCALE_PASSWORD: fleet_password
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_TOPIC_TELEMETRY: telemetry.positions
       KAFKA_CONSUMER_GROUP: position-processor-group
@@ -71,6 +76,7 @@ services:
     depends_on:
       - kafka
       - redis
+      - timescaledb
     restart: unless-stopped
 
   redis:

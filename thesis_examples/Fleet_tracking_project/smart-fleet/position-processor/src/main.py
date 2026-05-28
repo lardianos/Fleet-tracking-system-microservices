@@ -56,8 +56,11 @@ def main():
     # -------------------------
     # Kafka Consumer
     # -------------------------
+    fleet_topic = os.getenv("KAFKA_TOPIC_FLEET_VEHICLES", "fleet.vehicles")
+
     consumer = KafkaConsumer(
         topic,
+        fleet_topic,
         bootstrap_servers=kafka_bootstrap_servers,
         group_id=group_id,
         auto_offset_reset="earliest",
@@ -70,6 +73,18 @@ def main():
     # Main Processing Loop
     # -------------------------
     for message in consumer:
+        if message.topic == fleet_topic:
+            event = message.value
+
+            # Επεξεργαζόμαστε μόνο vehicle.created events.
+            # Αυτά τα events έρχονται από το Fleet API όταν δημιουργείται νέο όχημα.
+            if event.get("event_type") == "vehicle.created":
+                position_repository.save_imei_vehicle_mapping(
+                    device_imei=event["device_imei"],
+                    vehicle_id=event["vehicle_id"],
+                )
+
+            continue
         imei = message.key
         telemetry = message.value
 

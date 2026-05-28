@@ -17,12 +17,17 @@ MongoDB collection: vehicles
 
 import os
 from typing import Optional, List
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from pymongo import MongoClient
 from bson import ObjectId
 
+from kafka_producer import FleetEventProducer
+
+# Δημιουργούμε Kafka producer για fleet events.
+# Το Fleet API δεν καλεί άλλα services απευθείας.
+# Απλώς δημοσιεύει γεγονότα στο Kafka.
+fleet_event_producer = FleetEventProducer()
 
 # Δημιουργούμε FastAPI εφαρμογή.
 # Το FastAPI θα μας δώσει αυτόματα και Swagger UI στο /docs.
@@ -31,6 +36,7 @@ app = FastAPI(
     description="Service για διαχείριση στόλου οχημάτων.",
     version="0.1.0",
 )
+
 
 # -------------------------
 # MongoDB Configuration
@@ -70,7 +76,6 @@ class VehicleCreate(BaseModel):
     brand: str | None = None
     model: str | None = None
     year: int | None = None
-    # Το IMEI της συσκευής GPS που είναι εγκατεστημένη στο όχημα.
     device_imei: str
     driver_id: str | None = None
     fleet_id: str | None = None
@@ -114,9 +119,7 @@ def health_check():
 def create_vehicle(vehicle: VehicleCreate):
     # Ελέγχουμε αν υπάρχει ήδη όχημα με το ίδιο IMEI.
     # Στο πραγματικό σύστημα ένα GPS tracker πρέπει να αντιστοιχεί σε ένα όχημα.
-    existing_vehicle = vehicles_collection.find_one(
-        {"device_imei": vehicle.device_imei}
-    )
+    existing_vehicle = vehicles_collection.find_one( {"device_imei": vehicle.device_imei} )
 
     if existing_vehicle:
         raise HTTPException(
@@ -128,6 +131,9 @@ def create_vehicle(vehicle: VehicleCreate):
     result = vehicles_collection.insert_one(document)
 
     created_vehicle = vehicles_collection.find_one({"_id": result.inserted_id})
+    # Αφού το όχημα αποθηκευτεί επιτυχώς στη MongoDB,
+    # δημοσιεύουμε event στο Kafka για να ενημερωθούν άλλα services.
+    fleet_event_producer.publish_vehicle_created(created_vehicle)
     return vehicle_document_to_response(created_vehicle)
 
 

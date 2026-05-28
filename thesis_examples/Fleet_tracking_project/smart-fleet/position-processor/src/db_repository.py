@@ -87,6 +87,31 @@ class PositionRepository:
             position_time,
         )
 
+    def save_imei_vehicle_mapping(self, device_imei: str, vehicle_id: str):
+        # Αποθηκεύουμε τη συσχέτιση IMEI → vehicle_id στο read model του Position Processor.
+        # Το Fleet API παραμένει η πηγή αλήθειας για τα οχήματα.
+        # Εδώ κρατάμε μόνο το ελάχιστο mapping που χρειάζεται το telemetry pipeline.
+        query = """
+                INSERT INTO imei_vehicle_mappings (
+                    device_imei,
+                    vehicle_id,
+                    updated_at
+                )
+                VALUES (%s, %s, now())
+                ON CONFLICT (device_imei)
+                DO UPDATE SET
+                    vehicle_id = EXCLUDED.vehicle_id,
+                    updated_at = now();
+        """
+
+        with self.connection.cursor() as cursor:
+            cursor.execute(query, (device_imei, vehicle_id))
+
+        logger.info(
+            "Saved IMEI mapping: device_imei=%s vehicle_id=%s",
+            device_imei,
+            vehicle_id,
+        )
     def close(self):
         # Κλείνουμε τη σύνδεση όταν τερματίζει το service.
         self.connection.close()

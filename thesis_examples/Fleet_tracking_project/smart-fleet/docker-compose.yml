@@ -34,6 +34,8 @@ services:
     ports:
       - "8000:8000"
     environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_FLEET_VEHICLES: fleet.vehicles
       MONGO_HOST: mongodb
       MONGO_PORT: 27017
       MONGO_USER: fleet_admin
@@ -41,6 +43,7 @@ services:
       MONGO_DB: fleet_tracking
     depends_on:
       - mongodb
+      - kafka
     restart: unless-stopped
 
   position-processor:
@@ -84,6 +87,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_TOPIC_FLEET_VEHICLES: fleet.vehicles
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -114,6 +118,8 @@ services:
       - "5432:5432"
     volumes:
       - timescale_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+
     restart: unless-stopped
 
   mongodb:

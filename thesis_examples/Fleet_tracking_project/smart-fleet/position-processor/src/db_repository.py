@@ -56,6 +56,7 @@ class PositionRepository:
             INSERT INTO vehicle_positions (
                 time,
                 imei,
+                vehicle_id,
                 latitude,
                 longitude,
                 speed_kmh,
@@ -63,13 +64,14 @@ class PositionRepository:
                 angle_deg,
                 satellites
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (time, imei) DO NOTHING;
         """
 
         values = (
             position_time,
             telemetry.get("imei"),
+            telemetry.get("vehicle_id"),
             telemetry.get("latitude"),
             telemetry.get("longitude"),
             telemetry.get("speed_kmh"),
@@ -92,16 +94,16 @@ class PositionRepository:
         # Το Fleet API παραμένει η πηγή αλήθειας για τα οχήματα.
         # Εδώ κρατάμε μόνο το ελάχιστο mapping που χρειάζεται το telemetry pipeline.
         query = """
-                INSERT INTO imei_vehicle_mappings (
-                    device_imei,
-                    vehicle_id,
-                    updated_at
-                )
-                VALUES (%s, %s, now())
-                ON CONFLICT (device_imei)
-                DO UPDATE SET
-                    vehicle_id = EXCLUDED.vehicle_id,
-                    updated_at = now();
+            INSERT INTO imei_vehicle_mappings (
+                device_imei,
+                vehicle_id,
+                updated_at
+            )
+            VALUES (%s, %s, now())
+            ON CONFLICT (device_imei)
+            DO UPDATE SET
+            vehicle_id = EXCLUDED.vehicle_id,
+            updated_at = now();
         """
 
         with self.connection.cursor() as cursor:
@@ -112,6 +114,20 @@ class PositionRepository:
             device_imei,
             vehicle_id,
         )
+
+    def find_vehicle_id_by_imei(self, device_imei: str):
+        query = """
+            SELECT vehicle_id from imei_vehicle_mappings
+            where device_imei = %s
+        """
+        with self.connection.cursor() as cursor:
+            cursor.execute(query, (device_imei,))
+            row = cursor.fetchall()
+        if not row:
+            logger.warning("No vehicle ID for imei=%s", device_imei)
+            return None
+        return row[0]
+
     def close(self):
         # Κλείνουμε τη σύνδεση όταν τερματίζει το service.
         self.connection.close()

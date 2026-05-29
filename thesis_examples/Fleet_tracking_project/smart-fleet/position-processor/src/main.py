@@ -98,15 +98,20 @@ def main():
         # Αποθηκεύουμε την τελευταία γνωστή θέση στη Redis για live χρήση.
         redis_client.set(redis_key, json.dumps(telemetry, ensure_ascii=False))
 
+        vehicle_id = position_repository.find_vehicle_id_by_imei(telemetry["imei"])
+        telemetry["vehicle_id"] = vehicle_id
+
+
         # Αποθηκεύουμε το ίδιο telemetry record στην TimescaleDB για ιστορικό.
         position_repository.save_position(telemetry)
 
         logger.info(
-            "Processed telemetry: imei=%s lat=%s lon=%s speed=%s",
+            "Processed telemetry: imei=%s lat=%s lon=%s speed=%s vehicle_id=%s",
             imei,
             telemetry.get("latitude"),
             telemetry.get("longitude"),
             telemetry.get("speed_kmh"),
+            telemetry.get("vehicle_id"),
         )
 
 

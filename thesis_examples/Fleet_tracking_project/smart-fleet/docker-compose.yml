@@ -20,7 +20,7 @@ services:
     container_name: teltonika-simulator
     working_dir: /app
     volumes:
-      - ./device-gateway/simulator:/app
+      - ./simulator:/app
     command: >
       sh -c "python teltonika_simulator.py --host device-gateway --port 7494 --imei 123456789012345 --interval 5"
     depends_on:

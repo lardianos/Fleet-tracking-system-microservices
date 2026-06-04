@@ -59,6 +59,7 @@ services:
       TIMESCALE_PASSWORD: fleet_password
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_TOPIC_TELEMETRY: telemetry.positions
+      KAFKA_TOPIC_PROCESSED_POSITIONS: processed.positions
       KAFKA_CONSUMER_GROUP: position-processor-group
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -67,6 +68,21 @@ services:
       - redis
       - timescaledb
     restart: unless-stopped
+
+  live-tracking-service:
+    build:
+      context: ./live-tracking-service
+    container_name: live-tracking-service
+    ports:
+      - "8002:8002"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_PROCESSED_POSITIONS: processed.positions
+    depends_on:
+      - kafka
+      - redis
 
   kafka:
     image: apache/kafka:4.2.0

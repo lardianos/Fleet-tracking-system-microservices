@@ -18,11 +18,12 @@ import os
 import logging
 from kafka import KafkaConsumer
 from redis import Redis
-
+from kafka_producer import PositionEventProducer
 from db_repository import PositionRepository
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 def main():
     # -------------------------
@@ -32,26 +33,28 @@ def main():
     topic = os.getenv("KAFKA_TOPIC_TELEMETRY", "telemetry.positions")
     group_id = os.getenv("KAFKA_CONSUMER_GROUP", "position-processor-group")
 
-    # -------------------------
-    # Redis Configuration
-    # -------------------------
-    redis_host = os.getenv("REDIS_HOST", "redis")
-    redis_port = int(os.getenv("REDIS_PORT", "6379"))
-
-    redis_client = Redis(
-        host=redis_host,
-        port=redis_port,
-        decode_responses=True,
-    )
+    # # -------------------------
+    # # Redis Configuration
+    # # -------------------------
+    # redis_host = os.getenv("REDIS_HOST", "redis")
+    # redis_port = int(os.getenv("REDIS_PORT", "6379"))
+    #
+    # redis_client = Redis(
+    #     host=redis_host,
+    #     port=redis_port,
+    #     decode_responses=True,
+    # )
 
     # -------------------------
     # TimescaleDB Repository
     # -------------------------
     position_repository = PositionRepository()
 
+    position_event_producer = PositionEventProducer()
+
     logger.info("Starting Position Processor...")
     logger.info("Consuming topic: %s", topic)
-    logger.info("Redis: %s:%s", redis_host, redis_port)
+    # logger.info("Redis: %s:%s", redis_host, redis_port)
 
     # -------------------------
     # Kafka Consumer
@@ -93,10 +96,6 @@ def main():
         if not telemetry.get("imei"):
             telemetry["imei"] = imei
 
-        redis_key = f"vehicle:latest:{imei}"
-
-        # Αποθηκεύουμε την τελευταία γνωστή θέση στη Redis για live χρήση.
-        redis_client.set(redis_key, json.dumps(telemetry, ensure_ascii=False))
 
         vehicle_id = position_repository.find_vehicle_id_by_imei(telemetry["imei"])
         telemetry["vehicle_id"] = vehicle_id
@@ -104,6 +103,17 @@ def main():
 
         # Αποθηκεύουμε το ίδιο telemetry record στην TimescaleDB για ιστορικό.
         position_repository.save_position(telemetry)
+
+        #redis_key = f"vehicle:latest:{imei}"
+
+        # Αποθηκεύουμε την τελευταία γνωστή θέση στη Redis για live χρήση.
+       # redis_client.set(redis_key, json.dumps(telemetry, ensure_ascii=False))
+
+        # Δημοσιεύουμε το processed telemetry event.
+        # Άλλα services δεν χρειάζεται να ξέρουν Redis ή TimescaleDB.
+        position_event_producer.publish_position(
+            telemetry
+        )
 
         logger.info(
             "Processed telemetry: imei=%s lat=%s lon=%s speed=%s vehicle_id=%s",

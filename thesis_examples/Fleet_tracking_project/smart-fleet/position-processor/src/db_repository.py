@@ -126,7 +126,7 @@ class PositionRepository:
         if not row:
             logger.warning("No vehicle ID for imei=%s", device_imei)
             return None
-        return row[0]
+        return row[0][0]
 
     def close(self):
         # Κλείνουμε τη σύνδεση όταν τερματίζει το service.

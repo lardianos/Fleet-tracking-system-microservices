@@ -84,6 +84,21 @@ services:
       - kafka
       - redis
 
+  websocket-gateway:
+    build:
+      context: ./websocket-gateway
+    container_name: websocket-gateway
+    ports:
+      - "8003:8003"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_PROCESSED_POSITIONS: processed.positions
+      LIVE_TRACKING_SERVICE_URL: http://live-tracking-service:8002
+    depends_on:
+      - kafka
+      - live-tracking-service
+    restart: unless-stopped
+
   kafka:
     image: apache/kafka:4.2.0
     container_name: kafka

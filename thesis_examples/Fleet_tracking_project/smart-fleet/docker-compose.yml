@@ -99,6 +99,20 @@ services:
       - live-tracking-service
     restart: unless-stopped
 
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8004:8004"
+    environment:
+      FLEET_API_URL: http://fleet-api:8000
+      LIVE_TRACKING_SERVICE_URL: http://live-tracking-service:8002
+    depends_on:
+      - fleet-api
+      - live-tracking-service
+    restart: unless-stopped
+
   kafka:
     image: apache/kafka:4.2.0
     container_name: kafka

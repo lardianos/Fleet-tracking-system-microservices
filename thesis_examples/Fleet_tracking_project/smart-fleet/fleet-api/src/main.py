@@ -85,6 +85,20 @@ class VehicleResponse(VehicleCreate):
     # Το id είναι το MongoDB ObjectId σε μορφή string.
     id: str
 
+class VehicleUpdate(BaseModel):
+    """
+    Μοντέλο για μερική ενημέρωση οχήματος.
+    Όλα τα πεδία είναι optional, ώστε ο client να αλλάζει μόνο ό,τι χρειάζεται.
+    """
+    plate_number: str | None = None
+    brand: str | None = None
+    model: str | None = None
+    year: int | None = None
+    device_imei: str | None = None
+    driver_id: str | None = None
+    fleet_id: str | None = None
+    status: str | None = None
+
 
 # -------------------------
 # Helper Functions
@@ -122,10 +136,7 @@ def create_vehicle(vehicle: VehicleCreate):
     existing_vehicle = vehicles_collection.find_one( {"device_imei": vehicle.device_imei} )
 
     if existing_vehicle:
-        raise HTTPException(
-            status_code=409,
-            detail="Vehicle with this device IMEI already exists",
-        )
+        raise HTTPException( status_code=409, detail="Vehicle with this device IMEI already exists", )
 
     document = vehicle.model_dump()
     result = vehicles_collection.insert_one(document)
@@ -156,3 +167,40 @@ def get_vehicle(vehicle_id: str):
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
     return vehicle_document_to_response(vehicle)
+
+@app.patch("/vehicles/{vehicle_id}", response_model=VehicleResponse)
+def update_vehicle(vehicle_id: str, vehicle: VehicleUpdate):
+    # Ελέγχουμε ότι το id είναι έγκυρο MongoDB ObjectId.
+    if not ObjectId.is_valid(vehicle_id):
+        raise HTTPException(status_code=400, detail="Invalid vehicle id")
+
+    update_data = vehicle.model_dump(exclude_unset=True)
+
+    if not update_data:
+        raise HTTPException( status_code=400, detail="No update data provided", )
+
+    # Ενημερώνουμε μόνο τα πεδία που έστειλε ο client.
+    result = vehicles_collection.update_one( {"_id": ObjectId(vehicle_id)}, {"$set": update_data}, )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+
+    updated_vehicle = vehicles_collection.find_one( {"_id": ObjectId(vehicle_id) } )
+
+    return vehicle_document_to_response(updated_vehicle)
+
+
+@app.delete("/vehicles/{vehicle_id}")
+def delete_vehicle(vehicle_id: str):
+    # Ελέγχουμε ότι το id είναι έγκυρο MongoDB ObjectId.
+    if not ObjectId.is_valid(vehicle_id):
+        raise HTTPException(status_code=400, detail="Invalid vehicle id")
+
+    result = vehicles_collection.delete_one(
+        {"_id": ObjectId(vehicle_id)}
+    )
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+
+    return { "message": "Vehicle deleted successfully", "vehicle_id": vehicle_id, }

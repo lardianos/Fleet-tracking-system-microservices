@@ -14,10 +14,15 @@ API Gateway Service.
 """
 
 import os
+import logging
 
 import httpx
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="API Gateway Service",
@@ -25,6 +30,16 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# Επιτρέπουμε στο μελλοντικό React frontend να καλεί το API Gateway.
+# Προς το παρόν κρατάμε ανοιχτά origins για development.
+# Σε production θα μπουν συγκεκριμένα frontend domains.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 FLEET_API_URL = os.getenv( "FLEET_API_URL", "http://fleet-api:8000",)
 
@@ -60,23 +75,57 @@ async def proxy_request(request: Request, target_url: str) -> Response:
     # Παίρνουμε τα headers του αρχικού request.
     # Αφαιρούμε το Host γιατί αφορά το gateway και όχι το εσωτερικό service.
 
+    """
+    Προωθεί ένα HTTP request σε εσωτερικό REST service.
+
+    Το API Gateway δεν περιέχει business logic.
+    Κρατάει method, body, query params και headers,
+    ώστε το request να φτάνει όσο πιο καθαρά γίνεται στο σωστό service.
+    """
+
     forwarded_headers = dict(request.headers)
     forwarded_headers.pop("host", None)
 
-    async with httpx.AsyncClient() as client:
-        downstream_response = await client.request(
-            method=request.method,
-            url=target_url,
-            params=request.query_params,
-            content=request_body,
-            headers=forwarded_headers,
-            timeout=10,
+    logger.info(
+        "Forwarding request method=%s target_url=%s",
+        request.method,
+        target_url,
+    )
+
+    try:
+        async with httpx.AsyncClient() as client:
+            downstream_response = await client.request(
+                method=request.method,
+                url=target_url,
+                params=request.query_params,
+                content=request_body,
+                headers=forwarded_headers,
+                timeout=10,
+            )
+
+    except httpx.RequestError as error:
+        logger.warning(
+            "Downstream service unavailable target_url=%s error=%s",
+            target_url,
+            error,
+        )
+
+        return Response(
+            content='{"detail":"Downstream service unavailable"}',
+            status_code=503,
+            media_type="application/json",
         )
 
     # Κρατάμε κυρίως το content-type.
     # Δεν επιστρέφουμε όλα τα headers τυφλά, γιατί κάποια είναι hop-by-hop
     # και αφορούν την εσωτερική HTTP σύνδεση.
     content_type = downstream_response.headers.get("content-type")
+
+    logger.info(
+        "Downstream response target_url=%s status_code=%s",
+        target_url,
+        downstream_response.status_code,
+    )
 
     return Response(
         content=downstream_response.content,

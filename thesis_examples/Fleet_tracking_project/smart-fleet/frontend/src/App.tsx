@@ -1,8 +1,7 @@
-
 import { useAuth } from "./auth/AuthContext";
 
 function App() {
-  const { username, roles } = useAuth();
+  const { username, roles, hasRole, logout } = useAuth();
 
   return (
     <div>
@@ -10,11 +9,28 @@ function App() {
 
       <p>Username: {username}</p>
       <p>Roles: {roles.join(", ")}</p>
+
+      {hasRole("driver") && (
+        <p>Driver access enabled</p>
+      )}
+
+      {hasRole("fleet_manager") && (
+        <p>Fleet Manager access enabled</p>
+      )}
+
+      {hasRole("admin") && (
+        <p>Admin access enabled</p>
+      )}
+
+      <button onClick={logout}>
+        Logout
+      </button>
     </div>
   );
 }
 
 export default App;
+
 // import { useState } from 'react'
 // import reactLogo from './assets/react.svg'
 // import viteLogo from './assets/vite.svg'

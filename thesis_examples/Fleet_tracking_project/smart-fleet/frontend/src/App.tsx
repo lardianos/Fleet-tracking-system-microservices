@@ -15,38 +15,38 @@ function App() {
   // Κρατάει πιθανό μήνυμα σφάλματος από το REST request.
   const [error, setError] = useState("");
 
-  async function loadLatestPosition() {
-    try {
-      setError("");
-
-      const response = await fetch(
-        "http://localhost:8004/api/v1/vehicles/123456789012345/latest-position",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
-      }
-
-      const data: Position = await response.json();
-
-      setLatestPosition(data);
-    } catch (requestError) {
-      console.error("Failed to load latest position:", requestError);
-      setError("Failed to load latest position.");
-    }
-  }
-
-  // Το REST request εκτελείται μία φορά όταν φορτώνει το component.
-  // Έτσι παίρνουμε την τελευταία γνωστή θέση πριν ξεκινήσουν
-  // αργότερα οι live ενημερώσεις μέσω WebSocket.
-  useEffect(() => {
-    loadLatestPosition();
-  }, []);
+  // async function loadLatestPosition() {
+  //   try {
+  //     setError("");
+  //
+  //     const response = await fetch(
+  //       "http://localhost:8004/api/v1/vehicles/123456789012345/latest-position",
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       }
+  //     );
+  //
+  //     if (!response.ok) {
+  //       throw new Error(`Request failed with status ${response.status}`);
+  //     }
+  //
+  //     const data: Position = await response.json();
+  //
+  //     setLatestPosition(data);
+  //   } catch (requestError) {
+  //     console.error("Failed to load latest position:", requestError);
+  //     setError("Failed to load latest position.");
+  //   }
+  // }
+  //
+  // // Το REST request εκτελείται μία φορά όταν φορτώνει το component.
+  // // Έτσι παίρνουμε την τελευταία γνωστή θέση πριν ξεκινήσουν
+  // // αργότερα οι live ενημερώσεις μέσω WebSocket.
+  // // useEffect(() => {
+  // //   loadLatestPosition();
+  // // }, []);
 
   useEffect(() => {
   // Δημιουργούμε μία WebSocket σύνδεση με το WebSocket Gateway.
@@ -67,18 +67,24 @@ function App() {
   // Κάθε φορά που το WebSocket Gateway στέλνει νέο μήνυμα,
   // ελέγχουμε αν πρόκειται για live ενημέρωση θέσης.
   socket.onmessage = (event) => {
-    const message = JSON.parse(event.data);
+  const message = JSON.parse(event.data);
 
-    console.log("WebSocket message:", message);
+  console.log("WebSocket message:", message);
 
-    if (message.type === "position.updated") {
-      const position: Position = message.data;
+  // Η αρχική τελευταία γνωστή θέση έρχεται μαζί
+  // με την επιβεβαίωση του subscription.
+  if (message.type === "subscribed" && message.latest_position) {
+    const position: Position = message.latest_position;
+    setLatestPosition(position);
+  }
 
-      // Ενημερώνουμε το ίδιο state που χρησιμοποιεί ήδη ο χάρτης.
-      // Έτσι το React κάνει νέο render και μετακινεί τον marker.
-      setLatestPosition(position);
-    }
-  };
+  // Οι επόμενες θέσεις έρχονται live από το Kafka
+  // μέσω του WebSocket Gateway.
+  if (message.type === "position.updated") {
+    const position: Position = message.data;
+    setLatestPosition(position);
+  }
+};
 
   socket.onerror = (event) => {
     console.error("WebSocket error:", event);

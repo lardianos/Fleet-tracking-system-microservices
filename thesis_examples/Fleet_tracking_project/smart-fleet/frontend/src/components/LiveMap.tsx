@@ -1,10 +1,34 @@
-import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import { useEffect } from "react";
+import {
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  useMap,
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
 import type { Position } from "../types/Position";
 
 interface LiveMapProps {
   position: Position;
+}
+
+interface MapUpdaterProps {
+  latitude: number;
+  longitude: number;
+}
+
+function MapUpdater({ latitude, longitude }: MapUpdaterProps) {
+  const map = useMap();
+
+  useEffect(() => {
+    // Κάθε φορά που αλλάζει η θέση του οχήματος,
+    // μετακινούμε το κέντρο του χάρτη στη νέα τοποθεσία.
+    map.setView([latitude, longitude]);
+  }, [latitude, longitude, map]);
+
+  return null;
 }
 
 function LiveMap({ position }: LiveMapProps) {
@@ -23,6 +47,12 @@ function LiveMap({ position }: LiveMapProps) {
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        {/* Ενημερώνει το κέντρο του χάρτη όταν έρχεται νέα θέση. */}
+        <MapUpdater
+          latitude={position.latitude}
+          longitude={position.longitude}
         />
 
         <Marker position={[position.latitude, position.longitude]}>

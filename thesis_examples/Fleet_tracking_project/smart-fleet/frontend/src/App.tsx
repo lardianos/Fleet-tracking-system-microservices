@@ -1,8 +1,43 @@
+import { useState } from "react";
 import { useAuth } from "./auth/AuthContext";
 import "./App.css";
+import LatestPosition from "./components/LatestPosition";
+import type { Position } from "./types/Position";
+import LiveMap from "./components/LiveMap";
 
 function App() {
-  const { username, roles, hasRole, logout } = useAuth();
+  const { username, roles, hasRole, logout, token } = useAuth();
+
+  const [latestPosition, setLatestPosition] = useState<Position | null>(null);
+  // const [latestPosition, setLatestPosition] = useState<any>(null);
+  // const [latestPosition, setLatestPosition] = useState<unknown>(null);
+  const [error, setError] = useState("");
+
+  async function loadLatestPosition() {
+    try {
+      setError("");
+
+      const response = await fetch(
+        "http://localhost:8004/api/v1/vehicles/123456789012345/latest-position",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      setLatestPosition(data);
+    } catch (requestError) {
+      console.error("Failed to load latest position:", requestError);
+      setError("Failed to load latest position.");
+    }
+  }
 
   return (
     <div className="app">
@@ -26,7 +61,25 @@ function App() {
         {hasRole("driver") && (
           <section>
             <h2>Driver Dashboard</h2>
-            <p>Driver functionality will be displayed here.</p>
+
+            <button onClick={loadLatestPosition}>
+              Load latest position
+            </button>
+
+            {error && <p>{error}</p>}
+
+            {latestPosition !== null && (
+                <>
+                    <LatestPosition position={latestPosition} />
+                    <LiveMap position={latestPosition} />
+                </>
+
+            )}
+              {/*{latestPosition !== null && (*/}
+              {/*  <pre>*/}
+              {/*      {JSON.stringify(latestPosition, null, 2)}*/}
+              {/*  </pre>*/}
+              {/*)}*/}
           </section>
         )}
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "./auth/AuthContext";
 import "./App.css";
 import LatestPosition from "./components/LatestPosition";
@@ -8,9 +8,11 @@ import LiveMap from "./components/LiveMap";
 function App() {
   const { username, roles, hasRole, logout, token } = useAuth();
 
+  // Κρατάει την τελευταία γνωστή θέση του οχήματος.
+  // Αρχικά είναι null μέχρι να ολοκληρωθεί το πρώτο REST request.
   const [latestPosition, setLatestPosition] = useState<Position | null>(null);
-  // const [latestPosition, setLatestPosition] = useState<any>(null);
-  // const [latestPosition, setLatestPosition] = useState<unknown>(null);
+
+  // Κρατάει πιθανό μήνυμα σφάλματος από το REST request.
   const [error, setError] = useState("");
 
   async function loadLatestPosition() {
@@ -30,7 +32,7 @@ function App() {
         throw new Error(`Request failed with status ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: Position = await response.json();
 
       setLatestPosition(data);
     } catch (requestError) {
@@ -38,6 +40,60 @@ function App() {
       setError("Failed to load latest position.");
     }
   }
+
+  // Το REST request εκτελείται μία φορά όταν φορτώνει το component.
+  // Έτσι παίρνουμε την τελευταία γνωστή θέση πριν ξεκινήσουν
+  // αργότερα οι live ενημερώσεις μέσω WebSocket.
+  useEffect(() => {
+    loadLatestPosition();
+  }, []);
+
+  useEffect(() => {
+  // Δημιουργούμε μία WebSocket σύνδεση με το WebSocket Gateway.
+  const socket = new WebSocket("ws://localhost:8003/ws");
+
+  // Μόλις ανοίξει η σύνδεση, κάνουμε subscribe στο συγκεκριμένο όχημα.
+  socket.onopen = () => {
+    console.log("WebSocket connected");
+
+    socket.send(
+      JSON.stringify({
+        action: "subscribe",
+        imei: "123456789012345",
+      })
+    );
+  };
+
+  // Κάθε φορά που το WebSocket Gateway στέλνει νέο μήνυμα,
+  // ελέγχουμε αν πρόκειται για live ενημέρωση θέσης.
+  socket.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+
+    console.log("WebSocket message:", message);
+
+    if (message.type === "position.updated") {
+      const position: Position = message.data;
+
+      // Ενημερώνουμε το ίδιο state που χρησιμοποιεί ήδη ο χάρτης.
+      // Έτσι το React κάνει νέο render και μετακινεί τον marker.
+      setLatestPosition(position);
+    }
+  };
+
+  socket.onerror = (event) => {
+    console.error("WebSocket error:", event);
+  };
+
+  socket.onclose = () => {
+    console.log("WebSocket disconnected");
+  };
+
+  // Όταν το component καταστραφεί, κλείνουμε σωστά τη σύνδεση
+  // ώστε να μη μείνει ανοιχτό WebSocket χωρίς λόγο.
+  return () => {
+    socket.close();
+  };
+}, []);
 
   return (
     <div className="app">
@@ -62,24 +118,14 @@ function App() {
           <section>
             <h2>Driver Dashboard</h2>
 
-            <button onClick={loadLatestPosition}>
-              Load latest position
-            </button>
-
             {error && <p>{error}</p>}
 
             {latestPosition !== null && (
-                <>
-                    <LatestPosition position={latestPosition} />
-                    <LiveMap position={latestPosition} />
-                </>
-
+              <>
+                <LatestPosition position={latestPosition} />
+                <LiveMap position={latestPosition} />
+              </>
             )}
-              {/*{latestPosition !== null && (*/}
-              {/*  <pre>*/}
-              {/*      {JSON.stringify(latestPosition, null, 2)}*/}
-              {/*  </pre>*/}
-              {/*)}*/}
           </section>
         )}
 

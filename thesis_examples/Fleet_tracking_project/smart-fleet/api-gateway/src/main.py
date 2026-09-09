@@ -315,3 +315,43 @@ async def get_vehicle_latest_position(request: Request, imei: str, token_payload
     target_url = ( f"{LIVE_TRACKING_SERVICE_URL}"  f"/vehicles/{imei}/latest-position" )
 
     return await proxy_request(request, target_url)
+
+@app.get("/api/v1/drivers/me/vehicles")
+async def get_my_vehicles(
+    request: Request,
+    token_payload: dict = Depends(validate_access_token),
+):
+    """
+    Επιστρέφει τα οχήματα που ανήκουν στον authenticated driver.
+
+    Το frontend δεν στέλνει ούτε driver_id ούτε Keycloak user id.
+    Το API Gateway παίρνει το "sub" απευθείας από το έγκυρο JWT
+    και το χρησιμοποιεί για να ζητήσει τα σωστά οχήματα από το Fleet API.
+    """
+
+    # Επιτρέπουμε πρόσβαση στους ρόλους που μπορούν
+    # να χρησιμοποιούν λειτουργίες live tracking.
+    role_checker(
+        token_payload,
+        LIVE_TRACKING_ROLES,
+    )
+
+    # Το "sub" είναι το σταθερό identifier του χρήστη στο Keycloak.
+    # Δεν το εμπιστευόμαστε από το frontend αλλά το παίρνουμε
+    # αποκλειστικά από το ήδη validated JWT.
+    keycloak_user_id = token_payload.get("sub")
+
+    if not keycloak_user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Token does not contain user identifier",
+        )
+
+    # Το Fleet API γνωρίζει τη σχέση:
+    # Keycloak user -> Driver Profile -> Vehicles.
+    target_url = (
+        f"{FLEET_API_URL}"
+        f"/drivers/by-keycloak-user/{keycloak_user_id}/vehicles"
+    )
+
+    return await proxy_request(request, target_url)

@@ -15,6 +15,22 @@ function App() {
   // Κρατάει πιθανό μήνυμα σφάλματος από το REST request.
   const [error, setError] = useState("");
 
+  const [vehicleImei, setVehicleImei] = useState<string | null>(null);
+
+  interface Vehicle {
+    id: string;
+    plate_number: string;
+    brand: string;
+    model: string;
+    year: number;
+    device_imei: string;
+    driver_id: string | null;
+    fleet_id: string | null;
+    status: string;
+  }
+
+
+
   // async function loadLatestPosition() {
   //   try {
   //     setError("");
@@ -47,9 +63,63 @@ function App() {
   // // useEffect(() => {
   // //   loadLatestPosition();
   // // }, []);
+useEffect(() => {
+  async function loadMyVehicle() {
+    try {
+      // Καθαρίζουμε προηγούμενο μήνυμα σφάλματος.
+      setError("");
 
+      // Ζητάμε τα vehicles που αντιστοιχούν
+      // στον authenticated χρήστη.
+      const response = await fetch(
+        "http://localhost:8004/api/v1/drivers/me/vehicles",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to load driver vehicles: ${response.status}`
+        );
+      }
+
+      const vehicles: Vehicle[] = await response.json();
+
+      // Αν δεν υπάρχει ανατεθειμένο vehicle,
+      // δεν μπορούμε να ξεκινήσουμε live tracking.
+      if (vehicles.length === 0) {
+        setError("No vehicle is assigned to this driver.");
+        return;
+      }
+
+      // Προς το παρόν χρησιμοποιούμε το πρώτο vehicle.
+      const vehicle = vehicles[0];
+
+      console.log("Assigned vehicle:", vehicle);
+
+      // Αποθηκεύουμε το IMEI ώστε να χρησιμοποιηθεί
+      // στη συνέχεια από το WebSocket subscription.
+      setVehicleImei(vehicle.device_imei);
+    } catch (requestError) {
+      console.error("Failed to load assigned vehicle:", requestError);
+      setError("Could not load assigned vehicle.");
+    }
+  }
+
+  if (token) {
+    loadMyVehicle();
+  }
+}, [token]);
   useEffect(() => {
+
+ if (!vehicleImei) {
+    return;
+  }
   // Δημιουργούμε μία WebSocket σύνδεση με το WebSocket Gateway.
+
   const socket = new WebSocket("ws://localhost:8003/ws");
 
   // Μόλις ανοίξει η σύνδεση, κάνουμε subscribe στο συγκεκριμένο όχημα.
@@ -57,9 +127,9 @@ function App() {
     console.log("WebSocket connected");
 
     socket.send(
-      JSON.stringify({
+    JSON.stringify({
         action: "subscribe",
-        imei: "123456789012345",
+        imei: vehicleImei,
       })
     );
   };
@@ -99,7 +169,7 @@ function App() {
   return () => {
     socket.close();
   };
-}, []);
+}, [vehicleImei]);
 
   return (
     <div className="app">

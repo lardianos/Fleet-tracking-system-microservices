@@ -19,7 +19,8 @@ keycloak
 
     console.log("Username:", keycloak.tokenParsed?.preferred_username);
     console.log("Roles:", keycloak.tokenParsed?.realm_access?.roles);
-
+    console.log("Keycloak User ID:", keycloak.tokenParsed?.sub);
+    // console.log("Access Token:", keycloak.token);
     createRoot(document.getElementById("root")!).render(
       <StrictMode>
         <AuthProvider>
@@ -31,3 +32,4 @@ keycloak
   .catch((error) => {
     console.error("Keycloak initialization failed:", error);
   });
+

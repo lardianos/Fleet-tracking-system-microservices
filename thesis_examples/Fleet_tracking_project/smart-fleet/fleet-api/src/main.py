@@ -21,6 +21,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from pymongo import MongoClient
 from bson import ObjectId
+from datetime import date
+from pydantic import BaseModel, EmailStr
 
 from kafka_producer import FleetEventProducer
 
@@ -61,6 +63,9 @@ mongo_client = MongoClient(MONGO_URI)
 database = mongo_client[MONGO_DB]
 vehicles_collection = database["vehicles"]
 
+# Το collection drivers αποθηκεύει τα business δεδομένα των οδηγών.
+# Το Keycloak παραμένει υπεύθυνο μόνο για authentication και identity.
+drivers_collection = database["drivers"]
 
 # -------------------------
 # Data Models
@@ -99,6 +104,55 @@ class VehicleUpdate(BaseModel):
     fleet_id: str | None = None
     status: str | None = None
 
+class DriverCreate(BaseModel):
+    """
+    Μοντέλο για τη δημιουργία ενός Driver Profile.
+
+    Το keycloak_user_id αποθηκεύει το "sub" του Keycloak JWT
+    και συνδέει τον λογαριασμό του Keycloak με τον business driver.
+    """
+
+    # Business identifier του οδηγού μέσα στο Smart Fleet σύστημα.
+    driver_id: str
+
+    # Σταθερό identifier του χρήστη στο Keycloak.
+    # Αντιστοιχεί στο claim "sub" του JWT.
+    keycloak_user_id: str
+
+    # Βασικά προσωπικά στοιχεία.
+    first_name: str
+    last_name: str
+    date_of_birth: date | None = None
+
+    # Αριθμός δελτίου ταυτότητας.
+    identity_card_number: str | None = None
+
+    # Αριθμός Φορολογικού Μητρώου (ΑΦΜ).
+    tax_id: str | None = None
+
+    # Στοιχεία επικοινωνίας.
+    phone_number: str | None = None
+    email: EmailStr | None = None
+
+    # Στοιχεία άδειας οδήγησης.
+    license_number: str | None = None
+    license_category: str | None = None
+    license_expiry_date: date | None = None
+
+    # Ημερομηνία πρόσληψης του οδηγού.
+    hire_date: date | None = None
+
+    # Συσχέτιση με τον στόλο και το τμήμα.
+    fleet_id: str | None = None
+    department_id: str | None = None
+
+    # Κατάσταση του οδηγού μέσα στο σύστημα.
+    status: str = "ACTIVE"
+
+
+class DriverResponse(DriverCreate):
+    # Το MongoDB ObjectId επιστρέφεται από το API ως string.
+    id: str
 
 # -------------------------
 # Helper Functions
@@ -119,6 +173,34 @@ def vehicle_document_to_response(document: dict) -> VehicleResponse:
         status=document.get("status", "ACTIVE"),
     )
 
+def driver_document_to_response(document: dict) -> DriverResponse:
+    """
+    Μετατρέπει ένα MongoDB driver document σε DriverResponse.
+
+    Το MongoDB χρησιμοποιεί το πεδίο _id,
+    ενώ στο API επιστρέφουμε το ίδιο identifier ως id.
+    """
+
+    return DriverResponse(
+        id=str(document["_id"]),
+        driver_id=document["driver_id"],
+        keycloak_user_id=document["keycloak_user_id"],
+        first_name=document["first_name"],
+        last_name=document["last_name"],
+        date_of_birth=document.get("date_of_birth"),
+        identity_card_number=document.get("identity_card_number"),
+        tax_id=document.get("tax_id"),
+        phone_number=document.get("phone_number"),
+        email=document.get("email"),
+        license_number=document.get("license_number"),
+        license_category=document.get("license_category"),
+        license_expiry_date=document.get("license_expiry_date"),
+        hire_date=document.get("hire_date"),
+        fleet_id=document.get("fleet_id"),
+        department_id=document.get("department_id"),
+        status=document.get("status", "ACTIVE"),
+    )
+
 # -------------------------
 # API Endpoints
 # -------------------------
@@ -127,6 +209,7 @@ def vehicle_document_to_response(document: dict) -> VehicleResponse:
 def health_check():
     # Απλό health endpoint για να ελέγχουμε αν το service τρέχει.
     return {"status": "ok", "service": "fleet-api"}
+
 
 
 @app.post("/vehicles", response_model=VehicleResponse)
@@ -146,6 +229,7 @@ def create_vehicle(vehicle: VehicleCreate):
     # δημοσιεύουμε event στο Kafka για να ενημερωθούν άλλα services.
     fleet_event_producer.publish_vehicle_created(created_vehicle)
     return vehicle_document_to_response(created_vehicle)
+
 
 
 @app.get("/vehicles", response_model=List[VehicleResponse])
@@ -204,3 +288,150 @@ def delete_vehicle(vehicle_id: str):
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
     return { "message": "Vehicle deleted successfully", "vehicle_id": vehicle_id, }
+
+
+"""
+    Δημιουργεί νέο Driver Profile στη MongoDB.
+
+    Δεν επιτρέπουμε:
+    - δύο drivers με το ίδιο driver_id,
+    - δύο drivers να αντιστοιχούν στο ίδιο Keycloak user.
+"""
+@app.post("/drivers", response_model=DriverResponse)
+def create_driver(driver: DriverCreate):
+    # Ελέγχουμε αν υπάρχει ήδη το ίδιο business driver_id.
+    existing_driver_id = drivers_collection.find_one({"driver_id": driver.driver_id})
+
+    if existing_driver_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Driver with this driver_id already exists",
+        )
+
+    # Ελέγχουμε αν το συγκεκριμένο Keycloak identity
+    # έχει ήδη συνδεθεί με άλλο Driver Profile.
+    existing_keycloak_user = drivers_collection.find_one({
+        "keycloak_user_id": driver.keycloak_user_id
+    })
+
+    if existing_keycloak_user:
+        raise HTTPException(
+            status_code=409,
+            detail="Driver with this Keycloak user already exists",
+        )
+
+    # Μετατρέπουμε το Pydantic model σε dictionary
+    # για να μπορεί να αποθηκευτεί στη MongoDB.
+    # Μετατρέπουμε τα πεδία όπως date και EmailStr
+    # σε JSON-compatible τιμές πριν αποθηκευτούν στη MongoDB.
+    # Έτσι οι ημερομηνίες αποθηκεύονται ως ISO strings,
+    # π.χ. "1995-04-12", αντί για Python date objects.
+    document = driver.model_dump(mode="json")
+
+    result = drivers_collection.insert_one(document)
+
+    # Διαβάζουμε ξανά το document όπως αποθηκεύτηκε
+    # ώστε να επιστρέψουμε και το MongoDB ObjectId.
+    created_driver = drivers_collection.find_one({
+        "_id": result.inserted_id
+    })
+
+    return driver_document_to_response(created_driver)
+
+@app.get(
+    "/drivers/by-keycloak-user/{keycloak_user_id}",
+    response_model=DriverResponse,
+)
+def get_driver_by_keycloak_user(keycloak_user_id: str):
+    """
+    Επιστρέφει το Driver Profile που αντιστοιχεί
+    σε συγκεκριμένο Keycloak user.
+
+    Το keycloak_user_id αντιστοιχεί στο claim "sub"
+    του JWT που εκδίδει το Keycloak.
+    """
+
+    # Αναζητούμε τον driver με βάση το σταθερό Keycloak user id.
+    driver_document = drivers_collection.find_one({
+        "keycloak_user_id": keycloak_user_id
+    })
+
+    # Αν δεν υπάρχει αντιστοίχιση, επιστρέφουμε 404.
+    if not driver_document:
+        raise HTTPException(
+            status_code=404,
+            detail="Driver not found for this Keycloak user",
+        )
+
+    # Μετατρέπουμε το MongoDB document
+    # στο response model του API.
+    return driver_document_to_response(driver_document)
+
+@app.get(
+    "/drivers/{driver_id}/vehicles",
+    response_model=list[VehicleResponse],
+)
+def get_vehicles_by_driver(driver_id: str):
+    """
+    Επιστρέφει όλα τα οχήματα που είναι ανατεθειμένα
+    στον συγκεκριμένο driver.
+
+    Η συσχέτιση γίνεται μέσω του πεδίου driver_id
+    που υπάρχει ήδη στα vehicle documents.
+    """
+
+    # Αναζητούμε όλα τα vehicles που έχουν
+    # το συγκεκριμένο driver_id.
+    vehicle_documents = list(
+        vehicles_collection.find({
+            "driver_id": driver_id
+        })
+    )
+
+    # Μετατρέπουμε κάθε MongoDB document
+    # στο response model που χρησιμοποιεί το API.
+    return [
+        vehicle_document_to_response(vehicle_document)
+        for vehicle_document in vehicle_documents
+    ]
+
+@app.get(
+    "/drivers/by-keycloak-user/{keycloak_user_id}/vehicles",
+    response_model=list[VehicleResponse],
+)
+def get_driver_vehicles_by_keycloak_user(keycloak_user_id: str):
+    """
+    Επιστρέφει τα οχήματα που είναι ανατεθειμένα
+    στον driver που αντιστοιχεί σε συγκεκριμένο Keycloak user.
+
+    Το keycloak_user_id είναι το claim "sub" του JWT.
+    Πρώτα βρίσκουμε τον business driver και στη συνέχεια
+    χρησιμοποιούμε το driver_id για να βρούμε τα οχήματά του.
+    """
+
+    # Βρίσκουμε ποιος business driver αντιστοιχεί
+    # στον συγκεκριμένο Keycloak user.
+    driver_document = drivers_collection.find_one({
+        "keycloak_user_id": keycloak_user_id
+    })
+
+    if not driver_document:
+        raise HTTPException(
+            status_code=404,
+            detail="Driver not found for this Keycloak user",
+        )
+
+    driver_id = driver_document["driver_id"]
+
+    # Αναζητούμε όλα τα οχήματα που είναι
+    # ανατεθειμένα στον συγκεκριμένο driver.
+    vehicle_documents = vehicles_collection.find({
+        "driver_id": driver_id
+    })
+
+    return [
+        vehicle_document_to_response(vehicle_document)
+        for vehicle_document in vehicle_documents
+    ]
+
+

@@ -17,6 +17,14 @@ function App() {
 
   const [vehicleImei, setVehicleImei] = useState<string | null>(null);
 
+  // Κρατάει τα στοιχεία του authenticated driver.
+  const [driverProfile, setDriverProfile] = useState<DriverProfile | null>(null);
+
+  // Κρατάει ολόκληρο το vehicle ώστε να μπορούμε
+  // να εμφανίσουμε και τα στοιχεία του στο dashboard.
+
+  const [assignedVehicle, setAssignedVehicle] = useState<Vehicle | null>(null);
+
   interface Vehicle {
     id: string;
     plate_number: string;
@@ -29,6 +37,25 @@ function App() {
     status: string;
   }
 
+  interface DriverProfile {
+    id: string;
+    driver_id: string;
+    keycloak_user_id: string;
+    first_name: string;
+    last_name: string;
+    date_of_birth: string | null;
+    identity_card_number: string | null;
+    tax_id: string | null;
+    phone_number: string | null;
+    email: string | null;
+    license_number: string | null;
+    license_category: string | null;
+    license_expiry_date: string | null;
+    hire_date: string | null;
+    fleet_id: string | null;
+    department_id: string | null;
+    status: string;
+  }
 
 
   // async function loadLatestPosition() {
@@ -63,6 +90,42 @@ function App() {
   // // useEffect(() => {
   // //   loadLatestPosition();
   // // }, []);
+useEffect(() => {
+  async function loadDriverProfile() {
+    try {
+      setError("");
+
+      // Ζητάμε το Driver Profile του authenticated χρήστη.
+      // Το API Gateway βρίσκει το σωστό profile από το JWT sub.
+      const response = await fetch(
+        "http://localhost:8004/api/v1/drivers/me",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to load driver profile: ${response.status}`
+        );
+      }
+
+      const profile: DriverProfile = await response.json();
+
+      setDriverProfile(profile);
+    } catch (requestError) {
+      console.error("Failed to load driver profile:", requestError);
+      setError("Could not load driver profile.");
+    }
+  }
+
+  if (token && hasRole("driver")) {
+    loadDriverProfile();
+  }
+}, [token, hasRole]);
+
 useEffect(() => {
   async function loadMyVehicle() {
     try {
@@ -100,9 +163,12 @@ useEffect(() => {
 
       console.log("Assigned vehicle:", vehicle);
 
-      // Αποθηκεύουμε το IMEI ώστε να χρησιμοποιηθεί
-      // στη συνέχεια από το WebSocket subscription.
-      setVehicleImei(vehicle.device_imei);
+      // Αποθηκεύουμε ολόκληρο το vehicle για να εμφανίσουμε
+      // τα στοιχεία του στο Driver Dashboard.
+      setAssignedVehicle(vehicle);
+// Αποθηκεύουμε ξεχωριστά το IMEI γιατί χρησιμοποιείται
+// από το WebSocket subscription.
+setVehicleImei(vehicle.device_imei);
     } catch (requestError) {
       console.error("Failed to load assigned vehicle:", requestError);
       setError("Could not load assigned vehicle.");
@@ -190,20 +256,50 @@ useEffect(() => {
           <p>Roles: {roles.join(", ")}</p>
         </section>
 
-        {hasRole("driver") && (
-          <section>
-            <h2>Driver Dashboard</h2>
+         {hasRole("driver") && (
+  <section>
+    <h2>Driver Dashboard</h2>
 
-            {error && <p>{error}</p>}
+    {error && <p>{error}</p>}
 
-            {latestPosition !== null && (
-              <>
-                <LatestPosition position={latestPosition} />
-                <LiveMap position={latestPosition} />
-              </>
-            )}
-          </section>
-        )}
+    {driverProfile && (
+      <div>
+        <h3>My Profile</h3>
+
+        <p>Name: {driverProfile.first_name} {driverProfile.last_name}</p>
+        <p>Email: {driverProfile.email ?? "-"}</p>
+        <p>Phone: {driverProfile.phone_number ?? "-"}</p>
+        <p>Driver ID: {driverProfile.driver_id}</p>
+        <p>License: {driverProfile.license_number ?? "-"}</p>
+        <p>License Category: {driverProfile.license_category ?? "-"}</p>
+        <p>License Expiry: {driverProfile.license_expiry_date ?? "-"}</p>
+        <p>Status: {driverProfile.status}</p>
+        <p>Tax ID: {driverProfile.tax_id}</p>
+
+      </div>
+    )}
+
+    {assignedVehicle && (
+      <div>
+        <h3>My Vehicle</h3>
+
+        <p>Plate: {assignedVehicle.plate_number}</p>
+        <p>Brand: {assignedVehicle.brand}</p>
+        <p>Model: {assignedVehicle.model}</p>
+        <p>Year: {assignedVehicle.year}</p>
+        <p>Status: {assignedVehicle.status}</p>
+        <p>IMEI: {assignedVehicle.device_imei}</p>
+      </div>
+    )}
+
+    {latestPosition !== null && (
+      <>
+        <LatestPosition position={latestPosition} />
+        <LiveMap position={latestPosition} />
+      </>
+    )}
+  </section>
+)}
 
         {hasRole("fleet_manager") && (
           <section>

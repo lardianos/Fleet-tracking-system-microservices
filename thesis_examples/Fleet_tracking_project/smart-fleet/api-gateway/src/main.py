@@ -317,10 +317,7 @@ async def get_vehicle_latest_position(request: Request, imei: str, token_payload
     return await proxy_request(request, target_url)
 
 @app.get("/api/v1/drivers/me/vehicles")
-async def get_my_vehicles(
-    request: Request,
-    token_payload: dict = Depends(validate_access_token),
-):
+async def get_my_vehicles(request: Request,token_payload: dict = Depends(validate_access_token), ):
     """
     Επιστρέφει τα οχήματα που ανήκουν στον authenticated driver.
 
@@ -331,10 +328,7 @@ async def get_my_vehicles(
 
     # Επιτρέπουμε πρόσβαση στους ρόλους που μπορούν
     # να χρησιμοποιούν λειτουργίες live tracking.
-    role_checker(
-        token_payload,
-        LIVE_TRACKING_ROLES,
-    )
+    role_checker( token_payload, LIVE_TRACKING_ROLES,)
 
     # Το "sub" είναι το σταθερό identifier του χρήστη στο Keycloak.
     # Δεν το εμπιστευόμαστε από το frontend αλλά το παίρνουμε
@@ -355,3 +349,22 @@ async def get_my_vehicles(
     )
 
     return await proxy_request(request, target_url)
+
+@app.get("/api/v1/drivers/me")
+async def get_driver_profile(request: Request,token_payload: dict = Depends(validate_access_token), ):
+
+    role_checker( token_payload, LIVE_TRACKING_ROLES,)
+    keycloak_user_id = token_payload.get("sub")
+    if not keycloak_user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Token does not contain user identifier",
+        )
+
+    target_url = (
+        f"{FLEET_API_URL}"
+        f"/drivers/by-keycloak-user/{keycloak_user_id}"
+    )
+
+    return await proxy_request(request, target_url)
+

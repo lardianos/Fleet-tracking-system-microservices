@@ -67,6 +67,11 @@ vehicles_collection = database["vehicles"]
 # Το Keycloak παραμένει υπεύθυνο μόνο για authentication και identity.
 drivers_collection = database["drivers"]
 
+# Αποθηκεύει τα business profiles των Fleet Managers.
+# Το Keycloak παραμένει υπεύθυνο για authentication και roles,
+# ενώ εδώ κρατάμε τη σχέση του manager με το fleet που διαχειρίζεται.
+fleet_managers_collection = database["fleet_managers"]
+
 # -------------------------
 # Data Models
 # -------------------------
@@ -154,6 +159,49 @@ class DriverResponse(DriverCreate):
     # Το MongoDB ObjectId επιστρέφεται από το API ως string.
     id: str
 
+
+class FleetManagerCreate(BaseModel):
+    """
+    Business profile για έναν Fleet Manager.
+
+    Το keycloak_user_id αντιστοιχεί στο claim "sub" του Keycloak JWT.
+    Το fleet_id καθορίζει ποιο fleet διαχειρίζεται ο συγκεκριμένος manager.
+    """
+
+    # Business identifier του Fleet Manager.
+    manager_id: str
+
+    # Σταθερό identifier του χρήστη στο Keycloak.
+    keycloak_user_id: str
+
+    # Βασικά προσωπικά στοιχεία.
+    first_name: str
+    last_name: str
+    date_of_birth: date | None = None
+
+    # Στοιχεία ταυτοποίησης.
+    identity_card_number: str | None = None
+    tax_id: str | None = None
+
+    # Στοιχεία επικοινωνίας.
+    phone_number: str | None = None
+    email: EmailStr | None = None
+
+    # Συσχέτιση με το fleet και το department.
+    fleet_id: str
+    department_id: str | None = None
+
+    # Στοιχεία απασχόλησης.
+    hire_date: date | None = None
+
+    # Κατάσταση του Fleet Manager.
+    status: str = "ACTIVE"
+
+
+class FleetManagerResponse(FleetManagerCreate):
+    # Το MongoDB ObjectId επιστρέφεται ως string στο API.
+    id: str
+
 # -------------------------
 # Helper Functions
 # -------------------------
@@ -198,6 +246,29 @@ def driver_document_to_response(document: dict) -> DriverResponse:
         hire_date=document.get("hire_date"),
         fleet_id=document.get("fleet_id"),
         department_id=document.get("department_id"),
+        status=document.get("status", "ACTIVE"),
+    )
+
+def fleet_manager_document_to_response(document: dict, ) -> FleetManagerResponse:
+    """
+    Μετατρέπει ένα MongoDB Fleet Manager document
+    σε FleetManagerResponse.
+    """
+
+    return FleetManagerResponse(
+        id=str(document["_id"]),
+        manager_id=document["manager_id"],
+        keycloak_user_id=document["keycloak_user_id"],
+        first_name=document["first_name"],
+        last_name=document["last_name"],
+        date_of_birth=document.get("date_of_birth"),
+        identity_card_number=document.get("identity_card_number"),
+        tax_id=document.get("tax_id"),
+        phone_number=document.get("phone_number"),
+        email=document.get("email"),
+        fleet_id=document["fleet_id"],
+        department_id=document.get("department_id"),
+        hire_date=document.get("hire_date"),
         status=document.get("status", "ACTIVE"),
     )
 
@@ -434,4 +505,163 @@ def get_driver_vehicles_by_keycloak_user(keycloak_user_id: str):
         for vehicle_document in vehicle_documents
     ]
 
+@app.post(
+    "/fleet-managers",
+    response_model=FleetManagerResponse,
+)
+def create_fleet_manager(
+    fleet_manager: FleetManagerCreate,
+):
+    """
+    Δημιουργεί νέο Fleet Manager Profile.
 
+    Δεν επιτρέπουμε:
+    - δύο managers με το ίδιο manager_id,
+    - δύο profiles για το ίδιο Keycloak user.
+    """
+
+    existing_manager_id = fleet_managers_collection.find_one({
+        "manager_id": fleet_manager.manager_id
+    })
+
+    if existing_manager_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Fleet manager with this manager_id already exists",
+        )
+
+    existing_keycloak_user = fleet_managers_collection.find_one({
+        "keycloak_user_id": fleet_manager.keycloak_user_id
+    })
+
+    if existing_keycloak_user:
+        raise HTTPException(
+            status_code=409,
+            detail="Fleet manager with this Keycloak user already exists",
+        )
+
+    # Μετατρέπουμε σε JSON-compatible dictionary
+    # πριν από την αποθήκευση στη MongoDB.
+    document = fleet_manager.model_dump(mode="json")
+
+    result = fleet_managers_collection.insert_one(document)
+
+    created_manager = fleet_managers_collection.find_one({
+        "_id": result.inserted_id
+    })
+
+    return fleet_manager_document_to_response(created_manager)
+
+@app.get(
+    "/fleet-managers/by-keycloak-user/{keycloak_user_id}",
+    response_model=FleetManagerResponse,
+)
+def get_fleet_manager_by_keycloak_user(
+    keycloak_user_id: str,
+):
+    """
+    Επιστρέφει το Fleet Manager Profile που αντιστοιχεί
+    σε συγκεκριμένο Keycloak user.
+
+    Το keycloak_user_id αντιστοιχεί στο claim "sub"
+    του JWT που εκδίδει το Keycloak.
+    """
+
+    # Αναζητούμε τον Fleet Manager με βάση
+    # το σταθερό Keycloak user id.
+    fleet_manager_document = fleet_managers_collection.find_one({
+        "keycloak_user_id": keycloak_user_id
+    })
+
+    if not fleet_manager_document:
+        raise HTTPException(
+            status_code=404,
+            detail="Fleet manager not found for this Keycloak user",
+        )
+
+    return fleet_manager_document_to_response(
+        fleet_manager_document
+    )
+@app.get(
+    "/fleet-managers/by-keycloak-user/{keycloak_user_id}/vehicles",
+    response_model=list[VehicleResponse],
+)
+def get_fleet_manager_vehicles(
+    keycloak_user_id: str,
+):
+    """
+    Επιστρέφει όλα τα vehicles του fleet που διαχειρίζεται
+    ο συγκεκριμένος Fleet Manager.
+
+    Πρώτα βρίσκουμε τον manager από το Keycloak user id
+    και στη συνέχεια χρησιμοποιούμε το fleet_id του
+    για να βρούμε τα vehicles του συγκεκριμένου fleet.
+    """
+
+    # Βρίσκουμε το business profile του Fleet Manager
+    # χρησιμοποιώντας το Keycloak "sub".
+    fleet_manager_document = fleet_managers_collection.find_one({
+        "keycloak_user_id": keycloak_user_id
+    })
+
+    if not fleet_manager_document:
+        raise HTTPException(
+            status_code=404,
+            detail="Fleet manager not found for this Keycloak user",
+        )
+
+    # Παίρνουμε το fleet_id που έχει ανατεθεί στον manager.
+    fleet_id = fleet_manager_document["fleet_id"]
+
+    # Αναζητούμε όλα τα vehicles που ανήκουν
+    # στο συγκεκριμένο fleet.
+    vehicle_documents = vehicles_collection.find({
+        "fleet_id": fleet_id
+    })
+
+    return [
+        vehicle_document_to_response(vehicle_document)
+        for vehicle_document in vehicle_documents
+    ]
+
+@app.get(
+    "/fleet-managers/by-keycloak-user/{keycloak_user_id}/drivers",
+    response_model=list[DriverResponse],
+)
+def get_fleet_manager_drivers(
+    keycloak_user_id: str,
+):
+    """
+    Επιστρέφει όλους τους drivers του fleet που διαχειρίζεται
+    ο συγκεκριμένος Fleet Manager.
+
+    Πρώτα βρίσκουμε τον Fleet Manager μέσω του Keycloak user id
+    και μετά χρησιμοποιούμε το fleet_id του για να αναζητήσουμε
+    όλους τους drivers που ανήκουν στο συγκεκριμένο fleet.
+    """
+
+    # Βρίσκουμε το business profile του Fleet Manager
+    # χρησιμοποιώντας το Keycloak "sub".
+    fleet_manager_document = fleet_managers_collection.find_one({
+        "keycloak_user_id": keycloak_user_id
+    })
+
+    if not fleet_manager_document:
+        raise HTTPException(
+            status_code=404,
+            detail="Fleet manager not found for this Keycloak user",
+        )
+
+    # Παίρνουμε το fleet_id που διαχειρίζεται ο συγκεκριμένος manager.
+    fleet_id = fleet_manager_document["fleet_id"]
+
+    # Βρίσκουμε όλους τους drivers που ανήκουν
+    # στο ίδιο fleet.
+    driver_documents = drivers_collection.find({
+        "fleet_id": fleet_id
+    })
+
+    return [
+        driver_document_to_response(driver_document)
+        for driver_document in driver_documents
+    ]

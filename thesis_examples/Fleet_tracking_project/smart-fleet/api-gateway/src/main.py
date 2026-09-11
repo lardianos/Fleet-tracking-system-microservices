@@ -368,3 +368,104 @@ async def get_driver_profile(request: Request,token_payload: dict = Depends(vali
 
     return await proxy_request(request, target_url)
 
+@app.get("/api/v1/fleet-managers/me")
+async def get_fleet_manager_profile(
+    request: Request,
+    token_payload: dict = Depends(validate_access_token),
+):
+    """
+    Επιστρέφει το Fleet Manager Profile του authenticated χρήστη.
+
+    Το frontend δεν χρειάζεται να γνωρίζει ή να στέλνει
+    το Keycloak user id. Το API Gateway παίρνει το "sub"
+    απευθείας από το ήδη validated JWT.
+    """
+
+    # Το endpoint αφορά χρήστες που μπορούν
+    # να διαχειρίζονται δεδομένα στόλου.
+    role_checker(
+        token_payload,
+        VEHICLE_MANAGEMENT_ROLES,
+    )
+
+    # Παίρνουμε το σταθερό Keycloak user id
+    # αποκλειστικά από το validated access token.
+    keycloak_user_id = token_payload.get("sub")
+
+    if not keycloak_user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Token does not contain user identifier",
+        )
+
+    # Το Fleet API γνωρίζει τη σχέση:
+    # Keycloak user -> Fleet Manager Profile.
+    target_url = (
+        f"{FLEET_API_URL}"
+        f"/fleet-managers/by-keycloak-user/{keycloak_user_id}"
+    )
+
+    return await proxy_request(request, target_url)
+
+@app.get("/api/v1/fleet-managers/me/vehicles")
+async def get_my_fleet_vehicles(
+    request: Request,
+    token_payload: dict = Depends(validate_access_token),
+):
+    """
+    Επιστρέφει όλα τα vehicles του fleet
+    που διαχειρίζεται ο authenticated Fleet Manager.
+    """
+
+    role_checker(
+        token_payload,
+        VEHICLE_MANAGEMENT_ROLES,
+    )
+
+    keycloak_user_id = token_payload.get("sub")
+
+    if not keycloak_user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Token does not contain user identifier",
+        )
+
+    target_url = (
+        f"{FLEET_API_URL}"
+        f"/fleet-managers/by-keycloak-user/{keycloak_user_id}/vehicles"
+    )
+
+    return await proxy_request(request, target_url)
+
+
+@app.get("/api/v1/fleet-managers/me/drivers")
+async def get_my_fleet_drivers(
+    request: Request,
+    token_payload: dict = Depends(validate_access_token),
+):
+    """
+    Επιστρέφει όλους τους drivers του fleet
+    που διαχειρίζεται ο authenticated Fleet Manager.
+    """
+
+    role_checker(
+        token_payload,
+        VEHICLE_MANAGEMENT_ROLES,
+    )
+
+    keycloak_user_id = token_payload.get("sub")
+
+    if not keycloak_user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Token does not contain user identifier",
+        )
+
+    target_url = (
+        f"{FLEET_API_URL}"
+        f"/fleet-managers/by-keycloak-user/{keycloak_user_id}/drivers"
+    )
+
+    return await proxy_request(request, target_url)
+
+

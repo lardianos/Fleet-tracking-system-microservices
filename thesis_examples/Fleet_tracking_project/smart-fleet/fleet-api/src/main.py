@@ -16,6 +16,7 @@ MongoDB collection: vehicles
 """
 
 import os
+import logging
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -23,8 +24,16 @@ from pymongo import MongoClient
 from bson import ObjectId
 from datetime import date
 from pydantic import BaseModel, EmailStr
+from datetime import datetime, timezone
 
 from kafka_producer import FleetEventProducer
+
+
+# Ρυθμίζουμε το βασικό logging του Fleet API.
+logging.basicConfig(level=logging.INFO)
+
+# Δημιουργούμε logger για την καταγραφή των ενεργειών του service.
+logger = logging.getLogger(__name__)
 
 # Δημιουργούμε Kafka producer για fleet events.
 # Το Fleet API δεν καλεί άλλα services απευθείας.
@@ -71,6 +80,11 @@ drivers_collection = database["drivers"]
 # Το Keycloak παραμένει υπεύθυνο για authentication και roles,
 # ενώ εδώ κρατάμε τη σχέση του manager με το fleet που διαχειρίζεται.
 fleet_managers_collection = database["fleet_managers"]
+
+# Αποθηκεύει τα business δεδομένα των fleets.
+# Κάθε fleet αποτελεί την κεντρική οντότητα που συνδέει
+# τους Fleet Managers, τους Drivers και τα Vehicles του ίδιου στόλου.
+fleets_collection = database["fleets"]
 
 # -------------------------
 # Data Models
@@ -202,6 +216,85 @@ class FleetManagerResponse(FleetManagerCreate):
     # Το MongoDB ObjectId επιστρέφεται ως string στο API.
     id: str
 
+
+class BaseLocation(BaseModel):
+    """
+    Αντιπροσωπεύει τη βασική τοποθεσία ενός fleet.
+
+    Κρατάμε τόσο τα στοιχεία διεύθυνσης όσο και τις γεωγραφικές
+    συντεταγμένες, ώστε η ίδια πληροφορία να μπορεί αργότερα
+    να χρησιμοποιηθεί από το frontend, το GIS Service
+    και το Route Optimizer.
+    """
+
+    # Αναγνωρίσιμο όνομα της βάσης, π.χ. "Athens Depot".
+    name: str
+
+    # Ταχυδρομικά στοιχεία της βασικής τοποθεσίας.
+    address: str | None = None
+    city: str | None = None
+    postal_code: str | None = None
+
+    # Γεωγραφικές συντεταγμένες της βάσης.
+    # Οι περιορισμοί προστατεύουν από μη έγκυρες τιμές.
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
+class FleetCreate(BaseModel):
+    """
+    Μοντέλο για τη δημιουργία ενός fleet της εταιρείας.
+
+    Το fleet_id είναι το σταθερό business identifier που χρησιμοποιείται
+    για τη συσχέτιση του fleet με Fleet Managers, Drivers και Vehicles.
+    """
+
+    # Business identifier του fleet, π.χ. "fleet-001".
+    fleet_id: str
+
+    # Ανθρώπινα αναγνώσιμο όνομα και προαιρετική περιγραφή.
+    name: str
+    description: str | None = None
+
+    # Κεντρική βάση λειτουργίας του συγκεκριμένου fleet.
+    base_location: BaseLocation
+
+    # Επιτρέπει να απενεργοποιούμε ένα fleet χωρίς να διαγράφουμε
+    # το ιστορικό ή τις υπάρχουσες συσχετίσεις του.
+    status: str = "ACTIVE"
+
+
+class FleetUpdate(BaseModel):
+    """
+    Μοντέλο για μερική ενημέρωση ενός fleet.
+
+    Επιτρέπει και την αλλαγή του fleet_id. Σε αυτή την περίπτωση
+    το Fleet API πρέπει να ενημερώσει με ασφαλή τρόπο όλες τις
+    σχετικές business οντότητες που χρησιμοποιούν το παλιό fleet_id.
+    """
+
+    fleet_id: str | None = None
+    name: str | None = None
+    description: str | None = None
+    base_location: BaseLocation | None = None
+    status: str | None = None
+
+
+class FleetResponse(FleetCreate):
+    """
+    Μοντέλο που επιστρέφεται από το Fleet API.
+
+    Εκτός από τα business δεδομένα περιλαμβάνει το MongoDB id
+    και τα timestamps δημιουργίας και τελευταίας ενημέρωσης.
+    """
+
+    # MongoDB ObjectId σε μορφή string.
+    id: str
+
+    # Τα timestamps δημιουργούνται από το backend και δεν τα στέλνει ο client.
+    created_at: datetime
+    updated_at: datetime
+
 # -------------------------
 # Helper Functions
 # -------------------------
@@ -272,6 +365,50 @@ def fleet_manager_document_to_response(document: dict, ) -> FleetManagerResponse
         status=document.get("status", "ACTIVE"),
     )
 
+def fleet_document_to_response(document: dict) -> FleetResponse:
+    """
+    Μετατρέπει ένα MongoDB fleet document στο response model του API.
+
+    Το MongoDB αποθηκεύει το primary key στο πεδίο "_id" ως ObjectId.
+    Στο API δεν θέλουμε να εκθέτουμε το "_id" με αυτή τη μορφή,
+    επομένως το μετατρέπουμε σε string και το επιστρέφουμε ως "id".
+    """
+
+    return FleetResponse(
+        id=str(document["_id"]),
+        fleet_id=document["fleet_id"],
+        name=document["name"],
+        description=document.get("description"),
+        base_location=document["base_location"],
+        status=document["status"],
+        created_at=document["created_at"],
+        updated_at=document["updated_at"],
+    )
+
+def validate_fleet_exists(fleet_id: str | None) -> None:
+    """
+    Ελέγχει ότι ένα fleet_id αντιστοιχεί σε πραγματικό Fleet.
+
+    Τα Vehicles και Drivers επιτρέπεται να μην έχουν ακόμα ανατεθεί
+    σε κάποιο fleet, επομένως το None θεωρείται έγκυρη τιμή.
+
+    Όταν όμως υπάρχει fleet_id, πρέπει να αντιστοιχεί σε Fleet
+    που υπάρχει στη συλλογή fleets. Με αυτόν τον τρόπο αποφεύγουμε
+    orphan references προς ανύπαρκτα fleets.
+    """
+    if fleet_id is None:
+        return
+
+    fleet_document = fleets_collection.find_one({
+        "fleet_id": fleet_id
+    })
+
+    if fleet_document is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Fleet with fleet_id '{fleet_id}' does not exist",
+        )
+
 # -------------------------
 # API Endpoints
 # -------------------------
@@ -293,6 +430,11 @@ def create_vehicle(vehicle: VehicleCreate):
         raise HTTPException( status_code=409, detail="Vehicle with this device IMEI already exists", )
 
     document = vehicle.model_dump()
+
+    # Αν έχει δοθεί fleet_id, επιβεβαιώνουμε ότι αντιστοιχεί
+    # σε πραγματικό Fleet πριν αποθηκεύσουμε το Vehicle.
+    validate_fleet_exists(vehicle.fleet_id)
+
     result = vehicles_collection.insert_one(document)
 
     created_vehicle = vehicles_collection.find_one({"_id": result.inserted_id})
@@ -334,6 +476,15 @@ def update_vehicle(vehicle_id: str, vehicle: VehicleUpdate):
     if not update_data:
         raise HTTPException( status_code=400, detail="No update data provided", )
 
+    # Αν το PATCH περιλαμβάνει αλλαγή του fleet_id,
+    # επιβεβαιώνουμε ότι το νέο Fleet υπάρχει πριν ενημερωθεί το Vehicle.
+    #
+    # Ελέγχουμε την ύπαρξη του πεδίου στο update_data και όχι απλώς
+    # την τιμή του, επειδή το fleet_id=None είναι έγκυρη επιλογή
+    # για Vehicle και σημαίνει ότι το όχημα δεν ανήκει σε κάποιο fleet.
+    if "fleet_id" in update_data:
+        validate_fleet_exists(update_data["fleet_id"])
+        
     # Ενημερώνουμε μόνο τα πεδία που έστειλε ο client.
     result = vehicles_collection.update_one( {"_id": ObjectId(vehicle_id)}, {"$set": update_data}, )
 
@@ -398,6 +549,10 @@ def create_driver(driver: DriverCreate):
     # Έτσι οι ημερομηνίες αποθηκεύονται ως ISO strings,
     # π.χ. "1995-04-12", αντί για Python date objects.
     document = driver.model_dump(mode="json")
+
+    # Αν έχει δοθεί fleet_id, επιβεβαιώνουμε ότι αντιστοιχεί
+    # σε πραγματικό Fleet πριν αποθηκεύσουμε τον Driver.
+    validate_fleet_exists(driver.fleet_id)
 
     result = drivers_collection.insert_one(document)
 
@@ -544,6 +699,10 @@ def create_fleet_manager(
     # πριν από την αποθήκευση στη MongoDB.
     document = fleet_manager.model_dump(mode="json")
 
+    # Κάθε Fleet Manager πρέπει να ανήκει σε πραγματικό Fleet,
+    # επομένως επιβεβαιώνουμε το fleet_id πριν την αποθήκευση.
+    validate_fleet_exists(fleet_manager.fleet_id)
+
     result = fleet_managers_collection.insert_one(document)
 
     created_manager = fleet_managers_collection.find_one({
@@ -665,3 +824,210 @@ def get_fleet_manager_drivers(
         driver_document_to_response(driver_document)
         for driver_document in driver_documents
     ]
+
+@app.post("/fleets", response_model=FleetResponse, status_code=201)
+def create_fleet(fleet: FleetCreate):
+    """
+    Δημιουργεί ένα νέο fleet της εταιρείας.
+
+    Το fleet_id είναι μοναδικό business identifier και δεν επιτρέπεται
+    να χρησιμοποιείται από περισσότερα από ένα fleets.
+
+    Τα created_at και updated_at δημιουργούνται από το backend,
+    ώστε ο client να μην μπορεί να καθορίσει ή να αλλοιώσει
+    τα timestamps του fleet.
+    """
+
+    # Ελέγχουμε αν υπάρχει ήδη fleet με το ίδιο business identifier.
+    existing_fleet = fleets_collection.find_one({
+        "fleet_id": fleet.fleet_id
+    })
+
+    if existing_fleet:
+        raise HTTPException(
+            status_code=409,
+            detail="Fleet with this fleet_id already exists",
+        )
+
+    # Χρησιμοποιούμε timezone-aware UTC timestamp.
+    # Στη δημιουργία του fleet τα created_at και updated_at
+    # έχουν φυσικά την ίδια αρχική τιμή.
+    current_time = datetime.now(timezone.utc)
+
+    # Το mode="json" μετατρέπει τα nested Pydantic models,
+    # όπως το BaseLocation, σε δεδομένα κατάλληλα για αποθήκευση.
+    document = fleet.model_dump(mode="json")
+
+    # Τα timestamps ελέγχονται αποκλειστικά από το backend.
+    document["created_at"] = current_time
+    document["updated_at"] = current_time
+
+    result = fleets_collection.insert_one(document)
+
+    # Διαβάζουμε ξανά το document από τη MongoDB ώστε το response
+    # να δημιουργηθεί από την πραγματική αποθηκευμένη εγγραφή
+    # και να περιλαμβάνει το MongoDB _id.
+    created_fleet = fleets_collection.find_one({
+        "_id": result.inserted_id
+    })
+
+    if created_fleet is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Fleet was created but could not be retrieved",
+        )
+
+    logger.info(
+        "Created fleet: fleet_id=%s name=%s",
+        created_fleet["fleet_id"],
+        created_fleet["name"],
+    )
+
+    return fleet_document_to_response(created_fleet)
+
+@app.get("/fleets", response_model=list[FleetResponse])
+def get_fleets():
+    """
+    Επιστρέφει όλα τα fleets της εταιρείας.
+
+    Το endpoint αυτό θα χρησιμοποιηθεί κυρίως από τον Admin,
+    ώστε να μπορεί να βλέπει τη συνολική λίστα των fleets.
+    """
+
+    fleet_documents = fleets_collection.find()
+
+    return [
+        fleet_document_to_response(document)
+        for document in fleet_documents
+    ]
+
+
+@app.get("/fleets/{fleet_id}", response_model=FleetResponse)
+def get_fleet(fleet_id: str):
+    """
+    Επιστρέφει ένα συγκεκριμένο fleet με βάση το business fleet_id.
+
+    Χρησιμοποιούμε το fleet_id και όχι το MongoDB _id,
+    επειδή το fleet_id είναι το business identifier που χρησιμοποιείται
+    και στις σχέσεις με Fleet Managers, Drivers και Vehicles.
+    """
+
+    fleet_document = fleets_collection.find_one({
+        "fleet_id": fleet_id
+    })
+
+    if fleet_document is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Fleet not found",
+        )
+
+    return fleet_document_to_response(fleet_document)
+
+
+@app.patch("/fleets/{fleet_id}", response_model=FleetResponse)
+def update_fleet(fleet_id: str, fleet_update: FleetUpdate):
+    """
+    Ενημερώνει τα στοιχεία ενός υπάρχοντος fleet.
+
+    Αν αλλάξει το business identifier fleet_id, το Fleet API ενημερώνει
+    και όλες τις business οντότητες που ανήκουν στο συγκεκριμένο fleet.
+
+    Η συγκεκριμένη συσχέτιση βρίσκεται εξ ολοκλήρου μέσα στο Fleet API,
+    επειδή τα fleets, fleet managers, drivers και vehicles αποτελούν
+    business δεδομένα που ανήκουν στο ίδιο service.
+    """
+
+    # Βρίσκουμε πρώτα το υπάρχον fleet ώστε να γνωρίζουμε
+    # ότι το fleet_id του URL αντιστοιχεί σε πραγματικό fleet.
+    existing_fleet = fleets_collection.find_one({
+        "fleet_id": fleet_id
+    })
+
+    if existing_fleet is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Fleet not found",
+        )
+
+    # Κρατάμε μόνο τα πεδία που έστειλε πραγματικά ο client.
+    # Έτσι το PATCH μπορεί να αλλάξει ένα μόνο πεδίο χωρίς
+    # να αντικαταστήσει τα υπόλοιπα με None.
+    update_data = fleet_update.model_dump(
+        mode="json",
+        exclude_unset=True,
+    )
+
+    new_fleet_id = update_data.get("fleet_id")
+
+    # Αν ζητείται πραγματική αλλαγή του fleet_id,
+    # πρέπει πρώτα να βεβαιωθούμε ότι το νέο business ID
+    # δεν χρησιμοποιείται ήδη από άλλο fleet.
+    if new_fleet_id and new_fleet_id != fleet_id:
+        fleet_with_new_id = fleets_collection.find_one({
+            "fleet_id": new_fleet_id
+        })
+
+        if fleet_with_new_id is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="Fleet with this fleet_id already exists",
+            )
+
+        # Ενημερώνουμε τα references στις υπόλοιπες business
+        # οντότητες που ανήκουν στο συγκεκριμένο fleet.
+        fleet_managers_result = fleet_managers_collection.update_many(
+            {"fleet_id": fleet_id},
+            {"$set": {"fleet_id": new_fleet_id}},
+        )
+
+        drivers_result = drivers_collection.update_many(
+            {"fleet_id": fleet_id},
+            {"$set": {"fleet_id": new_fleet_id}},
+        )
+
+        vehicles_result = vehicles_collection.update_many(
+            {"fleet_id": fleet_id},
+            {"$set": {"fleet_id": new_fleet_id}},
+        )
+
+        logger.info(
+            (
+                "Updated fleet references: old_fleet_id=%s "
+                "new_fleet_id=%s fleet_managers=%s drivers=%s vehicles=%s"
+            ),
+            fleet_id,
+            new_fleet_id,
+            fleet_managers_result.modified_count,
+            drivers_result.modified_count,
+            vehicles_result.modified_count,
+        )
+
+    # Κάθε αλλαγή στο fleet ενημερώνει το updated_at.
+    update_data["updated_at"] = datetime.now(timezone.utc)
+
+    fleets_collection.update_one(
+        {"_id": existing_fleet["_id"]},
+        {"$set": update_data},
+    )
+
+    # Χρησιμοποιούμε το νέο fleet_id αν άλλαξε.
+    # Διαφορετικά συνεχίζουμε με το υπάρχον.
+    effective_fleet_id = new_fleet_id or fleet_id
+
+    updated_fleet = fleets_collection.find_one({
+        "fleet_id": effective_fleet_id
+    })
+
+    if updated_fleet is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Fleet was updated but could not be retrieved",
+        )
+
+    logger.info(
+        "Updated fleet: fleet_id=%s",
+        effective_fleet_id,
+    )
+
+    return fleet_document_to_response(updated_fleet)

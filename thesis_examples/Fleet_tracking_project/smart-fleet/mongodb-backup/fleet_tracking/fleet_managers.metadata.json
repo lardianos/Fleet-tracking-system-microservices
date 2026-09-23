@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"88d5f3fb00d84d3d9f609242c34595c6","collectionName":"fleet_managers","type":"collection"}

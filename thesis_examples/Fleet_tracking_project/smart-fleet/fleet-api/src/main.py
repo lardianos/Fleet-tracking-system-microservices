@@ -181,6 +181,50 @@ class DriverResponse(DriverCreate):
     # Το MongoDB ObjectId επιστρέφεται από το API ως string.
     id: str
 
+class DriverUpdate(BaseModel):
+    """
+    Μοντέλο για μερική ενημέρωση ενός Driver Profile.
+
+    Όλα τα πεδία είναι προαιρετικά, επειδή το PATCH επιτρέπει
+    στον client να στείλει μόνο τα στοιχεία που θέλει να αλλάξει.
+
+    Το driver_id και το keycloak_user_id δεν αλλάζουν μέσω PATCH,
+    επειδή χρησιμοποιούνται ως σταθερά identifiers του Driver.
+    """
+
+    # Βασικά προσωπικά στοιχεία.
+    first_name: str | None = None
+    last_name: str | None = None
+    date_of_birth: date | None = None
+
+    # Αριθμός δελτίου ταυτότητας.
+    identity_card_number: str | None = None
+
+    # Αριθμός Φορολογικού Μητρώου (ΑΦΜ).
+    tax_id: str | None = None
+
+    # Στοιχεία επικοινωνίας.
+    phone_number: str | None = None
+    email: EmailStr | None = None
+
+    # Στοιχεία άδειας οδήγησης.
+    license_number: str | None = None
+    license_category: str | None = None
+    license_expiry_date: date | None = None
+
+    # Ημερομηνία πρόσληψης του οδηγού.
+    hire_date: date | None = None
+
+    # Συσχέτιση με Fleet και Department.
+    #
+    # Το fleet_id επιτρέπεται να γίνει None.
+    # Σε αυτή την περίπτωση ο Driver αφαιρείται από το Fleet
+    # και αποδεσμεύονται όλα τα Vehicles που του έχουν ανατεθεί.
+    fleet_id: str | None = None
+    department_id: str | None = None
+
+    # Κατάσταση του Driver μέσα στο σύστημα.
+    status: str | None = None
 
 class FleetManagerCreate(BaseModel):
     """
@@ -222,6 +266,32 @@ class FleetManagerCreate(BaseModel):
 class FleetManagerResponse(FleetManagerCreate):
     # Το MongoDB ObjectId επιστρέφεται ως string στο API.
     id: str
+
+
+class FleetManagerUpdate(BaseModel):
+    """
+    Μοντέλο για μερική ενημέρωση ενός Fleet Manager Profile.
+
+    Όλα τα πεδία είναι προαιρετικά, επειδή το PATCH επιτρέπει
+    στον client να στείλει μόνο τα στοιχεία που θέλει να αλλάξει.
+
+    Το manager_id και το keycloak_user_id δεν αλλάζουν μέσω PATCH,
+    επειδή χρησιμοποιούνται ως σταθερά identifiers του Fleet Manager.
+    """
+
+    first_name: str | None = None
+    last_name: str | None = None
+    date_of_birth: date | None = None
+    identity_card_number: str | None = None
+    tax_id: str | None = None
+    phone_number: str | None = None
+    email: EmailStr | None = None
+
+    fleet_id: str | None = None
+    department_id: str | None = None
+
+    hire_date: date | None = None
+    status: str | None = None
 
 
 class BaseLocation(BaseModel):
@@ -646,11 +716,39 @@ def create_vehicle(vehicle: VehicleCreate):
 
     created_vehicle = vehicles_collection.find_one({"_id": result.inserted_id})
 
+    # Δημιουργούμε τα changes του audit μόνο για τις τιμές
+    # που υπάρχουν πραγματικά κατά τη δημιουργία του Vehicle.
+    #
+    # Δεν θέλουμε εγγραφές όπως None → None, επειδή αυτές
+    # δεν αντιπροσωπεύουν πραγματική αρχική τιμή ή αλλαγή.
+
+    audit_changes = {
+        "plate_number": AuditChange(
+            from_value=None,
+            to_value=created_vehicle["plate_number"],
+        ),
+    }
+
+    if created_vehicle.get("fleet_id") is not None:
+        audit_changes["fleet_id"] = AuditChange(
+            from_value=None,
+            to_value=created_vehicle["fleet_id"],
+        )
+
+    if created_vehicle.get("driver_id") is not None:
+        audit_changes["driver_id"] = AuditChange(
+            from_value=None,
+            to_value=created_vehicle["driver_id"],
+        )
+
+
     # Καταγράφουμε τη δημιουργία του Vehicle στο audit trail.
     #
     # Κρατάμε τόσο το σταθερό MongoDB id όσο και την πινακίδα,
     # ώστε το ιστορικό να είναι κατάλληλο για trace-back αλλά
     # και εύκολα αναγνώσιμο από τον χρήστη.
+
+
     create_audit_log(
         AuditLogCreate(
             entity_type="VEHICLE",
@@ -665,20 +763,7 @@ def create_vehicle(vehicle: VehicleCreate):
                 fleet_id=created_vehicle.get("fleet_id"),
                 driver_id=created_vehicle.get("driver_id"),
             ),
-            changes={
-                "plate_number": AuditChange(
-                    from_value=None,
-                    to_value=created_vehicle["plate_number"],
-                ),
-                "fleet_id": AuditChange(
-                    from_value=None,
-                    to_value=created_vehicle.get("fleet_id"),
-                ),
-                "driver_id": AuditChange(
-                    from_value=None,
-                    to_value=created_vehicle.get("driver_id"),
-                ),
-            },
+            changes=audit_changes,
         )
     )
     # Αφού το όχημα αποθηκευτεί επιτυχώς στη MongoDB,
@@ -776,37 +861,24 @@ def update_vehicle(vehicle_id: str, vehicle: VehicleUpdate):
             if "fleet_id" in update_data:
                 validate_fleet_exists(update_data["fleet_id"])
 
+
     elif "fleet_id" in update_data:
-        # Αν αλλάζει μόνο το Fleet και το Vehicle έχει ήδη Driver,
-        # δεν επιτρέπουμε να δημιουργηθεί σχέση όπου Driver και Vehicle
-        # ανήκουν σε διαφορετικά Fleets.
+        # Αν αλλάζει το Fleet του Vehicle, επιβεβαιώνουμε πρώτα
+        # ότι το νέο Fleet υπάρχει. Το None παραμένει έγκυρη τιμή.
         validate_fleet_exists(update_data["fleet_id"])
 
         existing_driver_id = existing_vehicle.get("driver_id")
+        old_fleet_id = existing_vehicle.get("fleet_id")
+        new_fleet_id = update_data["fleet_id"]
 
-        if existing_driver_id is not None:
-            driver_document = drivers_collection.find_one({
-                "driver_id": existing_driver_id
-            })
-
-            if driver_document is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"Assigned driver '{existing_driver_id}' "
-                        "does not exist"
-                    ),
-                )
-
-            if update_data["fleet_id"] != driver_document.get("fleet_id"):
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        "Vehicle fleet_id cannot be changed while the "
-                        "vehicle is assigned to a driver from another fleet"
-                    ),
-                )
-
+        # Αν το Vehicle μετακινείται πραγματικά σε διαφορετικό Fleet
+        # και έχει ανατεθειμένο Driver, η σχέση Driver ↔ Vehicle λύνεται.
+        #
+        # Το Vehicle μετακινείται στο νέο Fleet, αλλά ο Driver παραμένει
+        # στο δικό του Fleet. Επομένως το Vehicle χάνει τον Driver και,
+        # αντίστοιχα, ο Driver δεν έχει πλέον αυτό το Vehicle.
+        if (existing_driver_id is not None and old_fleet_id != new_fleet_id ):
+            update_data["driver_id"] = None
 
     # Ενημερώνουμε μόνο τα πεδία που έστειλε ο client.
     result = vehicles_collection.update_one( {"_id": ObjectId(vehicle_id)}, {"$set": update_data}, )
@@ -833,7 +905,28 @@ def update_vehicle(vehicle_id: str, vehicle: VehicleUpdate):
     old_driver_id = existing_vehicle.get("driver_id")
     new_driver_id = updated_vehicle.get("driver_id")
 
-    if old_driver_id != new_driver_id:
+    old_fleet_id = existing_vehicle.get("fleet_id")
+    new_fleet_id = updated_vehicle.get("fleet_id")
+
+    # Αν άλλαξε το Fleet του Vehicle, αυτή είναι η κύρια business ενέργεια.
+    # Αν λόγω αυτής της μετακίνησης αφαιρέθηκε και ο Driver, το αναφέρουμε
+    # στην περιγραφή και το driver_id καταγράφεται κανονικά στα changes.
+    if old_fleet_id != new_fleet_id:
+        audit_action = "FLEET_CHANGED"
+
+        if old_driver_id is not None and new_driver_id is None:
+            audit_description = (
+                f"Vehicle {updated_vehicle['plate_number']} changed fleet "
+                f"from {old_fleet_id} to {new_fleet_id} and driver "
+                f"{old_driver_id} was unassigned"
+            )
+        else:
+            audit_description = (
+                f"Vehicle {updated_vehicle['plate_number']} changed fleet "
+                f"from {old_fleet_id} to {new_fleet_id}"
+            )
+
+    elif old_driver_id != new_driver_id:
         if old_driver_id is None and new_driver_id is not None:
             audit_action = "DRIVER_ASSIGNED"
             audit_description = (
@@ -854,14 +947,6 @@ def update_vehicle(vehicle_id: str, vehicle: VehicleUpdate):
                 f"Vehicle {updated_vehicle['plate_number']} changed "
                 f"driver from {old_driver_id} to {new_driver_id}"
             )
-
-    elif existing_vehicle.get("fleet_id") != updated_vehicle.get("fleet_id"):
-        audit_action = "FLEET_CHANGED"
-        audit_description = (
-            f"Vehicle {updated_vehicle['plate_number']} changed fleet "
-            f"from {existing_vehicle.get('fleet_id')} "
-            f"to {updated_vehicle.get('fleet_id')}"
-        )
 
     else:
         audit_action = "UPDATED"
@@ -895,15 +980,57 @@ def delete_vehicle(vehicle_id: str):
     if not ObjectId.is_valid(vehicle_id):
         raise HTTPException(status_code=400, detail="Invalid vehicle id")
 
+    # Διαβάζουμε πρώτα το Vehicle πριν το διαγράψουμε.
+    #
+    # Χρειαζόμαστε τα στοιχεία του για το audit trail, επειδή μετά
+    # το delete δεν θα υπάρχει πλέον το document στη συλλογή vehicles.
+    existing_vehicle = vehicles_collection.find_one(
+        {"_id": ObjectId(vehicle_id)}
+    )
+
+    if existing_vehicle is None:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+
     result = vehicles_collection.delete_one(
         {"_id": ObjectId(vehicle_id)}
     )
 
     if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Vehicle not found")
+        raise HTTPException(
+            status_code=500,
+            detail="Vehicle could not be deleted",
+        )
 
-    return { "message": "Vehicle deleted successfully", "vehicle_id": vehicle_id, }
+    # Η εγγραφή του audit παραμένει ακόμα και μετά τη διαγραφή
+    # του Vehicle, ώστε να υπάρχει μόνιμο ιστορικό της οντότητας.
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="VEHICLE",
+            entity_id=vehicle_id,
+            action="DELETED",
+            description=(
+                f"Vehicle {existing_vehicle['plate_number']} was deleted"
+            ),
+            related_entities=AuditRelatedEntities(
+                vehicle_id=vehicle_id,
+                plate_number=existing_vehicle["plate_number"],
+                fleet_id=existing_vehicle.get("fleet_id"),
+                driver_id=existing_vehicle.get("driver_id"),
+            ),
+            changes={},
+        )
+    )
 
+    logger.info(
+        "Deleted vehicle: vehicle_id=%s plate_number=%s",
+        vehicle_id,
+        existing_vehicle["plate_number"],
+    )
+
+    return {
+        "message": "Vehicle deleted successfully",
+        "vehicle_id": vehicle_id,
+    }
 
 """
     Δημιουργεί νέο Driver Profile στη MongoDB.
@@ -954,6 +1081,46 @@ def create_driver(driver: DriverCreate):
     created_driver = drivers_collection.find_one({
         "_id": result.inserted_id
     })
+
+    audit_changes = {
+        "driver_id": AuditChange(
+            from_value=None,
+            to_value=created_driver["driver_id"],
+        ),
+    }
+
+    if created_driver.get("fleet_id") is not None:
+        audit_changes["fleet_id"] = AuditChange(
+            from_value=None,
+            to_value=created_driver["fleet_id"],
+        )
+
+    # Καταγράφουμε τη δημιουργία του Driver στο μόνιμο audit trail.
+    #
+    # Το driver_id χρησιμοποιείται ως σταθερό business identifier,
+    # ώστε το ιστορικό να παραμένει αναζητήσιμο ακόμη και αν
+    # το Driver Profile διαγραφεί αργότερα.
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="DRIVER",
+            entity_id=created_driver["driver_id"],
+            action="CREATED",
+            description=(
+                f"Driver {created_driver['driver_id']} was created"
+            ),
+            related_entities=AuditRelatedEntities(
+                driver_id=created_driver["driver_id"],
+                fleet_id=created_driver.get("fleet_id"),
+            ),
+            changes=audit_changes,
+        )
+    )
+
+    logger.info(
+        "Created driver: driver_id=%s fleet_id=%s",
+        created_driver["driver_id"],
+        created_driver.get("fleet_id"),
+    )
 
     return driver_document_to_response(created_driver)
 
@@ -1053,13 +1220,355 @@ def get_driver_vehicles_by_keycloak_user(keycloak_user_id: str):
         for vehicle_document in vehicle_documents
     ]
 
+@app.patch("/drivers/{driver_id}", response_model=DriverResponse)
+def update_driver(driver_id: str, driver: DriverUpdate):
+    """
+    Ενημερώνει μερικώς ένα Driver Profile.
+
+    Αν αλλάξει το Fleet του Driver:
+    - ο Driver μετακινείται στο νέο Fleet ή αφαιρείται από Fleet,
+    - όλα τα Vehicles που ήταν ανατεθειμένα στον Driver
+      χάνουν την ανάθεση,
+    - τα Vehicles παραμένουν στα δικά τους Fleets,
+    - καταγράφεται audit τόσο για τον Driver όσο και για
+      κάθε Vehicle που έχασε τον Driver.
+    """
+
+    # Βρίσκουμε πρώτα τον υπάρχοντα Driver ώστε να γνωρίζουμε
+    # τις προηγούμενες τιμές πριν εφαρμοστεί οποιαδήποτε αλλαγή.
+    existing_driver = drivers_collection.find_one({
+        "driver_id": driver_id
+    })
+
+    if existing_driver is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Driver not found",
+        )
+
+    # Το exclude_unset=True είναι σημαντικό γιατί μας επιτρέπει
+    # να ξεχωρίζουμε ένα πεδίο που δεν στάλθηκε καθόλου από ένα
+    # πεδίο που στάλθηκε σκόπιμα ως null.
+    update_data = driver.model_dump(
+        exclude_unset=True,
+        mode="json",
+    )
+
+    if not update_data:
+        raise HTTPException(
+            status_code=400,
+            detail="No fields provided for update",
+        )
+
+    old_fleet_id = existing_driver.get("fleet_id")
+    new_fleet_id = update_data.get("fleet_id", old_fleet_id)
+
+    fleet_changed = (
+        "fleet_id" in update_data
+        and old_fleet_id != new_fleet_id
+    )
+
+    # Αν ο client αλλάζει το Fleet, επιβεβαιώνουμε πρώτα
+    # ότι το νέο fleet_id αντιστοιχεί σε πραγματικό Fleet.
+    #
+    # Το None είναι έγκυρο και σημαίνει ότι ο Driver
+    # αφαιρείται από το Fleet.
+    if fleet_changed:
+        validate_fleet_exists(new_fleet_id)
+
+    # Κρατάμε τα Vehicles που θα αποδεσμευτούν πριν κάνουμε
+    # οποιαδήποτε αλλαγή, ώστε να έχουμε τα προηγούμενα στοιχεία
+    # διαθέσιμα για το audit trail.
+    affected_vehicles = []
+
+    if fleet_changed:
+        affected_vehicles = list(
+            vehicles_collection.find({
+                "driver_id": driver_id
+            })
+        )
+
+        # Ο Driver αλλάζει Fleet, επομένως όλες οι υπάρχουσες
+        # αναθέσεις του σε Vehicles παύουν να ισχύουν.
+        #
+        # Δεν αλλάζουμε το fleet_id των Vehicles.
+        vehicles_collection.update_many(
+            {"driver_id": driver_id},
+            {
+                "$set": {
+                    "driver_id": None
+                }
+            },
+        )
+
+    # Ενημερώνουμε το Driver Profile μόνο αφού έχουν ολοκληρωθεί
+    # οι απαραίτητοι έλεγχοι.
+    drivers_collection.update_one(
+        {"driver_id": driver_id},
+        {
+            "$set": update_data
+        },
+    )
+
+    updated_driver = drivers_collection.find_one({
+        "driver_id": driver_id
+    })
+
+    # Καταγράφουμε μόνο τα πεδία που άλλαξαν πραγματικά.
+    driver_audit_changes = {}
+
+    for field_name in update_data:
+        old_value = existing_driver.get(field_name)
+        new_value = updated_driver.get(field_name)
+
+        if old_value != new_value:
+            driver_audit_changes[field_name] = AuditChange(
+                from_value=old_value,
+                to_value=new_value,
+            )
+
+    # Αν άλλαξε το Fleet, το audit πρέπει να αποτυπώνει
+    # ότι η αλλαγή αφορά τη σχέση Driver → Fleet.
+    if fleet_changed:
+        audit_action = "FLEET_CHANGED"
+
+        if new_fleet_id is None:
+            audit_description = (
+                f"Driver {driver_id} was removed from fleet "
+                f"{old_fleet_id}"
+            )
+        elif old_fleet_id is None:
+            audit_description = (
+                f"Driver {driver_id} was assigned to fleet "
+                f"{new_fleet_id}"
+            )
+        else:
+            audit_description = (
+                f"Driver {driver_id} changed fleet "
+                f"from {old_fleet_id} to {new_fleet_id}"
+            )
+    else:
+        audit_action = "UPDATED"
+        audit_description = (
+            f"Driver {driver_id} was updated"
+        )
+
+    if driver_audit_changes:
+        create_audit_log(
+            AuditLogCreate(
+                entity_type="DRIVER",
+                entity_id=driver_id,
+                action=audit_action,
+                description=audit_description,
+                related_entities=AuditRelatedEntities(
+                    driver_id=driver_id,
+                    fleet_id=updated_driver.get("fleet_id"),
+                ),
+                changes=driver_audit_changes,
+            )
+        )
+    # Για κάθε Vehicle που έχασε τον Driver δημιουργούμε
+    # ξεχωριστή εγγραφή audit.
+    #
+    # Έτσι μπορούμε αργότερα να εξηγήσουμε όχι μόνο ότι
+    # το Vehicle έχασε τον Driver, αλλά και γιατί συνέβη.
+    for vehicle_document in affected_vehicles:
+        vehicle_id = str(vehicle_document["_id"])
+
+        create_audit_log(
+            AuditLogCreate(
+                entity_type="VEHICLE",
+                entity_id=vehicle_id,
+                action="DRIVER_UNASSIGNED",
+                description=(
+                    f"Driver {driver_id} was unassigned from vehicle "
+                    f"{vehicle_document['plate_number']} because the "
+                    "driver changed fleet"
+                ),
+                related_entities=AuditRelatedEntities(
+                    vehicle_id=vehicle_id,
+                    plate_number=vehicle_document["plate_number"],
+                    fleet_id=vehicle_document.get("fleet_id"),
+                    driver_id=driver_id,
+                ),
+                changes={
+                    "driver_id": AuditChange(
+                        from_value=driver_id,
+                        to_value=None,
+                    )
+                },
+            )
+        )
+
+    logger.info(
+        "Updated driver: driver_id=%s fleet_id=%s",
+        driver_id,
+        updated_driver.get("fleet_id"),
+    )
+
+    return driver_document_to_response(updated_driver)
+
+@app.delete("/drivers/{driver_id}")
+def delete_driver(driver_id: str):
+    """
+    Διαγράφει ένα Driver Profile από το Fleet API.
+
+    Πριν διαγραφεί ο Driver:
+    - βρίσκουμε όλα τα Vehicles που του έχουν ανατεθεί,
+    - αφαιρούμε τον Driver από αυτά,
+    - τα Vehicles παραμένουν στα Fleets που ήδη ανήκουν,
+    - καταγράφουμε audit για κάθε Vehicle που αποδεσμεύτηκε,
+    - καταγράφουμε μόνιμο audit για τη διαγραφή του Driver.
+
+    Σε αυτή τη φάση διαγράφεται μόνο το business Driver Profile.
+    Το αντίστοιχο Keycloak account δεν διαγράφεται από αυτό το endpoint.
+    """
+
+    # Διαβάζουμε πρώτα τον Driver πριν γίνει η διαγραφή.
+    # Χρειαζόμαστε τα στοιχεία του τόσο για τους business κανόνες
+    # όσο και για το audit trail που πρέπει να παραμείνει μόνιμα.
+    existing_driver = drivers_collection.find_one({
+        "driver_id": driver_id
+    })
+
+    if existing_driver is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Driver not found",
+        )
+
+    # Κρατάμε όλα τα Vehicles που είναι ανατεθειμένα στον Driver
+    # πριν αφαιρέσουμε τη σχέση, ώστε να γνωρίζουμε ποια Vehicles
+    # επηρεάστηκαν και να δημιουργήσουμε σωστό audit για το καθένα.
+    affected_vehicles = list(
+        vehicles_collection.find({
+            "driver_id": driver_id
+        })
+    )
+
+    # Αποδεσμεύουμε όλα τα Vehicles από τον Driver.
+    #
+    # Αλλάζουμε αποκλειστικά το driver_id.
+    # Το fleet_id κάθε Vehicle παραμένει ακριβώς όπως ήταν.
+    vehicles_collection.update_many(
+        {"driver_id": driver_id},
+        {
+            "$set": {
+                "driver_id": None
+            }
+        },
+    )
+
+    # Διαγράφουμε το business Driver Profile.
+    #
+    # Δεν διαγράφουμε εδώ τον Keycloak user.
+    # Η διαχείριση του Keycloak account θα γίνει αργότερα
+    # από το ολοκληρωμένο Admin create/delete flow.
+    result = drivers_collection.delete_one({
+        "driver_id": driver_id
+    })
+
+    if result.deleted_count == 0:
+        raise HTTPException(
+            status_code=500,
+            detail="Driver could not be deleted",
+        )
+
+    # Καταγράφουμε τη διαγραφή του Driver στο μόνιμο audit trail.
+    #
+    # Επειδή μετά από αυτό το σημείο το Driver Profile δεν υπάρχει πλέον,
+    # αποθηκεύουμε στο audit τις βασικές business πληροφορίες που είχε
+    # ακριβώς πριν από τη διαγραφή του.
+    driver_delete_changes = {
+        "driver_id": AuditChange(
+            from_value=existing_driver["driver_id"],
+            to_value=None,
+        ),
+        "first_name": AuditChange(
+            from_value=existing_driver.get("first_name"),
+            to_value=None,
+        ),
+        "last_name": AuditChange(
+            from_value=existing_driver.get("last_name"),
+            to_value=None,
+        ),
+    }
+
+    if existing_driver.get("fleet_id") is not None:
+        driver_delete_changes["fleet_id"] = AuditChange(
+            from_value=existing_driver["fleet_id"],
+            to_value=None,
+        )
+
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="DRIVER",
+            entity_id=driver_id,
+            action="DELETED",
+            description=(
+                f"Driver {driver_id} "
+                f"({existing_driver.get('first_name')} "
+                f"{existing_driver.get('last_name')}) was deleted"
+            ),
+            related_entities=AuditRelatedEntities(
+                driver_id=driver_id,
+                fleet_id=existing_driver.get("fleet_id"),
+            ),
+            changes=driver_delete_changes,
+        )
+    )
+
+    # Για κάθε Vehicle που ήταν ανατεθειμένο στον Driver
+    # δημιουργούμε ξεχωριστή εγγραφή audit.
+    #
+    # Έτσι το ιστορικό δείχνει ότι η αποδέσμευση δεν έγινε
+    # με απλό Vehicle PATCH αλλά επειδή διαγράφηκε ο Driver.
+    for vehicle_document in affected_vehicles:
+        vehicle_id = str(vehicle_document["_id"])
+
+        create_audit_log(
+            AuditLogCreate(
+                entity_type="VEHICLE",
+                entity_id=vehicle_id,
+                action="DRIVER_UNASSIGNED",
+                description=(
+                    f"Driver {driver_id} was unassigned from vehicle "
+                    f"{vehicle_document['plate_number']} because the "
+                    "driver was deleted"
+                ),
+                related_entities=AuditRelatedEntities(
+                    vehicle_id=vehicle_id,
+                    plate_number=vehicle_document["plate_number"],
+                    fleet_id=vehicle_document.get("fleet_id"),
+                    driver_id=driver_id,
+                ),
+                changes={
+                    "driver_id": AuditChange(
+                        from_value=driver_id,
+                        to_value=None,
+                    )
+                },
+            )
+        )
+
+    logger.info(
+        "Deleted driver: driver_id=%s affected_vehicles=%s",
+        driver_id,
+        len(affected_vehicles),
+    )
+
+    return {
+        "message": "Driver deleted successfully",
+        "driver_id": driver_id,
+        "unassigned_vehicles": len(affected_vehicles),
+    }
+
+
 @app.post(
     "/fleet-managers",
     response_model=FleetManagerResponse,
 )
-def create_fleet_manager(
-    fleet_manager: FleetManagerCreate,
-):
+def create_fleet_manager(    fleet_manager: FleetManagerCreate,):
     """
     Δημιουργεί νέο Fleet Manager Profile.
 
@@ -1098,9 +1607,52 @@ def create_fleet_manager(
 
     result = fleet_managers_collection.insert_one(document)
 
-    created_manager = fleet_managers_collection.find_one({
-        "_id": result.inserted_id
-    })
+    created_manager = fleet_managers_collection.find_one({"_id": result.inserted_id})
+
+    # Δημιουργούμε τα audit changes για τις βασικές business πληροφορίες
+    # που αποκτά ο Fleet Manager κατά τη δημιουργία του.
+    #
+    # Δεν καταγράφουμε τιμές None → None, επειδή δεν αποτελούν
+    # πραγματική αρχική κατάσταση που χρειάζεται να εμφανίζεται στο audit.
+    audit_changes = {
+        "manager_id": AuditChange(
+            from_value=None,
+            to_value=created_manager["manager_id"],
+        ),
+    }
+
+    if created_manager.get("fleet_id") is not None:
+        audit_changes["fleet_id"] = AuditChange(
+            from_value=None,
+            to_value=created_manager["fleet_id"],
+        )
+
+    # Καταγράφουμε τη δημιουργία του Fleet Manager στο μόνιμο audit trail.
+    #
+    # Χρησιμοποιούμε το manager_id ως σταθερό business identifier,
+    # ώστε το ιστορικό να παραμένει αναζητήσιμο ακόμη και αν
+    # το Fleet Manager Profile διαγραφεί αργότερα.
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="FLEET_MANAGER",
+            entity_id=created_manager["manager_id"],
+            action="CREATED",
+            description=(
+                f"Fleet Manager {created_manager['manager_id']} was created"
+            ),
+            related_entities=AuditRelatedEntities(
+                manager_id=created_manager["manager_id"],
+                fleet_id=created_manager.get("fleet_id"),
+            ),
+            changes=audit_changes,
+        )
+    )
+
+    logger.info(
+        "Created fleet manager: manager_id=%s fleet_id=%s",
+        created_manager["manager_id"],
+        created_manager.get("fleet_id"),
+    )
 
     return fleet_manager_document_to_response(created_manager)
 
@@ -1108,9 +1660,7 @@ def create_fleet_manager(
     "/fleet-managers/by-keycloak-user/{keycloak_user_id}",
     response_model=FleetManagerResponse,
 )
-def get_fleet_manager_by_keycloak_user(
-    keycloak_user_id: str,
-):
+def get_fleet_manager_by_keycloak_user(keycloak_user_id: str,):
     """
     Επιστρέφει το Fleet Manager Profile που αντιστοιχεί
     σε συγκεκριμένο Keycloak user.
@@ -1138,9 +1688,7 @@ def get_fleet_manager_by_keycloak_user(
     "/fleet-managers/by-keycloak-user/{keycloak_user_id}/vehicles",
     response_model=list[VehicleResponse],
 )
-def get_fleet_manager_vehicles(
-    keycloak_user_id: str,
-):
+def get_fleet_manager_vehicles(keycloak_user_id: str,):
     """
     Επιστρέφει όλα τα vehicles του fleet που διαχειρίζεται
     ο συγκεκριμένος Fleet Manager.
@@ -1180,9 +1728,7 @@ def get_fleet_manager_vehicles(
     "/fleet-managers/by-keycloak-user/{keycloak_user_id}/drivers",
     response_model=list[DriverResponse],
 )
-def get_fleet_manager_drivers(
-    keycloak_user_id: str,
-):
+def get_fleet_manager_drivers( keycloak_user_id: str,):
     """
     Επιστρέφει όλους τους drivers του fleet που διαχειρίζεται
     ο συγκεκριμένος Fleet Manager.
@@ -1217,6 +1763,255 @@ def get_fleet_manager_drivers(
         driver_document_to_response(driver_document)
         for driver_document in driver_documents
     ]
+
+@app.patch(
+    "/fleet-managers/{manager_id}",
+    response_model=FleetManagerResponse,
+)
+def update_fleet_manager( manager_id: str, fleet_manager: FleetManagerUpdate, ):
+    """
+    Ενημερώνει μερικώς ένα Fleet Manager Profile.
+
+    Το manager_id και το keycloak_user_id δεν μπορούν να αλλάξουν
+    μέσω αυτού του endpoint, επειδή αποτελούν σταθερά identifiers.
+
+    Αν αλλάξει το fleet_id του Fleet Manager:
+    - ελέγχουμε ότι το νέο Fleet υπάρχει,
+    - αλλάζουμε μόνο το Fleet του Manager,
+    - δεν αλλάζουμε Drivers ή Vehicles του παλιού ή του νέου Fleet.
+
+    Audit δημιουργείται μόνο όταν υπάρχει πραγματική αλλαγή.
+    """
+
+    # Διαβάζουμε την υπάρχουσα κατάσταση πριν από οποιαδήποτε αλλαγή.
+    # Τη χρειαζόμαστε για validation και για το audit trail.
+    existing_manager = fleet_managers_collection.find_one({
+        "manager_id": manager_id
+    })
+
+    if existing_manager is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Fleet Manager not found",
+        )
+
+    # Παίρνουμε μόνο τα πεδία που έστειλε πραγματικά ο client.
+    #
+    # Το mode="json" μετατρέπει date και άλλα Pydantic values
+    # σε μορφή κατάλληλη για αποθήκευση στη MongoDB.
+    update_data = fleet_manager.model_dump(
+        exclude_unset=True,
+        mode="json",
+    )
+
+    if not update_data:
+        raise HTTPException(
+            status_code=400,
+            detail="No update data provided",
+        )
+
+    old_fleet_id = existing_manager.get("fleet_id")
+
+    # Αν το PATCH περιλαμβάνει fleet_id, ελέγχουμε ότι το νέο Fleet
+    # υπάρχει. Το None επιτρέπεται και σημαίνει ότι ο Manager
+    # δεν είναι προσωρινά ανατεθειμένος σε κάποιο Fleet.
+    if "fleet_id" in update_data:
+        validate_fleet_exists(update_data["fleet_id"])
+
+    new_fleet_id = update_data.get(
+        "fleet_id",
+        old_fleet_id,
+    )
+
+    fleet_changed = old_fleet_id != new_fleet_id
+
+    # Ενημερώνουμε αποκλειστικά τα πεδία που έστειλε ο client.
+    #
+    # Δεν υπάρχει cascade προς Drivers ή Vehicles.
+    # Το fleet_id του Manager καθορίζει ποιο Fleet διαχειρίζεται,
+    # όχι την ιδιοκτησία των οντοτήτων του Fleet.
+    result = fleet_managers_collection.update_one(
+        {"manager_id": manager_id},
+        {"$set": update_data},
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="Fleet Manager not found",
+        )
+
+    updated_manager = fleet_managers_collection.find_one({
+        "manager_id": manager_id
+    })
+
+    # Καταγράφουμε μόνο τα πεδία που άλλαξαν πραγματικά.
+    # Αν ο client έστειλε την ίδια τιμή που υπήρχε ήδη,
+    # αυτή δεν θεωρείται business αλλαγή.
+    audit_changes = {}
+
+    for field_name in update_data:
+        old_value = existing_manager.get(field_name)
+        new_value = updated_manager.get(field_name)
+
+        if old_value != new_value:
+            audit_changes[field_name] = AuditChange(
+                from_value=old_value,
+                to_value=new_value,
+            )
+
+    # Αν άλλαξε πραγματικά το Fleet, χρησιμοποιούμε ειδικό action
+    # ώστε το business history να ξεχωρίζει τις μετακινήσεις Manager.
+    if fleet_changed:
+        audit_action = "FLEET_CHANGED"
+
+        if old_fleet_id is None:
+            audit_description = (
+                f"Fleet Manager {manager_id} was assigned "
+                f"to fleet {new_fleet_id}"
+            )
+
+        elif new_fleet_id is None:
+            audit_description = (
+                f"Fleet Manager {manager_id} was removed "
+                f"from fleet {old_fleet_id}"
+            )
+
+        else:
+            audit_description = (
+                f"Fleet Manager {manager_id} changed fleet "
+                f"from {old_fleet_id} to {new_fleet_id}"
+            )
+
+    else:
+        audit_action = "UPDATED"
+        audit_description = (
+            f"Fleet Manager {manager_id} was updated"
+        )
+
+    # Δεν δημιουργούμε audit μόνο και μόνο επειδή έγινε PATCH.
+    # Πρέπει να έχει αλλάξει πραγματικά τουλάχιστον ένα πεδίο.
+    if audit_changes:
+        create_audit_log(
+            AuditLogCreate(
+                entity_type="FLEET_MANAGER",
+                entity_id=manager_id,
+                action=audit_action,
+                description=audit_description,
+                related_entities=AuditRelatedEntities(
+                    manager_id=manager_id,
+                    fleet_id=updated_manager.get("fleet_id"),
+                ),
+                changes=audit_changes,
+            )
+        )
+
+    logger.info(
+        "Updated fleet manager: manager_id=%s fleet_id=%s",
+        manager_id,
+        updated_manager.get("fleet_id"),
+    )
+
+    return fleet_manager_document_to_response(updated_manager)
+
+@app.delete("/fleet-managers/{manager_id}")
+def delete_fleet_manager(manager_id: str):
+    """
+    Διαγράφει ένα Fleet Manager Profile από το Fleet API.
+
+    Η διαγραφή αφορά μόνο το business profile του Fleet Manager.
+
+    Δεν επηρεάζονται:
+    - το Fleet που διαχειριζόταν,
+    - οι Drivers του Fleet,
+    - τα Vehicles του Fleet.
+
+    Σε αυτή τη φάση δεν διαγράφεται το αντίστοιχο Keycloak account.
+    Η διαχείριση του Keycloak identity θα ενσωματωθεί αργότερα
+    στο ολοκληρωμένο Admin identity lifecycle.
+    """
+
+    # Διαβάζουμε πρώτα τον Fleet Manager πριν από τη διαγραφή,
+    # επειδή χρειαζόμαστε την τελευταία κατάστασή του για το audit trail.
+    existing_manager = fleet_managers_collection.find_one({
+        "manager_id": manager_id
+    })
+
+    if existing_manager is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Fleet Manager not found",
+        )
+
+    # Διαγράφουμε μόνο το business Fleet Manager Profile.
+    #
+    # Δεν υπάρχει cascade προς Fleet, Drivers ή Vehicles,
+    # επειδή ο Manager διαχειρίζεται το Fleet αλλά δεν είναι
+    # ιδιοκτήτης των business entities που ανήκουν σε αυτό.
+    result = fleet_managers_collection.delete_one({
+        "manager_id": manager_id
+    })
+
+    if result.deleted_count == 0:
+        raise HTTPException(
+            status_code=500,
+            detail="Fleet Manager could not be deleted",
+        )
+
+    # Κρατάμε στο μόνιμο audit trail τις βασικές business πληροφορίες
+    # του Manager που υπήρχαν ακριβώς πριν από τη διαγραφή.
+    #
+    # Δεν αντιγράφουμε ευαίσθητα προσωπικά δεδομένα όπως tax_id,
+    # identity_card_number, email ή phone_number στο audit log.
+    manager_delete_changes = {
+        "manager_id": AuditChange(
+            from_value=existing_manager["manager_id"],
+            to_value=None,
+        ),
+        "first_name": AuditChange(
+            from_value=existing_manager.get("first_name"),
+            to_value=None,
+        ),
+        "last_name": AuditChange(
+            from_value=existing_manager.get("last_name"),
+            to_value=None,
+        ),
+    }
+
+    if existing_manager.get("fleet_id") is not None:
+        manager_delete_changes["fleet_id"] = AuditChange(
+            from_value=existing_manager["fleet_id"],
+            to_value=None,
+        )
+
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="FLEET_MANAGER",
+            entity_id=manager_id,
+            action="DELETED",
+            description=(
+                f"Fleet Manager {manager_id} "
+                f"({existing_manager.get('first_name')} "
+                f"{existing_manager.get('last_name')}) was deleted"
+            ),
+            related_entities=AuditRelatedEntities(
+                manager_id=manager_id,
+                fleet_id=existing_manager.get("fleet_id"),
+            ),
+            changes=manager_delete_changes,
+        )
+    )
+
+    logger.info(
+        "Deleted fleet manager: manager_id=%s fleet_id=%s",
+        manager_id,
+        existing_manager.get("fleet_id"),
+    )
+
+    return {
+        "message": "Fleet Manager deleted successfully",
+        "manager_id": manager_id,
+    }
 
 @app.post("/fleets", response_model=FleetResponse, status_code=201)
 def create_fleet(fleet: FleetCreate):
@@ -1260,15 +2055,34 @@ def create_fleet(fleet: FleetCreate):
     # Διαβάζουμε ξανά το document από τη MongoDB ώστε το response
     # να δημιουργηθεί από την πραγματική αποθηκευμένη εγγραφή
     # και να περιλαμβάνει το MongoDB _id.
-    created_fleet = fleets_collection.find_one({
-        "_id": result.inserted_id
-    })
+    created_fleet = fleets_collection.find_one({"_id": result.inserted_id})
 
     if created_fleet is None:
-        raise HTTPException(
-            status_code=500,
-            detail="Fleet was created but could not be retrieved",
+        raise HTTPException(status_code=500, detail="Fleet was created but could not be retrieved",)
+
+    # Καταγράφουμε τη δημιουργία του Fleet στο μόνιμο audit trail.
+    #
+    # Το fleet_id αποτελεί το business identifier του Fleet και γι' αυτό
+    # καταγράφεται ως η βασική αρχική τιμή κατά τη δημιουργία.
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="FLEET",
+            entity_id=created_fleet["fleet_id"],
+            action="CREATED",
+            description=(
+                f"Fleet {created_fleet['fleet_id']} was created"
+            ),
+            related_entities=AuditRelatedEntities(
+                fleet_id=created_fleet["fleet_id"],
+            ),
+            changes={
+                "fleet_id": AuditChange(
+                    from_value=None,
+                    to_value=created_fleet["fleet_id"],
+                )
+            },
         )
+    )
 
     logger.info(
         "Created fleet: fleet_id=%s name=%s",
@@ -1346,10 +2160,15 @@ def update_fleet(fleet_id: str, fleet_update: FleetUpdate):
     # Κρατάμε μόνο τα πεδία που έστειλε πραγματικά ο client.
     # Έτσι το PATCH μπορεί να αλλάξει ένα μόνο πεδίο χωρίς
     # να αντικαταστήσει τα υπόλοιπα με None.
-    update_data = fleet_update.model_dump(
-        mode="json",
-        exclude_unset=True,
-    )
+    update_data = fleet_update.model_dump( mode="json", exclude_unset=True, )
+
+    # Αν ο client δεν έστειλε κανένα πεδίο προς ενημέρωση,
+    # δεν υπάρχει πραγματική ενέργεια PATCH που μπορούμε να εκτελέσουμε.
+    if not update_data:
+        raise HTTPException(
+            status_code=400,
+            detail="No update data provided",
+        )
 
     new_fleet_id = update_data.get("fleet_id")
 
@@ -1416,6 +2235,68 @@ def update_fleet(fleet_id: str, fleet_update: FleetUpdate):
         raise HTTPException(
             status_code=500,
             detail="Fleet was updated but could not be retrieved",
+        )
+
+    # Δημιουργούμε audit changes μόνο για τα business πεδία
+    # που άλλαξαν πραγματικά μετά το PATCH.
+    #
+    # Δεν χρησιμοποιούμε το updated_at για να αποφασίσουμε αν υπάρχει
+    # business αλλαγή, επειδή είναι τεχνικό timestamp που ενημερώνεται
+    # από το backend και όχι πεδίο που άλλαξε ο χρήστης.
+    audit_changes = {}
+
+    for field_name in fleet_update.model_dump(
+            mode="json",
+            exclude_unset=True,
+    ):
+        old_value = existing_fleet.get(field_name)
+        new_value = updated_fleet.get(field_name)
+
+        if old_value != new_value:
+            audit_changes[field_name] = AuditChange(
+                from_value=old_value,
+                to_value=new_value,
+            )
+
+    # Αν άλλαξε το business identifier του Fleet, χρησιμοποιούμε
+    # ξεχωριστό action ώστε το audit history να δείχνει καθαρά
+    # ότι πρόκειται για αλλαγή του fleet_id και όχι για απλό update.
+    #
+    # Τα references σε Fleet Managers, Drivers και Vehicles έχουν ήδη
+    # ενημερωθεί από το υπάρχον cascade παραπάνω.
+    if (
+            "fleet_id" in audit_changes
+            and existing_fleet["fleet_id"] != updated_fleet["fleet_id"]
+    ):
+        audit_action = "ID_CHANGED"
+        audit_description = (
+            f"Fleet ID changed from {existing_fleet['fleet_id']} "
+            f"to {updated_fleet['fleet_id']}"
+        )
+
+    else:
+        audit_action = "UPDATED"
+        audit_description = (
+            f"Fleet {updated_fleet['fleet_id']} was updated"
+        )
+
+    # Όπως και στα Vehicle, Driver και Fleet Manager,
+    # audit δημιουργείται μόνο όταν υπάρχει πραγματική business αλλαγή.
+    #
+    # PATCH με την ίδια ακριβώς τιμή δεν δημιουργεί άχρηστη
+    # εγγραφή UPDATED στο ιστορικό.
+    if audit_changes:
+        create_audit_log(
+            AuditLogCreate(
+                entity_type="FLEET",
+                entity_id=updated_fleet["fleet_id"],
+                action=audit_action,
+                description=audit_description,
+                related_entities=AuditRelatedEntities(
+                    fleet_id=updated_fleet["fleet_id"],
+                ),
+                changes=audit_changes,
+            )
         )
 
     logger.info(
@@ -1487,6 +2368,38 @@ def delete_fleet(fleet_id: str):
             status_code=500,
             detail="Fleet could not be deleted",
         )
+
+    # Καταγράφουμε τη διαγραφή του Fleet στο μόνιμο audit trail.
+    #
+    # Επειδή το Fleet δεν υπάρχει πλέον μετά τη διαγραφή,
+    # κρατάμε τις βασικές business πληροφορίες που χρειαζόμαστε
+    # για να μπορούμε να αναγνωρίσουμε ιστορικά ποιο Fleet διαγράφηκε.
+    fleet_delete_changes = {
+        "fleet_id": AuditChange(
+            from_value=existing_fleet["fleet_id"],
+            to_value=None,
+        ),
+        "name": AuditChange(
+            from_value=existing_fleet.get("name"),
+            to_value=None,
+        ),
+    }
+
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="FLEET",
+            entity_id=existing_fleet["fleet_id"],
+            action="DELETED",
+            description=(
+                f"Fleet {existing_fleet['fleet_id']} "
+                f"({existing_fleet.get('name')}) was deleted"
+            ),
+            related_entities=AuditRelatedEntities(
+                fleet_id=existing_fleet["fleet_id"],
+            ),
+            changes=fleet_delete_changes,
+        )
+    )
 
     logger.info("Deleted fleet: fleet_id=%s", fleet_id)
 

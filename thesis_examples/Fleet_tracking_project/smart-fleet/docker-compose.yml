@@ -108,9 +108,15 @@ services:
     environment:
       FLEET_API_URL: http://fleet-api:8000
       LIVE_TRACKING_SERVICE_URL: http://live-tracking-service:8002
+
       KEYCLOAK_ISSUER_URL: http://localhost:8081/realms/smart-fleet
       KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/smart-fleet/protocol/openid-connect/certs
       KEYCLOAK_CLIENT_ID: smart-fleet-frontend
+
+      KEYCLOAK_ADMIN_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_REALM: smart-fleet
+      KEYCLOAK_ADMIN_CLIENT_ID: smart-fleet-api-gateway
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
     depends_on:
       - fleet-api
       - live-tracking-service

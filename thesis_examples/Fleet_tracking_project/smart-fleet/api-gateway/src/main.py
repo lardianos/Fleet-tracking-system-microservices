@@ -17,6 +17,7 @@ import os
 import logging
 
 import httpx
+from keycloak_admin_client import KeycloakAdminClient
 from fastapi import FastAPI, Request, Response, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import jwt
@@ -30,6 +31,35 @@ KEYCLOAK_ISSUER_URL = os.getenv( "KEYCLOAK_ISSUER_URL", "http://localhost:8081/r
 KEYCLOAK_JWKS_URL = os.getenv( "KEYCLOAK_JWKS_URL", "http://keycloak:8080/realms/smart-fleet/protocol/openid-connect/certs",)
 
 KEYCLOAK_CLIENT_ID = os.getenv( "KEYCLOAK_CLIENT_ID", "smart-fleet-frontend", )
+
+# Ρυθμίσεις για machine-to-machine επικοινωνία του API Gateway
+# με το Keycloak Admin API.
+#
+# Αυτές οι ρυθμίσεις είναι διαφορετικές από το KEYCLOAK_CLIENT_ID
+# του frontend. Εδώ χρησιμοποιούμε confidential client με service account.
+
+KEYCLOAK_ADMIN_URL = os.getenv( "KEYCLOAK_ADMIN_URL", "http://keycloak:8080",)
+
+KEYCLOAK_ADMIN_REALM = os.getenv( "KEYCLOAK_ADMIN_REALM", "smart-fleet", )
+
+KEYCLOAK_ADMIN_CLIENT_ID = os.getenv( "KEYCLOAK_ADMIN_CLIENT_ID", "smart-fleet-api-gateway",)
+
+KEYCLOAK_ADMIN_CLIENT_SECRET = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET", )
+
+if not KEYCLOAK_ADMIN_CLIENT_SECRET:
+    raise RuntimeError( "KEYCLOAK_ADMIN_CLIENT_SECRET is not configured" )
+
+# Δημιουργούμε έναν κοινό Keycloak Admin client για τις administrative
+# identity operations του API Gateway.
+#
+# Το instance δεν κρατά service-account access token ως μόνιμο state.
+# Κάθε administrative operation ζητά token όταν το χρειάζεται.
+keycloak_admin_client = KeycloakAdminClient(
+    keycloak_url=KEYCLOAK_ADMIN_URL,
+    realm=KEYCLOAK_ADMIN_REALM,
+    client_id=KEYCLOAK_ADMIN_CLIENT_ID,
+    client_secret=KEYCLOAK_ADMIN_CLIENT_SECRET,
+)
 
 jwks_client = PyJWKClient(KEYCLOAK_JWKS_URL)
 
@@ -261,6 +291,123 @@ async def health_check():
         "service": "api-gateway",
     }
 
+@app.get("/health/keycloak-admin")
+async def keycloak_admin_health_check():
+    """
+    Ελέγχει ότι το API Gateway μπορεί να αυθεντικοποιηθεί
+    στο Keycloak μέσω του service account.
+
+    Το endpoint χρησιμοποιείται προσωρινά κατά την ανάπτυξη
+    και δεν επιστρέφει ποτέ το πραγματικό access token.
+    """
+
+    try:
+        await keycloak_admin_client.get_access_token()
+
+    except Exception as error:
+        logger.error(
+            "Keycloak Admin authentication check failed: error=%s",
+            error,
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail="Keycloak Admin authentication failed",
+        )
+
+    return {
+        "status": "ok",
+        "service": "api-gateway",
+        "keycloak_admin": "authenticated",
+    }
+
+@app.post("/development/keycloak-admin/test-user")
+async def test_keycloak_admin_user_lifecycle():
+    """
+    Ελέγχει προσωρινά το πλήρες lifecycle ενός Keycloak user.
+
+    Το endpoint υπάρχει μόνο για development testing και θα αφαιρεθεί
+    όταν επιβεβαιώσουμε ότι το Keycloak Admin integration λειτουργεί.
+
+    Η δοκιμή:
+    1. δημιουργεί προσωρινό Keycloak user,
+    2. του αναθέτει το realm role "driver",
+    3. διαγράφει τον ίδιο προσωρινό user.
+
+    Δεν δημιουργεί Driver Profile στο Fleet API ή στη MongoDB.
+    """
+
+    test_username = "keycloak-admin-test-user"
+    test_email = "keycloak-admin-test@example.com"
+    test_password = "Temporary-Test-Password-123!"
+
+    keycloak_user_id = None
+
+    try:
+        # Δημιουργούμε προσωρινό identity αποκλειστικά για να ελέγξουμε
+        # ότι το service account έχει δικαίωμα δημιουργίας χρηστών.
+        keycloak_user_id = await keycloak_admin_client.create_user(
+            username=test_username,
+            email=test_email,
+            first_name="Keycloak",
+            last_name="Test",
+            temporary_password=test_password,
+        )
+
+        # Ελέγχουμε ότι το service account μπορεί να αναθέσει
+        # το υπάρχον realm role "driver" στον νέο χρήστη.
+        await keycloak_admin_client.assign_realm_role(
+            keycloak_user_id=keycloak_user_id,
+            role_name="driver",
+        )
+
+        # Αφού ολοκληρώθηκαν επιτυχώς τα προηγούμενα βήματα,
+        # διαγράφουμε τον προσωρινό χρήστη ώστε να μη μείνει
+        # test identity μέσα στο Keycloak.
+        await keycloak_admin_client.delete_user(
+            keycloak_user_id=keycloak_user_id,
+        )
+
+        keycloak_user_id = None
+
+        return {
+            "status": "ok",
+            "create_user": "passed",
+            "assign_role": "passed",
+            "delete_user": "passed",
+        }
+
+    # except Exception as error:
+    #     logger.error(
+    #         "Keycloak Admin user lifecycle test failed: error=%s",
+    #         error,
+    #     )
+    except Exception:
+        logger.exception( "Keycloak Admin user lifecycle test failed" )
+
+        # Αν ο user δημιουργήθηκε αλλά κάποιο επόμενο βήμα απέτυχε,
+        # προσπαθούμε να τον διαγράψουμε ως compensating action.
+        #
+        # Αυτό είναι ταυτόχρονα μια μικρή δοκιμή της λογικής που
+        # αργότερα θα χρησιμοποιήσουμε στο πραγματικό orchestration.
+        if keycloak_user_id is not None:
+            try:
+                await keycloak_admin_client.delete_user(
+                    keycloak_user_id=keycloak_user_id,
+                )
+
+            except Exception as cleanup_error:
+                logger.error(
+                    "Could not clean up temporary Keycloak user: "
+                    "keycloak_user_id=%s error=%s",
+                    keycloak_user_id,
+                    cleanup_error,
+                )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Keycloak Admin user lifecycle test failed",
+        )
 
 @app.api_route( "/api/v1/vehicles", methods=["GET", "POST"],)
 

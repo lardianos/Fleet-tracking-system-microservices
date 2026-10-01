@@ -31,13 +31,7 @@ class KeycloakAdminClient:
     - διαγραφή Keycloak user.
     """
 
-    def __init__(
-        self,
-        keycloak_url: str,
-        realm: str,
-        client_id: str,
-        client_secret: str,
-    ):
+    def __init__( self, keycloak_url: str, realm: str, client_id: str, client_secret: str, ):
         self.keycloak_url = keycloak_url.rstrip("/")
         self.realm = realm
         self.client_id = client_id
@@ -100,14 +94,8 @@ class KeycloakAdminClient:
 
         return access_token
 
-    async def create_user(
-        self,
-        username: str,
-        email: str,
-        first_name: str,
-        last_name: str,
-        temporary_password: str,
-    ) -> str:
+    async def create_user( self, username: str, email: str, first_name: str,
+                           last_name: str, temporary_password: str | None = None, ) -> str:
         """
         Δημιουργεί νέο user στο Keycloak και επιστρέφει το σταθερό
         Keycloak user id.
@@ -127,20 +115,29 @@ class KeycloakAdminClient:
             f"/admin/realms/{self.realm}/users"
         )
 
+        # Δημιουργούμε τα βασικά στοιχεία του λογαριασμού.
+        # Ο νέος χρήστης θα πρέπει να ορίσει κωδικό
+        # πριν χρησιμοποιήσει τον λογαριασμό του.
         user_data = {
             "username": username,
             "email": email,
             "firstName": first_name,
             "lastName": last_name,
             "enabled": True,
-            "credentials": [
+            "emailVerified": False,
+            "requiredActions": ["UPDATE_PASSWORD"],
+        }
+
+        # Διατηρούμε την υποστήριξη προσωρινού κωδικού
+        # για τις υπάρχουσες δοκιμές του Keycloak Admin Client.
+        if temporary_password is not None:
+            user_data["credentials"] = [
                 {
                     "type": "password",
                     "value": temporary_password,
                     "temporary": True,
                 }
-            ],
-        }
+            ]
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -180,11 +177,7 @@ class KeycloakAdminClient:
 
         return keycloak_user_id
 
-    async def assign_realm_role(
-        self,
-        keycloak_user_id: str,
-        role_name: str,
-    ) -> None:
+    async def assign_realm_role( self, keycloak_user_id: str, role_name: str, ) -> None:
         """
         Αναθέτει ένα realm role σε υπάρχοντα Keycloak user.
 
@@ -262,10 +255,170 @@ class KeycloakAdminClient:
             role_name,
         )
 
-    async def delete_user(
-        self,
-        keycloak_user_id: str,
-    ) -> None:
+    async def get_user_by_username( self, username: str, ) -> dict | None:
+        """
+        Αναζητά έναν χρήστη στο Keycloak με ακριβές username.
+
+        Χρησιμοποιείται πριν από τη δημιουργία λογαριασμού,
+        αλλά και για έλεγχο μετά από αβέβαιη έκβαση ενός request.
+        """
+
+        access_token = await self.get_access_token()
+
+        # Ζητάμε ακριβή αντιστοίχιση, ώστε να μην επιστρέφονται
+        # άλλοι χρήστες με παρόμοιο username.
+        # Χρησιμοποιούμε το URL που έχει ήδη οριστεί
+        # στον constructor του KeycloakAdminClient.
+        url = (
+            f"{self.keycloak_url}"
+            f"/admin/realms/{self.realm}/users"
+        )
+
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                url,
+                headers={ "Authorization": f"Bearer {access_token}", },
+                params={ "username": username, "exact": "true", },
+            )
+
+        response.raise_for_status()
+
+        for user in response.json():
+            if user.get("username") == username:
+                return user
+
+        return None
+
+    async def get_user_by_id(self, keycloak_user_id: str, ) -> dict | None:
+        """
+        Διαβάζει τον χρήστη με το σταθερό Keycloak ID.
+        Χρησιμοποιείται πριν από οποιαδήποτε ενημέρωση.
+        """
+        access_token = await self.get_access_token()
+
+        url = (
+            f"{self.keycloak_url}/admin/realms/"
+            f"{self.realm}/users/{keycloak_user_id}"
+        )
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                url,
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                },
+            )
+
+        if response.status_code == 404:
+            return None
+
+        response.raise_for_status()
+        return response.json()
+
+    async def update_user( self, keycloak_user_id: str, identity_data: dict, ) -> None:
+        """
+        Ενημερώνει αποκλειστικά τα επιτρεπόμενα στοιχεία
+        ταυτότητας ενός υπάρχοντος Keycloak user.
+
+        Δεν αλλάζει username, roles, password ή enabled.
+        """
+        allowed_fields = {
+            "firstName",
+            "lastName",
+            "email",
+        }
+
+        if not identity_data or (
+            set(identity_data) - allowed_fields
+        ):
+            raise ValueError("Invalid Keycloak identity fields")
+
+        access_token = await self.get_access_token()
+
+        url = (
+            f"{self.keycloak_url}/admin/realms/"
+            f"{self.realm}/users/{keycloak_user_id}"
+        )
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.put(
+                url,
+                json=identity_data,
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                },
+            )
+
+        response.raise_for_status()
+
+    async def set_user_enabled( self, keycloak_user_id: str, enabled: bool, ) -> None:
+        """
+        Ενεργοποιεί ή απενεργοποιεί έναν υπάρχοντα
+        λογαριασμό στο Keycloak.
+
+        Δεν αλλάζει τα προσωπικά στοιχεία, τους ρόλους
+        ή τον κωδικό πρόσβασης του χρήστη.
+        """
+
+        access_token = await self.get_access_token()
+
+        user_url = (
+            f"{self.keycloak_url}"
+            f"/admin/realms/{self.realm}"
+            f"/users/{keycloak_user_id}"
+        )
+
+        # Αλλάζουμε αποκλειστικά το πεδίο enabled.
+        # Η υπάρχουσα update_user() παραμένει ανεπηρέαστη.
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.put(
+                user_url,
+                json={"enabled": enabled},
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                },
+            )
+
+        response.raise_for_status()
+
+        logger.info(
+            "Updated Keycloak user enabled state: "
+            "keycloak_user_id=%s enabled=%s",
+            keycloak_user_id,
+            enabled,
+        )
+
+    async def logout_user( self, keycloak_user_id: str, ) -> None:
+        """
+        Ζητά από το Keycloak να τερματίσει τις ενεργές
+        συνεδρίες του συγκεκριμένου χρήστη.
+        """
+
+        access_token = await self.get_access_token()
+
+        logout_url = (
+            f"{self.keycloak_url}"
+            f"/admin/realms/{self.realm}"
+            f"/users/{keycloak_user_id}/logout"
+        )
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                logout_url,
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                },
+            )
+
+        response.raise_for_status()
+
+        logger.info(
+            "Logged out Keycloak user: keycloak_user_id=%s",
+            keycloak_user_id,
+        )
+
+    async def delete_user( self, keycloak_user_id: str, ) -> None:
         """
         Διαγράφει έναν user από το Keycloak.
 

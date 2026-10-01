@@ -17,6 +17,8 @@ MongoDB collection: vehicles
 
 import os
 import logging
+import time
+
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -25,6 +27,8 @@ from bson import ObjectId
 from datetime import date
 from pydantic import BaseModel, EmailStr
 from datetime import datetime, timezone
+
+from pymongo.errors import DuplicateKeyError
 
 from kafka_producer import FleetEventProducer
 
@@ -75,6 +79,31 @@ vehicles_collection = database["vehicles"]
 # Το collection drivers αποθηκεύει τα business δεδομένα των οδηγών.
 # Το Keycloak παραμένει υπεύθυνο μόνο για authentication και identity.
 drivers_collection = database["drivers"]
+
+# Εξασφαλίζουμε ότι κάθε χρήστης του Keycloak αντιστοιχεί
+# σε ένα μόνο Driver Profile στη MongoDB.
+#
+# Ο μοναδικός δείκτης προστατεύει και από ταυτόχρονες αιτήσεις,
+# όπου δύο διαδικασίες μπορεί να προσπαθήσουν να δημιουργήσουν
+# προφίλ για το ίδιο keycloak_user_id.
+#
+# Αν ο δείκτης υπάρχει ήδη, η MongoDB δεν τον δημιουργεί ξανά.
+drivers_collection.create_index(
+    [("keycloak_user_id", 1)],
+    unique=True,
+    name="uq_drivers_keycloak_user_id",
+)
+
+# Εξασφαλίζουμε ότι κάθε Driver έχει μοναδικό business identifier.
+#
+# Ο δείκτης προστατεύει από διπλές εγγραφές ακόμη και όταν
+# δύο αιτήσεις δημιουργίας φτάσουν ταυτόχρονα.
+# Αν υπάρχει ήδη, η MongoDB δεν τον δημιουργεί ξανά.
+drivers_collection.create_index(
+    [("driver_id", 1)],
+    unique=True,
+    name="uq_drivers_driver_id",
+)
 
 # Αποθηκεύει τα business profiles των Fleet Managers.
 # Το Keycloak παραμένει υπεύθυνο για authentication και roles,
@@ -130,7 +159,6 @@ class VehicleUpdate(BaseModel):
     driver_id: str | None = None
     fleet_id: str | None = None
     status: str | None = None
-
 
 class DriverCreate(BaseModel):
     """
@@ -267,7 +295,6 @@ class FleetManagerResponse(FleetManagerCreate):
     # Το MongoDB ObjectId επιστρέφεται ως string στο API.
     id: str
 
-
 class FleetManagerUpdate(BaseModel):
     """
     Μοντέλο για μερική ενημέρωση ενός Fleet Manager Profile.
@@ -293,7 +320,6 @@ class FleetManagerUpdate(BaseModel):
     hire_date: date | None = None
     status: str | None = None
 
-
 class BaseLocation(BaseModel):
     """
     Αντιπροσωπεύει τη βασική τοποθεσία ενός fleet.
@@ -316,7 +342,6 @@ class BaseLocation(BaseModel):
     # Οι περιορισμοί προστατεύουν από μη έγκυρες τιμές.
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
-
 
 class FleetCreate(BaseModel):
     """
@@ -369,7 +394,6 @@ class FleetResponse(FleetCreate):
     # Τα timestamps δημιουργούνται από το backend και δεν τα στέλνει ο client.
     created_at: datetime
     updated_at: datetime
-
 
 class AuditChange(BaseModel):
     """
@@ -540,45 +564,45 @@ def validate_fleet_exists(fleet_id: str | None) -> None:
             detail=f"Fleet with fleet_id '{fleet_id}' does not exist",
         )
 
-def get_driver_for_vehicle_assignment(driver_id: str) -> dict:
-    """
-    Επιστρέφει τον Driver που πρόκειται να ανατεθεί σε Vehicle.
-
-    Για να μπορεί ένας Driver να αναλάβει Vehicle:
-    - πρέπει να υπάρχει,
-    - πρέπει να ανήκει ήδη σε Fleet.
-
-    Το Fleet του Driver καθορίζει το Fleet του Vehicle τη στιγμή
-    που πραγματοποιείται η ανάθεση.
-    """
-
-    driver_document = drivers_collection.find_one({
-        "driver_id": driver_id
-    })
-
-    if driver_document is None:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Driver with driver_id '{driver_id}' does not exist",
-        )
-
-    driver_fleet_id = driver_document.get("fleet_id")
-
-    if driver_fleet_id is None:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"Driver with driver_id '{driver_id}' cannot be assigned "
-                "to a vehicle because the driver does not belong to a fleet"
-            ),
-        )
-
-    # Παρόλο που ο Driver κανονικά πρέπει ήδη να δείχνει σε υπαρκτό Fleet,
-    # κάνουμε τον έλεγχο και εδώ ώστε να μη δημιουργηθεί νέα ασυνεπής
-    # ανάθεση αν υπάρχουν παλαιότερα μη έγκυρα δεδομένα στη βάση.
-    validate_fleet_exists(driver_fleet_id)
-
-    return driver_document
+# def get_driver_for_vehicle_assignment(driver_id: str) -> dict:
+#     """
+#     Επιστρέφει τον Driver που πρόκειται να ανατεθεί σε Vehicle.
+#
+#     Για να μπορεί ένας Driver να αναλάβει Vehicle:
+#     - πρέπει να υπάρχει,
+#     - πρέπει να ανήκει ήδη σε Fleet.
+#
+#     Το Fleet του Driver καθορίζει το Fleet του Vehicle τη στιγμή
+#     που πραγματοποιείται η ανάθεση.
+#     """
+#
+#     driver_document = drivers_collection.find_one({
+#         "driver_id": driver_id
+#     })
+#
+#     if driver_document is None:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=f"Driver with driver_id '{driver_id}' does not exist",
+#         )
+#
+#     driver_fleet_id = driver_document.get("fleet_id")
+#
+#     if driver_fleet_id is None:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=(
+#                 f"Driver with driver_id '{driver_id}' cannot be assigned "
+#                 "to a vehicle because the driver does not belong to a fleet"
+#             ),
+#         )
+#
+#     # Παρόλο που ο Driver κανονικά πρέπει ήδη να δείχνει σε υπαρκτό Fleet,
+#     # κάνουμε τον έλεγχο και εδώ ώστε να μη δημιουργηθεί νέα ασυνεπής
+#     # ανάθεση αν υπάρχουν παλαιότερα μη έγκυρα δεδομένα στη βάση.
+#     validate_fleet_exists(driver_fleet_id)
+#
+#     return driver_document
 
 def create_audit_log(audit_log: AuditLogCreate) -> AuditLogResponse:
     """
@@ -630,6 +654,7 @@ def audit_log_document_to_response(document: dict) -> AuditLogResponse:
         performed_by=document.get("performed_by"),
         timestamp=document["timestamp"],
     )
+
 def get_driver_for_vehicle_assignment(driver_id: str) -> dict:
     """
     Επιστρέφει τον Driver που πρόκειται να ανατεθεί σε Vehicle.
@@ -663,6 +688,16 @@ def get_driver_for_vehicle_assignment(driver_id: str) -> dict:
             ),
         )
 
+    # Δεν επιτρέπουμε ανάθεση οχημάτων σε ανενεργό οδηγό.
+    if driver_document.get("status") != "ACTIVE":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Driver with driver_id '{driver_id}' "
+                "is not active and cannot be assigned to a vehicle"
+            ),
+        )
+
     # Παρόλο που ο Driver κανονικά πρέπει ήδη να δείχνει σε υπαρκτό Fleet,
     # κάνουμε τον έλεγχο και εδώ ώστε να μη δημιουργηθεί νέα ασυνεπής
     # ανάθεση αν υπάρχουν παλαιότερα μη έγκυρα δεδομένα στη βάση.
@@ -678,8 +713,6 @@ def get_driver_for_vehicle_assignment(driver_id: str) -> dict:
 def health_check():
     # Απλό health endpoint για να ελέγχουμε αν το service τρέχει.
     return {"status": "ok", "service": "fleet-api"}
-
-
 
 @app.post("/vehicles", response_model=VehicleResponse)
 def create_vehicle(vehicle: VehicleCreate):
@@ -771,14 +804,11 @@ def create_vehicle(vehicle: VehicleCreate):
     fleet_event_producer.publish_vehicle_created(created_vehicle)
     return vehicle_document_to_response(created_vehicle)
 
-
-
 @app.get("/vehicles", response_model=List[VehicleResponse])
 def list_vehicles():
     # Επιστρέφουμε όλα τα οχήματα που υπάρχουν στο collection.
     vehicles = vehicles_collection.find()
     return [vehicle_document_to_response(vehicle) for vehicle in vehicles]
-
 
 @app.get("/vehicles/{vehicle_id}", response_model=VehicleResponse)
 def get_vehicle(vehicle_id: str):
@@ -973,7 +1003,6 @@ def update_vehicle(vehicle_id: str, vehicle: VehicleUpdate):
 
     return vehicle_document_to_response(updated_vehicle)
 
-
 @app.delete("/vehicles/{vehicle_id}")
 def delete_vehicle(vehicle_id: str):
     # Ελέγχουμε ότι το id είναι έγκυρο MongoDB ObjectId.
@@ -1032,34 +1061,59 @@ def delete_vehicle(vehicle_id: str):
         "vehicle_id": vehicle_id,
     }
 
-"""
-    Δημιουργεί νέο Driver Profile στη MongoDB.
-
-    Δεν επιτρέπουμε:
-    - δύο drivers με το ίδιο driver_id,
-    - δύο drivers να αντιστοιχούν στο ίδιο Keycloak user.
-"""
 @app.post("/drivers", response_model=DriverResponse)
 def create_driver(driver: DriverCreate):
-    # Ελέγχουμε αν υπάρχει ήδη το ίδιο business driver_id.
-    existing_driver_id = drivers_collection.find_one({"driver_id": driver.driver_id})
+    """
+        Δημιουργεί νέο Driver Profile στη MongoDB.
 
-    if existing_driver_id:
-        raise HTTPException(
-            status_code=409,
-            detail="Driver with this driver_id already exists",
-        )
-
-    # Ελέγχουμε αν το συγκεκριμένο Keycloak identity
-    # έχει ήδη συνδεθεί με άλλο Driver Profile.
+        Δεν επιτρέπουμε:
+        - δύο drivers με το ίδιο driver_id,
+        - δύο drivers να αντιστοιχούν στο ίδιο Keycloak user.
+    """
+    # Αναζητούμε πρώτα το Driver Profile που αντιστοιχεί
+    # στο συγκεκριμένο Keycloak identity.
     existing_keycloak_user = drivers_collection.find_one({
         "keycloak_user_id": driver.keycloak_user_id
     })
 
     if existing_keycloak_user:
+        # Συγκρίνουμε τα δεδομένα της νέας αίτησης με το
+        # ήδη αποθηκευμένο προφίλ, ώστε να αναγνωρίσουμε
+        # μια πραγματική επανάληψη της ίδιας αίτησης.
+        requested_data = driver.model_dump(mode="json")
+
+        existing_data = {
+            field: existing_keycloak_user.get(field)
+            for field in requested_data
+        }
+
+        if existing_data == requested_data:
+            # Επιστρέφουμε το υπάρχον προφίλ χωρίς νέα εγγραφή
+            # στη MongoDB και χωρίς δεύτερο audit log.
+            logger.info(
+                "Existing driver returned for retry: driver_id=%s",
+                driver.driver_id,
+            )
+
+            return driver_document_to_response(existing_keycloak_user)
+
+        # Το ίδιο Keycloak identity δεν μπορεί να συνδεθεί
+        # με διαφορετικό Driver Profile.
         raise HTTPException(
             status_code=409,
             detail="Driver with this Keycloak user already exists",
+        )
+
+    # Αν το Keycloak identity δεν έχει ήδη Driver Profile,
+    # ελέγχουμε μήπως χρησιμοποιείται το ίδιο business driver_id.
+    existing_driver_id = drivers_collection.find_one({
+        "driver_id": driver.driver_id
+    })
+
+    if existing_driver_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Driver with this driver_id already exists",
         )
 
     # Μετατρέπουμε το Pydantic model σε dictionary
@@ -1074,7 +1128,48 @@ def create_driver(driver: DriverCreate):
     # σε πραγματικό Fleet πριν αποθηκεύσουμε τον Driver.
     validate_fleet_exists(driver.fleet_id)
 
-    result = drivers_collection.insert_one(document)
+    # Οι αρχικοί έλεγχοι find_one δεν αρκούν για να αποτρέψουν
+    # τέτοιες περιπτώσεις, γι' αυτό χειριζόμαστε και το σφάλμα
+    # που μπορεί να προκύψει κατά την ίδια την εισαγωγή.
+    try:
+        result = drivers_collection.insert_one(document)
+
+    except DuplicateKeyError:
+        # Μια άλλη αίτηση μπορεί να δημιούργησε το ίδιο
+        # Driver Profile ακριβώς πριν από τη δική μας εισαγωγή.
+        existing_driver = drivers_collection.find_one({
+            "keycloak_user_id": driver.keycloak_user_id
+        })
+
+        if existing_driver:
+            requested_data = driver.model_dump(mode="json")
+
+            existing_data = {
+                field: existing_driver.get(field)
+                for field in requested_data
+            }
+
+            if existing_data == requested_data:
+                # Πρόκειται για την ίδια αίτηση. Επιστρέφουμε
+                # το προφίλ που δημιουργήθηκε από την άλλη διαδικασία.
+                logger.info(
+                    "Existing driver returned after concurrent retry: driver_id=%s",
+                    driver.driver_id,
+                )
+                return driver_document_to_response(existing_driver)
+
+        # Αν τα στοιχεία διαφέρουν, πρόκειται για σύγκρουση
+        # και όχι για ασφαλή επανάληψη της ίδιας αίτησης.
+        logger.warning(
+            "Conflicting driver creation: driver_id=%s keycloak_user_id=%s",
+            driver.driver_id,
+            driver.keycloak_user_id,
+        )
+
+        raise HTTPException(
+            status_code=409,
+            detail="Driver with this Keycloak user already exists",
+        )
 
     # Διαβάζουμε ξανά το document όπως αποθηκεύτηκε
     # ώστε να επιστρέψουμε και το MongoDB ObjectId.
@@ -1124,10 +1219,7 @@ def create_driver(driver: DriverCreate):
 
     return driver_document_to_response(created_driver)
 
-@app.get(
-    "/drivers/by-keycloak-user/{keycloak_user_id}",
-    response_model=DriverResponse,
-)
+@app.get( "/drivers/by-keycloak-user/{keycloak_user_id}", response_model=DriverResponse,)
 def get_driver_by_keycloak_user(keycloak_user_id: str):
     """
     Επιστρέφει το Driver Profile που αντιστοιχεί
@@ -1153,10 +1245,7 @@ def get_driver_by_keycloak_user(keycloak_user_id: str):
     # στο response model του API.
     return driver_document_to_response(driver_document)
 
-@app.get(
-    "/drivers/{driver_id}/vehicles",
-    response_model=list[VehicleResponse],
-)
+@app.get( "/drivers/{driver_id}/vehicles", response_model=list[VehicleResponse],)
 def get_vehicles_by_driver(driver_id: str):
     """
     Επιστρέφει όλα τα οχήματα που είναι ανατεθειμένα
@@ -1181,10 +1270,7 @@ def get_vehicles_by_driver(driver_id: str):
         for vehicle_document in vehicle_documents
     ]
 
-@app.get(
-    "/drivers/by-keycloak-user/{keycloak_user_id}/vehicles",
-    response_model=list[VehicleResponse],
-)
+@app.get( "/drivers/by-keycloak-user/{keycloak_user_id}/vehicles", response_model=list[VehicleResponse],)
 def get_driver_vehicles_by_keycloak_user(keycloak_user_id: str):
     """
     Επιστρέφει τα οχήματα που είναι ανατεθειμένα
@@ -1258,6 +1344,18 @@ def update_driver(driver_id: str, driver: DriverUpdate):
         raise HTTPException(
             status_code=400,
             detail="No fields provided for update",
+        )
+
+    # Η ενεργοποίηση και η απενεργοποίηση γίνονται αποκλειστικά
+    # από τα ειδικά endpoints, ώστε να εφαρμόζονται όλοι
+    # οι απαραίτητοι business κανόνες.
+    if "status" in update_data:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Driver status cannot be changed through PATCH. "
+                "Use the dedicated activation or deactivation endpoint."
+            ),
         )
 
     old_fleet_id = existing_driver.get("fleet_id")
@@ -1404,6 +1502,172 @@ def update_driver(driver_id: str, driver: DriverUpdate):
         "Updated driver: driver_id=%s fleet_id=%s",
         driver_id,
         updated_driver.get("fleet_id"),
+    )
+    return driver_document_to_response(updated_driver)
+
+@app.post( "/drivers/{driver_id}/activate", response_model=DriverResponse,)
+def activate_driver(driver_id: str):
+    """
+    Επανενεργοποιεί το Driver Profile.
+
+    Δεν επαναφέρει παλιές αναθέσεις οχημάτων.
+    Το Keycloak ενημερώνεται ξεχωριστά από το API Gateway.
+    """
+
+    # Βρίσκουμε τον οδηγό από το μοναδικό business ID.
+    existing_driver = drivers_collection.find_one({
+        "driver_id": driver_id,
+    })
+
+    if existing_driver is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Driver not found",
+        )
+
+    # Αν είναι ήδη ενεργός, δεν χρειάζεται νέα ενημέρωση
+    # ούτε δεύτερη εγγραφή στο ιστορικό.
+    if existing_driver.get("status") == "ACTIVE":
+        return driver_document_to_response(existing_driver)
+
+    # Αλλάζουμε αποκλειστικά το status.
+    # Δεν πειράζουμε τα οχήματα ή το fleet_id.
+    drivers_collection.update_one(
+        {"driver_id": driver_id},
+        {"$set": {"status": "ACTIVE"}},
+    )
+
+    updated_driver = drivers_collection.find_one({
+        "driver_id": driver_id,
+    })
+
+    # Κρατάμε ιστορικό της αλλαγής κατάστασης.
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="DRIVER",
+            entity_id=driver_id,
+            action="ACTIVATED",
+            description=f"Driver {driver_id} was activated",
+            related_entities=AuditRelatedEntities(
+                driver_id=driver_id,
+                fleet_id=existing_driver.get("fleet_id"),
+            ),
+            changes={
+                "status": AuditChange(
+                    from_value=existing_driver.get("status"),
+                    to_value="ACTIVE",
+                ),
+            },
+        )
+    )
+
+    logger.info(
+        "Activated driver: driver_id=%s",
+        driver_id,
+    )
+
+    return driver_document_to_response(updated_driver)
+
+@app.post("/drivers/{driver_id}/deactivate", response_model=DriverResponse, )
+def deactivate_driver(driver_id: str):
+    """
+    Απενεργοποιεί ένα Driver Profile χωρίς να το διαγράφει.
+
+    Αποδεσμεύει τα οχήματα του οδηγού, διατηρεί τα fleet_id
+    τους και καταγράφει τις αλλαγές στο audit trail.
+    """
+
+    # Διαβάζουμε τον οδηγό πριν από οποιαδήποτε αλλαγή.
+    existing_driver = drivers_collection.find_one({
+        "driver_id": driver_id
+    })
+
+    if existing_driver is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Driver not found",
+        )
+
+    # Αν είναι ήδη ανενεργός, δεν δημιουργούμε δεύτερο audit.
+    if existing_driver.get("status") == "INACTIVE":
+        return driver_document_to_response(existing_driver)
+
+    # Κρατάμε τα οχήματα πριν αποδεσμευτούν για το audit.
+    affected_vehicles = list(
+        vehicles_collection.find({
+            "driver_id": driver_id
+        })
+    )
+
+    # Αποδεσμεύουμε τα οχήματα χωρίς να αλλάξουμε τα Fleets τους.
+    vehicles_collection.update_many(
+        {"driver_id": driver_id},
+        {"$set": {"driver_id": None}},
+    )
+
+    # Διατηρούμε το Driver Profile και αλλάζουμε μόνο την κατάστασή του.
+    drivers_collection.update_one(
+        {"driver_id": driver_id},
+        {"$set": {"status": "INACTIVE"}},
+    )
+
+    updated_driver = drivers_collection.find_one({
+        "driver_id": driver_id
+    })
+
+    # Καταγράφουμε την απενεργοποίηση του οδηγού.
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="DRIVER",
+            entity_id=driver_id,
+            action="DEACTIVATED",
+            description=f"Driver {driver_id} was deactivated",
+            related_entities=AuditRelatedEntities(
+                driver_id=driver_id,
+                fleet_id=existing_driver.get("fleet_id"),
+            ),
+            changes={
+                "status": AuditChange(
+                    from_value=existing_driver.get("status", "ACTIVE"),
+                    to_value="INACTIVE",
+                )
+            },
+        )
+    )
+
+    # Κάθε όχημα που αποδεσμεύτηκε αποκτά δική του εγγραφή audit.
+    for vehicle_document in affected_vehicles:
+        vehicle_id = str(vehicle_document["_id"])
+
+        create_audit_log(
+            AuditLogCreate(
+                entity_type="VEHICLE",
+                entity_id=vehicle_id,
+                action="DRIVER_UNASSIGNED",
+                description=(
+                    f"Driver {driver_id} was unassigned from vehicle "
+                    f"{vehicle_document['plate_number']} "
+                    "because the driver was deactivated"
+                ),
+                related_entities=AuditRelatedEntities(
+                    vehicle_id=vehicle_id,
+                    plate_number=vehicle_document["plate_number"],
+                    fleet_id=vehicle_document.get("fleet_id"),
+                    driver_id=driver_id,
+                ),
+                changes={
+                    "driver_id": AuditChange(
+                        from_value=driver_id,
+                        to_value=None,
+                    )
+                },
+            )
+        )
+
+    logger.info(
+        "Deactivated driver: driver_id=%s affected_vehicles=%s",
+        driver_id,
+        len(affected_vehicles),
     )
 
     return driver_document_to_response(updated_driver)
@@ -1563,11 +1827,23 @@ def delete_driver(driver_id: str):
         "unassigned_vehicles": len(affected_vehicles),
     }
 
+@app.get("/drivers", response_model=list[DriverResponse])
+def get_all_drivers():
+    """
+    Επιστρέφει όλα τα Driver Profiles από τη MongoDB.
 
-@app.post(
-    "/fleet-managers",
-    response_model=FleetManagerResponse,
-)
+    Το Fleet API παραμένει ο αποκλειστικός υπεύθυνος
+    για την ανάγνωση των business δεδομένων των οδηγών.
+    """
+
+    driver_documents = drivers_collection.find().sort("driver_id", 1)
+
+    return [
+        driver_document_to_response(document)
+        for document in driver_documents
+    ]
+
+@app.post( "/fleet-managers", response_model=FleetManagerResponse,)
 def create_fleet_manager(    fleet_manager: FleetManagerCreate,):
     """
     Δημιουργεί νέο Fleet Manager Profile.
@@ -1656,10 +1932,7 @@ def create_fleet_manager(    fleet_manager: FleetManagerCreate,):
 
     return fleet_manager_document_to_response(created_manager)
 
-@app.get(
-    "/fleet-managers/by-keycloak-user/{keycloak_user_id}",
-    response_model=FleetManagerResponse,
-)
+@app.get( "/fleet-managers/by-keycloak-user/{keycloak_user_id}", response_model=FleetManagerResponse, )
 def get_fleet_manager_by_keycloak_user(keycloak_user_id: str,):
     """
     Επιστρέφει το Fleet Manager Profile που αντιστοιχεί
@@ -1684,10 +1957,8 @@ def get_fleet_manager_by_keycloak_user(keycloak_user_id: str,):
     return fleet_manager_document_to_response(
         fleet_manager_document
     )
-@app.get(
-    "/fleet-managers/by-keycloak-user/{keycloak_user_id}/vehicles",
-    response_model=list[VehicleResponse],
-)
+
+@app.get( "/fleet-managers/by-keycloak-user/{keycloak_user_id}/vehicles", response_model=list[VehicleResponse],)
 def get_fleet_manager_vehicles(keycloak_user_id: str,):
     """
     Επιστρέφει όλα τα vehicles του fleet που διαχειρίζεται
@@ -1724,10 +1995,7 @@ def get_fleet_manager_vehicles(keycloak_user_id: str,):
         for vehicle_document in vehicle_documents
     ]
 
-@app.get(
-    "/fleet-managers/by-keycloak-user/{keycloak_user_id}/drivers",
-    response_model=list[DriverResponse],
-)
+@app.get( "/fleet-managers/by-keycloak-user/{keycloak_user_id}/drivers", response_model=list[DriverResponse],)
 def get_fleet_manager_drivers( keycloak_user_id: str,):
     """
     Επιστρέφει όλους τους drivers του fleet που διαχειρίζεται
@@ -1764,10 +2032,7 @@ def get_fleet_manager_drivers( keycloak_user_id: str,):
         for driver_document in driver_documents
     ]
 
-@app.patch(
-    "/fleet-managers/{manager_id}",
-    response_model=FleetManagerResponse,
-)
+@app.patch( "/fleet-managers/{manager_id}", response_model=FleetManagerResponse,)
 def update_fleet_manager( manager_id: str, fleet_manager: FleetManagerUpdate, ):
     """
     Ενημερώνει μερικώς ένα Fleet Manager Profile.
@@ -2108,7 +2373,6 @@ def get_fleets():
         for document in fleet_documents
     ]
 
-
 @app.get("/fleets/{fleet_id}", response_model=FleetResponse)
 def get_fleet(fleet_id: str):
     """
@@ -2130,7 +2394,6 @@ def get_fleet(fleet_id: str):
         )
 
     return fleet_document_to_response(fleet_document)
-
 
 @app.patch("/fleets/{fleet_id}", response_model=FleetResponse)
 def update_fleet(fleet_id: str, fleet_update: FleetUpdate):
@@ -2424,10 +2687,7 @@ def get_audit_logs():
         for document in documents
     ]
 
-@app.get(
-    "/audit-logs/{entity_type}/{entity_id}",
-    response_model=list[AuditLogResponse],
-)
+@app.get( "/audit-logs/{entity_type}/{entity_id}", response_model=list[AuditLogResponse],)
 def get_entity_audit_logs(entity_type: str, entity_id: str):
     """
     Επιστρέφει το audit history μιας συγκεκριμένης business οντότητας.

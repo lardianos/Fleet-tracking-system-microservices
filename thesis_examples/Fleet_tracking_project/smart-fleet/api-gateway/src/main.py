@@ -362,6 +362,53 @@ async def check_driver_update_state( driver_id: str, expected_data: dict,) -> bo
         )
         return None
 
+
+async def check_driver_status( driver_id: str, expected_status: str, ) -> bool | None:
+    """
+    Ελέγχει αν το Driver Profile βρίσκεται στο αναμενόμενο status.
+
+    True:
+    - ο Driver υπάρχει και έχει το αναμενόμενο status.
+
+    False:
+    - ο Driver υπάρχει αλλά έχει διαφορετικό status.
+
+    None:
+    - δεν μπορέσαμε να επιβεβαιώσουμε την κατάσταση.
+    """
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{FLEET_API_URL}/drivers"
+            )
+
+        if response.status_code != 200:
+            return None
+
+        driver = next(
+            (
+                item
+                for item in response.json()
+                if item.get("driver_id") == driver_id
+            ),
+            None,
+        )
+
+        if driver is None:
+            return None
+
+        return driver.get("status") == expected_status
+
+    except (httpx.RequestError, ValueError):
+        logger.exception(
+            "Could not verify Driver status: "
+            "driver_id=%s expected_status=%s",
+            driver_id,
+            expected_status,
+        )
+        return None
+
 async def check_driver_state( driver_id: str,) -> bool | None:
     """
     Επιβεβαιώνει ότι ο οδηγός είναι ανενεργός
@@ -413,6 +460,8 @@ async def check_driver_state( driver_id: str,) -> bool | None:
             driver_id,
         )
         return None
+
+
 
 async def check_driver_deleted_from_fleet( driver_id: str, ) -> bool | None:
     """
@@ -1191,16 +1240,6 @@ async def admin_update_driver( driver_id: str, driver_update: AdminDriverUpdate,
                 status_code=502,
                 detail="Keycloak rejected identity update",
             )
-        except httpx.HTTPStatusError as error:
-            logger.warning(
-                "Keycloak rejected update: user_id=%s status=%s",
-                keycloak_user_id,
-                error.response.status_code,
-            )
-            raise HTTPException(
-                status_code=502,
-                detail="Keycloak rejected identity update",
-            )
 
     # Στέλνουμε όλα τα πεδία στο Fleet API, επειδή
     # εκεί βρίσκεται το πλήρες Driver Profile.
@@ -1370,9 +1409,7 @@ async def admin_activate_driver( driver_id: str, token_payload: dict = Depends(v
     # Ελέγχουμε ότι η ταυτότητα υπάρχει πριν αλλάξουμε
     # την κατάσταση του Driver Profile.
     try:
-        keycloak_user = await keycloak_admin_client.get_user_by_id(
-            keycloak_user_id
-        )
+        keycloak_user = await keycloak_admin_client.get_user_by_id( keycloak_user_id )
     except Exception:
         logger.exception(
             "Could not retrieve Keycloak user: driver_id=%s",
@@ -1392,40 +1429,87 @@ async def admin_activate_driver( driver_id: str, token_payload: dict = Depends(v
     # Πρώτα ενεργοποιούμε το Driver Profile.
     # Αν το Fleet API απορρίψει το αίτημα, δεν αλλάζουμε
     # την κατάσταση του λογαριασμού στο Keycloak.
+    fleet_response = None
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             fleet_response = await client.post(
                 f"{FLEET_API_URL}/drivers/{driver_id}/activate"
             )
+
     except httpx.RequestError:
-        logger.exception(
-            "Uncertain Fleet activation: driver_id=%s",
+        # Η HTTP απάντηση μπορεί να χάθηκε αφού το Fleet API
+        # είχε ήδη ενεργοποιήσει το Driver Profile.
+        logger.warning(
+            "Fleet API activation response lost: driver_id=%s",
             driver_id,
         )
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Fleet activation outcome is uncertain. "
-                "Check Driver status before retrying."
+
+        activation_confirmed = await check_driver_status(
+            driver_id,
+            "ACTIVE",
+        )
+
+        if activation_confirmed is not True:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Driver activation outcome is uncertain. "
+                    "Check the Driver Profile before retrying."
+                ),
+            )
+
+    if fleet_response is not None:
+        if fleet_response.status_code >= 500:
+            raise HTTPException(
+                status_code=503,
+                detail="Fleet activation outcome is uncertain",
+            )
+
+        if fleet_response.status_code != 200:
+            raise HTTPException(
+                status_code=fleet_response.status_code,
+                detail=fleet_response.json().get(
+                    "detail",
+                    "Could not activate Driver Profile",
+                ),
+            )
+
+        updated_driver = fleet_response.json()
+
+    else:
+        # Αν χάθηκε η απάντηση αλλά επιβεβαιώσαμε ότι ο Driver
+        # έγινε ACTIVE, ανακτούμε το ενημερωμένο Profile.
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                profile_response = await client.get(
+                    f"{FLEET_API_URL}/drivers"
+                )
+        except httpx.RequestError:
+            raise HTTPException(
+                status_code=503,
+                detail="Could not retrieve activated Driver Profile",
+            )
+
+        if profile_response.status_code != 200:
+            raise HTTPException(
+                status_code=503,
+                detail="Could not retrieve activated Driver Profile",
+            )
+
+        updated_driver = next(
+            (
+                item
+                for item in profile_response.json()
+                if item.get("driver_id") == driver_id
             ),
+            None,
         )
 
-    if fleet_response.status_code >= 500:
-        raise HTTPException(
-            status_code=503,
-            detail="Fleet activation outcome is uncertain",
-        )
-
-    if fleet_response.status_code != 200:
-        raise HTTPException(
-            status_code=fleet_response.status_code,
-            detail=fleet_response.json().get(
-                "detail",
-                "Could not activate Driver Profile",
-            ),
-        )
-
-    updated_driver = fleet_response.json()
+        if updated_driver is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Activated Driver Profile could not be found",
+            )
 
     if updated_driver.get("status") != "ACTIVE":
         raise HTTPException(
@@ -1438,10 +1522,7 @@ async def admin_activate_driver( driver_id: str, token_payload: dict = Depends(v
     # για να διαπιστώσουμε αν η αλλαγή αποθηκεύτηκε.
     if keycloak_user.get("enabled") is not True:
         try:
-            await keycloak_admin_client.set_user_enabled(
-                keycloak_user_id,
-                True,
-            )
+            await keycloak_admin_client.set_user_enabled( keycloak_user_id,True, )
         except Exception:
             logger.exception(
                 "Could not confirm Keycloak activation: "
@@ -1458,10 +1539,7 @@ async def admin_activate_driver( driver_id: str, token_payload: dict = Depends(v
             except Exception:
                 current_user = None
 
-            if (
-                current_user is None
-                or current_user.get("enabled") is not True
-            ):
+            if ( current_user is None or current_user.get("enabled") is not True ):
                 # Το Fleet Profile ενδέχεται να είναι ήδη ACTIVE.
                 # Δεν δηλώνουμε επιτυχία όταν τα δύο συστήματα
                 # δεν έχουν επιβεβαιωμένα συγχρονιστεί.

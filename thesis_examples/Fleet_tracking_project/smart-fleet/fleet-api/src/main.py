@@ -252,7 +252,7 @@ class DriverUpdate(BaseModel):
     department_id: str | None = None
 
     # Κατάσταση του Driver μέσα στο σύστημα.
-    status: str | None = None
+    # status: str | None = None
 
 class FleetManagerCreate(BaseModel):
     """
@@ -1515,9 +1515,7 @@ def activate_driver(driver_id: str):
     """
 
     # Βρίσκουμε τον οδηγό από το μοναδικό business ID.
-    existing_driver = drivers_collection.find_one({
-        "driver_id": driver_id,
-    })
+    existing_driver = drivers_collection.find_one({ "driver_id": driver_id, })
 
     if existing_driver is None:
         raise HTTPException(
@@ -1532,14 +1530,9 @@ def activate_driver(driver_id: str):
 
     # Αλλάζουμε αποκλειστικά το status.
     # Δεν πειράζουμε τα οχήματα ή το fleet_id.
-    drivers_collection.update_one(
-        {"driver_id": driver_id},
-        {"$set": {"status": "ACTIVE"}},
-    )
+    drivers_collection.update_one( {"driver_id": driver_id},{"$set": {"status": "ACTIVE"}}, )
 
-    updated_driver = drivers_collection.find_one({
-        "driver_id": driver_id,
-    })
+    updated_driver = drivers_collection.find_one({ "driver_id": driver_id, })
 
     # Κρατάμε ιστορικό της αλλαγής κατάστασης.
     create_audit_log(

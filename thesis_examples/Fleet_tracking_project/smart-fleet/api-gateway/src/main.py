@@ -101,6 +101,10 @@ LIVE_TRACKING_SERVICE_URL = os.getenv( "LIVE_TRACKING_SERVICE_URL", "http://live
 # χρησιμοποιούν Bearer JWT για την αυθεντικοποίηση.
 bearer_scheme = HTTPBearer(auto_error=False)
 
+# -------------------------
+# Helper Functions
+# -------------------------
+
 async def proxy_request(request: Request, target_url: str) -> Response:
     """
     Προωθεί ένα HTTP request σε εσωτερικό service.
@@ -315,6 +319,206 @@ def role_checker(token_payload: dict, allowed_roles: list[str]):
 #         return token_payload
 #
 #     return role_checker
+
+async def check_driver_update_state( driver_id: str, expected_data: dict,) -> bool | None:
+    """
+    Ελέγχει αν το Fleet API έχει αποθηκεύσει
+    όλες τις τιμές που ζητήθηκαν.
+
+    True: οι αλλαγές έχουν αποθηκευτεί.
+    False: υπάρχουν διαφορετικές τιμές.
+    None: δεν μπορέσαμε να επιβεβαιώσουμε την κατάσταση.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{FLEET_API_URL}/drivers"
+            )
+
+        if response.status_code != 200:
+            return None
+
+        driver = next(
+            (
+                item
+                for item in response.json()
+                if item.get("driver_id") == driver_id
+            ),
+            None,
+        )
+
+        if driver is None:
+            return None
+
+        return all(
+            driver.get(field) == value
+            for field, value in expected_data.items()
+        )
+
+    except (httpx.RequestError, ValueError):
+        logger.exception(
+            "Could not verify Driver update: driver_id=%s",
+            driver_id,
+        )
+        return None
+
+async def check_driver_state( driver_id: str,) -> bool | None:
+    """
+    Επιβεβαιώνει ότι ο οδηγός είναι ανενεργός
+    και δεν έχει πλέον ανατεθειμένα οχήματα.
+
+    True: η απενεργοποίηση ολοκληρώθηκε.
+    False: η κατάσταση δεν είναι η αναμενόμενη.
+    None: δεν ήταν δυνατή η επιβεβαίωση.
+    """
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            drivers_response = await client.get(
+                f"{FLEET_API_URL}/drivers"
+            )
+
+            vehicles_response = await client.get(
+                f"{FLEET_API_URL}/drivers/{driver_id}/vehicles"
+            )
+
+        if (
+            drivers_response.status_code != 200
+            or vehicles_response.status_code != 200
+        ):
+            return None
+
+        driver = next(
+            (
+                item
+                for item in drivers_response.json()
+                if item.get("driver_id") == driver_id
+            ),
+            None,
+        )
+
+        if driver is None:
+            return None
+
+        # Δεν αρκεί να είναι INACTIVE.
+        # Πρέπει να έχουν αφαιρεθεί και οι αναθέσεις οχημάτων.
+        return (
+            driver.get("status") == "INACTIVE"
+            and len(vehicles_response.json()) == 0
+        )
+
+    except (httpx.RequestError, ValueError):
+        logger.exception(
+            "Could not verify Driver deactivation: driver_id=%s",
+            driver_id,
+        )
+        return None
+
+async def check_driver_deleted_from_fleet( driver_id: str, ) -> bool | None:
+    """
+    Ελέγχει αν το Driver Profile έχει διαγραφεί από το Fleet API.
+
+    True:
+    - ο Driver δεν υπάρχει πλέον.
+
+    False:
+    - ο Driver εξακολουθεί να υπάρχει.
+
+    None:
+    - δεν μπορέσαμε να επιβεβαιώσουμε την κατάσταση του Fleet API.
+
+    Ο helper χρησιμοποιείται κυρίως μετά από timeout στο Hard Delete,
+    ώστε να μη θεωρήσουμε αποτυχία ένα DELETE που μπορεί να ολοκληρώθηκε.
+    """
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{FLEET_API_URL}/drivers"
+            )
+
+        if response.status_code != 200:
+            return None
+
+        driver = next(
+            (
+                item
+                for item in response.json()
+                if item.get("driver_id") == driver_id
+            ),
+            None,
+        )
+
+        # Αν δεν υπάρχει πλέον στη λίστα, το Profile έχει διαγραφεί.
+        return driver is None
+
+    except (httpx.RequestError, ValueError):
+        logger.exception(
+            "Could not verify Driver deletion from Fleet API: "
+            "driver_id=%s",
+            driver_id,
+        )
+        return None
+
+async def get_deleted_driver_keycloak_user_id( driver_id: str, ) -> str | None:
+    """
+    Ανακτά το Keycloak user ID ενός Driver που έχει ήδη διαγραφεί
+    από το Fleet API.
+
+    Μετά από Hard Delete το Driver Profile δεν υπάρχει πλέον,
+    επομένως χρησιμοποιούμε το μόνιμο DELETED audit event για
+    recovery σε περίπτωση retry ή μερικής αποτυχίας.
+
+    Επιστρέφει:
+    - το keycloak_user_id όταν υπάρχει έγκυρο DELETED audit,
+    - None όταν δεν μπορεί να βρεθεί ή να επιβεβαιωθεί.
+    """
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get( f"{FLEET_API_URL}/audit-logs/DRIVER/{driver_id}" )
+
+        if response.status_code != 200:
+            return None
+
+        audit_logs = response.json()
+
+        # Αναζητούμε το πιο πρόσφατο DELETED event.
+        # Το Fleet API επιστρέφει ήδη τα audit events
+        # ταξινομημένα από το νεότερο προς το παλαιότερο.
+        ######
+        deleted_audit = next( ( audit_log for audit_log in audit_logs if audit_log.get("action") == "DELETED"), None, )
+
+        if deleted_audit is None:
+            return None
+
+        keycloak_change = (
+            deleted_audit
+            .get("changes", {})
+            .get("keycloak_user_id")
+        )
+
+        if not isinstance(keycloak_change, dict):
+            return None
+
+        keycloak_user_id = keycloak_change.get("from_value")
+
+        if ( not isinstance(keycloak_user_id, str) or not keycloak_user_id.strip() ):
+            return None
+
+        return keycloak_user_id
+
+    except (httpx.RequestError, ValueError):
+        logger.exception(
+            "Could not recover Keycloak user ID from Driver audit: "
+            "driver_id=%s",
+            driver_id,
+        )
+        return None
+
+# -------------------------
+# API Endpoints
+# -------------------------
 
 @app.get("/health")
 async def health_check():
@@ -819,48 +1023,6 @@ async def recover_admin_driver(keycloak_user_id: str, driver: AdminDriverCreate,
     )
 
 
-async def check_driver_update_state( driver_id: str, expected_data: dict,) -> bool | None:
-    """
-    Ελέγχει αν το Fleet API έχει αποθηκεύσει
-    όλες τις τιμές που ζητήθηκαν.
-
-    True: οι αλλαγές έχουν αποθηκευτεί.
-    False: υπάρχουν διαφορετικές τιμές.
-    None: δεν μπορέσαμε να επιβεβαιώσουμε την κατάσταση.
-    """
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(
-                f"{FLEET_API_URL}/drivers"
-            )
-
-        if response.status_code != 200:
-            return None
-
-        driver = next(
-            (
-                item
-                for item in response.json()
-                if item.get("driver_id") == driver_id
-            ),
-            None,
-        )
-
-        if driver is None:
-            return None
-
-        return all(
-            driver.get(field) == value
-            for field, value in expected_data.items()
-        )
-
-    except (httpx.RequestError, ValueError):
-        logger.exception(
-            "Could not verify Driver update: driver_id=%s",
-            driver_id,
-        )
-        return None
-
 @app.patch("/api/v1/admin/drivers/{driver_id}")
 async def admin_update_driver( driver_id: str, driver_update: AdminDriverUpdate,token_payload: dict = Depends(validate_access_token),):
     """
@@ -1154,58 +1316,6 @@ async def admin_update_driver( driver_id: str, driver_update: AdminDriverUpdate,
         status_code=fleet_response.status_code,
         detail=error_detail,
     )
-
-async def check_driver_state( driver_id: str,) -> bool | None:
-    """
-    Επιβεβαιώνει ότι ο οδηγός είναι ανενεργός
-    και δεν έχει πλέον ανατεθειμένα οχήματα.
-
-    True: η απενεργοποίηση ολοκληρώθηκε.
-    False: η κατάσταση δεν είναι η αναμενόμενη.
-    None: δεν ήταν δυνατή η επιβεβαίωση.
-    """
-
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            drivers_response = await client.get(
-                f"{FLEET_API_URL}/drivers"
-            )
-
-            vehicles_response = await client.get(
-                f"{FLEET_API_URL}/drivers/{driver_id}/vehicles"
-            )
-
-        if (
-            drivers_response.status_code != 200
-            or vehicles_response.status_code != 200
-        ):
-            return None
-
-        driver = next(
-            (
-                item
-                for item in drivers_response.json()
-                if item.get("driver_id") == driver_id
-            ),
-            None,
-        )
-
-        if driver is None:
-            return None
-
-        # Δεν αρκεί να είναι INACTIVE.
-        # Πρέπει να έχουν αφαιρεθεί και οι αναθέσεις οχημάτων.
-        return (
-            driver.get("status") == "INACTIVE"
-            and len(vehicles_response.json()) == 0
-        )
-
-    except (httpx.RequestError, ValueError):
-        logger.exception(
-            "Could not verify Driver deactivation: driver_id=%s",
-            driver_id,
-        )
-        return None
 
 
 @app.post("/api/v1/admin/drivers/{driver_id}/activate")
@@ -1648,6 +1758,288 @@ async def admin_deactivate_driver( driver_id: str, token_payload: dict = Depends
     )
 
     return updated_driver
+
+@app.delete("/api/v1/admin/drivers/{driver_id}")
+async def admin_delete_driver( driver_id: str, token_payload: dict = Depends(validate_access_token), ):
+    """
+    Εκτελεί Hard Delete ενός Driver.
+
+    Το Hard Delete:
+    - διαγράφει οριστικά το Driver Profile από το Fleet API,
+    - διαγράφει το αντίστοιχο Keycloak identity,
+    - διατηρεί το audit history,
+    - υποστηρίζει retry όταν το Fleet Profile έχει ήδη διαγραφεί.
+
+    Το Fleet API παραμένει υπεύθυνο για τα business δεδομένα.
+    Το Keycloak παραμένει υπεύθυνο για το identity.
+    """
+
+    role_checker(token_payload, ADMIN_ROLES)
+
+    keycloak_user_id = None
+    driver_found = False
+
+    # ---------------------------------------------------------
+    # 1. Αναζητούμε πρώτα το υπάρχον Driver Profile.
+    # ---------------------------------------------------------
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            drivers_response = await client.get(
+                f"{FLEET_API_URL}/drivers"
+            )
+
+        drivers_response.raise_for_status()
+
+        existing_driver = next(
+            (
+                driver
+                for driver in drivers_response.json()
+                if driver.get("driver_id") == driver_id
+            ),
+            None,
+        )
+
+    except httpx.RequestError:
+        logger.exception(
+            "Could not connect to Fleet API before Driver hard delete: "
+            "driver_id=%s",
+            driver_id,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Fleet API is unavailable",
+        )
+
+    except httpx.HTTPStatusError:
+        logger.exception(
+            "Fleet API rejected Driver lookup before hard delete: "
+            "driver_id=%s",
+            driver_id,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Could not verify Driver state",
+        )
+
+    if existing_driver is not None:
+        driver_found = True
+        keycloak_user_id = existing_driver.get("keycloak_user_id")
+
+        if not keycloak_user_id:
+            raise HTTPException(
+                status_code=500,
+                detail="Driver does not have a Keycloak user ID",
+            )
+
+        # Hard Delete επιτρέπεται μόνο αφού έχει προηγηθεί
+        # το Soft Delete του Driver.
+        if existing_driver.get("status") != "INACTIVE":
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Driver must be deactivated before hard delete"
+                ),
+            )
+
+    else:
+        # -----------------------------------------------------
+        # 2. Το Profile μπορεί να έχει ήδη διαγραφεί από
+        #    προηγούμενη μερικώς επιτυχημένη προσπάθεια.
+        #
+        #    Σε αυτή την περίπτωση ανακτούμε το Keycloak ID
+        #    από το μόνιμο DELETED audit.
+        # -----------------------------------------------------
+        keycloak_user_id = (
+            await get_deleted_driver_keycloak_user_id(driver_id)
+        )
+
+        if keycloak_user_id is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Driver not found",
+            )
+
+    # ---------------------------------------------------------
+    # 3. Αν το Driver Profile υπάρχει ακόμη, εκτελούμε το
+    #    business Hard Delete στο Fleet API.
+    # ---------------------------------------------------------
+    if driver_found:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                delete_response = await client.delete(
+                    f"{FLEET_API_URL}/drivers/{driver_id}"
+                )
+
+            if 400 <= delete_response.status_code < 500:
+                raise HTTPException(
+                    status_code=delete_response.status_code,
+                    detail=delete_response.text,
+                )
+
+            if delete_response.status_code >= 500:
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "Fleet API could not complete Driver hard delete"
+                    ),
+                )
+
+        except httpx.RequestError:
+            # Το request μπορεί να ολοκληρώθηκε στο Fleet API,
+            # αλλά να χάθηκε η HTTP απάντηση.
+            deletion_confirmed = (
+                await check_driver_deleted_from_fleet(driver_id)
+            )
+
+            if deletion_confirmed is not True:
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "Driver hard delete result could not be confirmed"
+                    ),
+                )
+
+    # ---------------------------------------------------------
+    # 4. Πριν πειράξουμε το Keycloak επιβεβαιώνουμε ότι
+    #    το Fleet Profile πράγματι δεν υπάρχει πλέον.
+    # ---------------------------------------------------------
+    deletion_confirmed = await check_driver_deleted_from_fleet(
+        driver_id
+    )
+
+    if deletion_confirmed is not True:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Driver deletion from Fleet API could not be confirmed"
+            ),
+        )
+
+    # ---------------------------------------------------------
+    # 5. Διαγράφουμε το Keycloak identity.
+    #
+    #    Η delete_user() είναι πλέον idempotent:
+    #    204 -> διαγράφηκε τώρα
+    #    404 -> είχε ήδη διαγραφεί
+    # ---------------------------------------------------------
+    try:
+        await keycloak_admin_client.delete_user(
+            keycloak_user_id
+        )
+
+    except httpx.RequestError:
+        # Μπορεί το Keycloak να εκτέλεσε το DELETE αλλά να
+        # χάθηκε η απάντηση. Κάνουμε read-after-error verification.
+        try:
+            keycloak_user = (
+                await keycloak_admin_client.get_user_by_id(
+                    keycloak_user_id
+                )
+            )
+
+        except (httpx.RequestError, httpx.HTTPStatusError, RuntimeError):
+            logger.exception(
+                "Could not verify Keycloak user after hard delete error: "
+                "driver_id=%s keycloak_user_id=%s",
+                driver_id,
+                keycloak_user_id,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Driver Profile was deleted, but Keycloak "
+                    "deletion could not be confirmed"
+                ),
+            )
+
+        if keycloak_user is not None:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Driver Profile was deleted, but Keycloak "
+                    "identity still exists"
+                ),
+            )
+
+    except RuntimeError:
+        # Για οποιαδήποτε επιβεβαιωμένη αποτυχία του Keycloak
+        # ελέγχουμε ξανά την πραγματική τελική κατάσταση.
+        try:
+            keycloak_user = (
+                await keycloak_admin_client.get_user_by_id(
+                    keycloak_user_id
+                )
+            )
+
+        except (httpx.RequestError, httpx.HTTPStatusError, RuntimeError):
+            logger.exception(
+                "Could not verify Keycloak user after hard delete failure: "
+                "driver_id=%s keycloak_user_id=%s",
+                driver_id,
+                keycloak_user_id,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Driver Profile was deleted, but Keycloak "
+                    "deletion could not be confirmed"
+                ),
+            )
+
+        if keycloak_user is not None:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Driver Profile was deleted, but Keycloak "
+                    "identity could not be deleted"
+                ),
+            )
+
+    # ---------------------------------------------------------
+    # 6. Τελική επιβεβαίωση του Keycloak state.
+    # ---------------------------------------------------------
+    try:
+        remaining_keycloak_user = (
+            await keycloak_admin_client.get_user_by_id(
+                keycloak_user_id
+            )
+        )
+
+    except (httpx.RequestError, httpx.HTTPStatusError, RuntimeError):
+        logger.exception(
+            "Could not perform final Keycloak verification: "
+            "driver_id=%s keycloak_user_id=%s",
+            driver_id,
+            keycloak_user_id,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Driver Profile was deleted, but final Keycloak "
+                "verification failed"
+            ),
+        )
+
+    if remaining_keycloak_user is not None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Driver Profile was deleted, but Keycloak "
+                "identity still exists"
+            ),
+        )
+
+    logger.info(
+        "Hard deleted Driver: driver_id=%s keycloak_user_id=%s",
+        driver_id,
+        keycloak_user_id,
+    )
+
+    return {
+        "message": "Driver hard deleted successfully",
+        "driver_id": driver_id,
+    }
+
 
 @app.api_route( "/api/v1/vehicles", methods=["GET", "POST"],)
 async def vehicles_collection( request: Request, token_payload: dict = Depends(validate_access_token), ):

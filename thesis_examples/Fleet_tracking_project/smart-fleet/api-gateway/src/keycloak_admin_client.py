@@ -422,10 +422,13 @@ class KeycloakAdminClient:
         """
         Διαγράφει έναν user από το Keycloak.
 
-        Η μέθοδος αυτή θα χρησιμοποιηθεί τόσο στο κανονικό Admin
-        delete workflow όσο και ως compensating action όταν έχει
-        δημιουργηθεί Keycloak identity αλλά αποτύχει στη συνέχεια
-        η δημιουργία του αντίστοιχου business profile.
+        Η διαγραφή είναι idempotent:
+        - 204 σημαίνει ότι ο user διαγράφηκε τώρα.
+        - 404 σημαίνει ότι ο user δεν υπάρχει πλέον, άρα το επιθυμητό
+          τελικό state έχει ήδη επιτευχθεί.
+
+        Αυτό είναι σημαντικό για ασφαλή retries σε administrative
+        workflows όπως το Hard Delete ενός Driver.
         """
 
         access_token = await self.get_access_token()
@@ -437,24 +440,31 @@ class KeycloakAdminClient:
         )
 
         async with httpx.AsyncClient() as client:
-            response = await client.delete(
-                user_url,
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                },
-                timeout=10,
-            )
+            response = await client.delete( user_url, headers={ "Authorization": f"Bearer {access_token}", }, timeout=10,)
 
-        if response.status_code != 204:
-            logger.error(
-                "Could not delete Keycloak user: "
-                "keycloak_user_id=%s status_code=%s",
+        # Το 204 σημαίνει ότι ο user διαγράφηκε από αυτό το request.
+        if response.status_code == 204:
+            logger.info(
+                "Deleted Keycloak user: keycloak_user_id=%s",
                 keycloak_user_id,
-                response.status_code,
             )
-            raise RuntimeError("Could not delete Keycloak user")
+            return
 
-        logger.info(
-            "Deleted Keycloak user: keycloak_user_id=%s",
+        # Το 404 θεωρείται επίσης επιτυχία.
+        # Ο στόχος του delete είναι ο user να μην υπάρχει και αυτό
+        # το τελικό state έχει ήδη επιτευχθεί.
+        if response.status_code == 404:
+            logger.info(
+                "Keycloak user already deleted: keycloak_user_id=%s",
+                keycloak_user_id,
+            )
+            return
+
+        # Οποιαδήποτε άλλη απάντηση σημαίνει πραγματική αποτυχία
+        # ή κατάσταση που δεν μπορούμε να θεωρήσουμε επιβεβαιωμένη.
+        logger.error( "Could not delete Keycloak user: keycloak_user_id=%s status_code=%s",
             keycloak_user_id,
+            response.status_code,
         )
+
+        raise RuntimeError("Could not delete Keycloak user")

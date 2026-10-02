@@ -1743,9 +1743,20 @@ def delete_driver(driver_id: str):
     # Επειδή μετά από αυτό το σημείο το Driver Profile δεν υπάρχει πλέον,
     # αποθηκεύουμε στο audit τις βασικές business πληροφορίες που είχε
     # ακριβώς πριν από τη διαγραφή του.
+    #
+    # Επίσης, κρατάμε το Keycloak user ID στο audit της οριστικής διαγραφής.
+    #
+    # Το Driver Profile μετά το Hard Delete δεν υπάρχει πλέον.
+    # Το συγκεκριμένο identifier επιτρέπει στο API Gateway να
+    # ολοκληρώσει ή να επαναλάβει με ασφάλεια τη διαγραφή του
+    # αντίστοιχου Keycloak identity αν υπάρξει προσωρινή αποτυχία.
     driver_delete_changes = {
         "driver_id": AuditChange(
             from_value=existing_driver["driver_id"],
+            to_value=None,
+        ),
+        "keycloak_user_id": AuditChange(
+            from_value=existing_driver["keycloak_user_id"],
             to_value=None,
         ),
         "first_name": AuditChange(

@@ -2,6 +2,10 @@ from datetime import date
 
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
+# -------------------------
+# Data Models
+# -------------------------
+
 
 class AdminDriverCreate(BaseModel):
     """

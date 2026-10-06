@@ -20,6 +20,7 @@ import jwt
 
 from keycloak_admin_client import KeycloakAdminClient
 from admin_driver import AdminDriverCreate, AdminDriverUpdate
+from admin_fleet_manager import AdminFleetManagerCreate, AdminFleetManagerUpdate
 from fastapi import FastAPI, Request, Response, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from jwt import PyJWKClient, PyJWTError
@@ -244,6 +245,31 @@ async def validate_access_token( request: Request, _credentials=Depends(bearer_s
             if ( keycloak_user is None or keycloak_user.get("enabled") is not True ):
                 raise HTTPException( status_code=401, detail="Driver account is disabled", )
 
+        # Για τους χρήστες με ρόλο fleet_manager ελέγχουμε
+        # αν ο λογαριασμός παραμένει ενεργός στο Keycloak.
+        elif "fleet_manager" in user_roles:
+            keycloak_user_id = payload.get("sub")
+
+            if not keycloak_user_id:
+                raise HTTPException( status_code=401, detail="Token does not contain user identifier", )
+
+            try:
+                keycloak_user = ( await keycloak_admin_client.get_user_by_id( keycloak_user_id ) )
+
+            except Exception:
+                logger.exception(
+                    "Could not verify Fleet Manager account state: "
+                    "keycloak_user_id=%s",
+                    keycloak_user_id,
+                )
+
+                raise HTTPException( status_code=503, detail="Could not verify Fleet Manager account state", )
+
+            # Απορρίπτουμε το JWT ακόμη και αν δεν έχει λήξει,
+            # όταν ο Fleet Manager δεν υπάρχει ή είναι ανενεργός.
+            if ( keycloak_user is None or keycloak_user.get("enabled") is not True ):
+                raise HTTPException( status_code=401, detail="Fleet Manager account is disabled", )
+
         logger.info(
             "Authenticated user=%s roles=%s",
             payload.get("preferred_username"),
@@ -461,8 +487,6 @@ async def check_driver_state( driver_id: str,) -> bool | None:
         )
         return None
 
-
-
 async def check_driver_deleted_from_fleet( driver_id: str, ) -> bool | None:
     """
     Ελέγχει αν το Driver Profile έχει διαγραφεί από το Fleet API.
@@ -565,6 +589,222 @@ async def get_deleted_driver_keycloak_user_id( driver_id: str, ) -> str | None:
         )
         return None
 
+async def check_fleet_manager_status( manager_id: str, expected_status: str, ) -> bool | None:
+    """
+    Ελέγχει αν το Fleet Manager Profile βρίσκεται
+    στο αναμενόμενο lifecycle status.
+
+    True:
+    - ο Fleet Manager υπάρχει και έχει το αναμενόμενο status.
+
+    False:
+    - ο Fleet Manager υπάρχει αλλά έχει διαφορετικό status.
+
+    None:
+    - δεν μπορέσαμε να επιβεβαιώσουμε την κατάσταση.
+    """
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{FLEET_API_URL}/fleet-managers"
+            )
+
+        if response.status_code != 200:
+            return None
+
+        fleet_manager = next(
+            (
+                item
+                for item in response.json()
+                if item.get("manager_id") == manager_id
+            ),
+            None,
+        )
+
+        if fleet_manager is None:
+            return None
+
+        return fleet_manager.get("status") == expected_status
+
+    except (httpx.RequestError, ValueError):
+        logger.exception(
+            "Could not verify Fleet Manager status: "
+            "manager_id=%s expected_status=%s",
+            manager_id,
+            expected_status,
+        )
+        return None
+
+async def check_fleet_manager_update_state( manager_id: str, expected_data: dict,) -> bool | None:
+    """
+    Ελέγχει αν το Fleet API έχει αποθηκεύσει όλες τις
+    αλλαγές που ζητήθηκαν για έναν Fleet Manager.
+
+    True:
+    - όλες οι αναμενόμενες τιμές έχουν αποθηκευτεί.
+
+    False:
+    - ο Fleet Manager υπάρχει, αλλά τουλάχιστον μία
+      τιμή διαφέρει από την αναμενόμενη.
+
+    None:
+    - δεν μπορέσαμε να επιβεβαιώσουμε την κατάσταση.
+    """
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{FLEET_API_URL}/fleet-managers"
+            )
+
+        if response.status_code != 200:
+            return None
+
+        fleet_manager = next(
+            (
+                item
+                for item in response.json()
+                if item.get("manager_id") == manager_id
+            ),
+            None,
+        )
+
+        if fleet_manager is None:
+            return None
+
+        return all(
+            fleet_manager.get(field) == value
+            for field, value in expected_data.items()
+        )
+
+    except (httpx.RequestError, ValueError):
+        logger.exception(
+            "Could not verify Fleet Manager update state: "
+            "manager_id=%s",
+            manager_id,
+        )
+
+        return None
+
+async def check_fleet_manager_deleted_from_fleet( manager_id: str,) -> bool | None:
+    """
+    Ελέγχει αν το Fleet Manager Profile έχει διαγραφεί
+    από το Fleet API.
+
+    True:
+    - ο Fleet Manager δεν υπάρχει πλέον.
+
+    False:
+    - ο Fleet Manager εξακολουθεί να υπάρχει.
+
+    None:
+    - δεν μπορέσαμε να επιβεβαιώσουμε την κατάσταση
+      του Fleet API.
+
+    Ο helper χρησιμοποιείται κυρίως μετά από timeout
+    στο Hard Delete, ώστε να μη θεωρήσουμε αποτυχία
+    ένα DELETE που μπορεί να ολοκληρώθηκε.
+    """
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{FLEET_API_URL}/fleet-managers"
+            )
+
+        if response.status_code != 200:
+            return None
+
+        fleet_manager = next(
+            (
+                item
+                for item in response.json()
+                if item.get("manager_id") == manager_id
+            ),
+            None,
+        )
+
+        # Αν δεν υπάρχει πλέον στη λίστα,
+        # το Fleet Manager Profile έχει διαγραφεί.
+        return fleet_manager is None
+
+    except (httpx.RequestError, ValueError):
+        logger.exception(
+            "Could not verify Fleet Manager deletion from Fleet API: "
+            "manager_id=%s",
+            manager_id,
+        )
+
+        return None
+
+async def get_deleted_fleet_manager_keycloak_user_id( manager_id: str,) -> str | None:
+    """
+    Ανακτά το Keycloak user ID ενός Fleet Manager που έχει ήδη
+    διαγραφεί από το Fleet API.
+
+    Μετά από Hard Delete το Fleet Manager Profile δεν υπάρχει πλέον,
+    επομένως χρησιμοποιούμε το μόνιμο DELETED audit event για
+    recovery σε περίπτωση retry ή μερικής αποτυχίας.
+
+    Επιστρέφει:
+    - το keycloak_user_id όταν υπάρχει έγκυρο DELETED audit,
+    - None όταν δεν μπορεί να βρεθεί ή να επιβεβαιωθεί.
+    """
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{FLEET_API_URL}/audit-logs/FLEET_MANAGER/{manager_id}"
+            )
+
+        if response.status_code != 200:
+            return None
+
+        audit_logs = response.json()
+
+        # Αναζητούμε το πιο πρόσφατο DELETED event.
+        # Το Fleet API επιστρέφει τα audit events
+        # ταξινομημένα από το νεότερο προς το παλαιότερο.
+        deleted_audit = next(
+            (
+                audit_log
+                for audit_log in audit_logs
+                if audit_log.get("action") == "DELETED"
+            ),
+            None,
+        )
+
+        if deleted_audit is None:
+            return None
+
+        keycloak_change = (
+            deleted_audit
+            .get("changes", {})
+            .get("keycloak_user_id")
+        )
+
+        if not isinstance(keycloak_change, dict):
+            return None
+
+        keycloak_user_id = keycloak_change.get("from_value")
+
+        if (
+            not isinstance(keycloak_user_id, str)
+            or not keycloak_user_id.strip()
+        ):
+            return None
+
+        return keycloak_user_id
+
+    except (httpx.RequestError, ValueError):
+        logger.exception(
+            "Could not recover Keycloak user ID from "
+            "Fleet Manager audit: manager_id=%s",
+            manager_id,
+        )
+
+        return None
 # -------------------------
 # API Endpoints
 # -------------------------
@@ -1551,7 +1791,6 @@ async def admin_activate_driver( driver_id: str, token_payload: dict = Depends(v
                         "Check both systems before retrying."
                     ),
                 )
-
     logger.info(
         "Activated Driver in Fleet API and Keycloak: "
         "driver_id=%s",
@@ -2118,6 +2357,1189 @@ async def admin_delete_driver( driver_id: str, token_payload: dict = Depends(val
         "driver_id": driver_id,
     }
 
+@app.post("/api/v1/admin/fleet-managers", status_code=201)
+async def admin_create_fleet_manager( fleet_manager: AdminFleetManagerCreate, token_payload: dict = Depends(validate_access_token),):
+    """
+    Δημιουργεί Keycloak identity και Fleet Manager Profile.
+
+    Μόνο ο Admin μπορεί να εκτελέσει αυτή τη λειτουργία.
+    Το Fleet API παραμένει υπεύθυνο για τα business δεδομένα
+    του Fleet Manager.
+    """
+
+    role_checker(token_payload, ADMIN_ROLES)
+    # Ελέγχουμε πρώτα αν υπάρχει ήδη το username στο Keycloak.
+    # Δεν επιτρέπουμε να δημιουργηθεί δεύτερος λογαριασμός
+    # με το ίδιο username.
+    try:
+        existing_user = ( await keycloak_admin_client.get_user_by_username( fleet_manager.username ) )
+    except (httpx.RequestError, httpx.HTTPStatusError):
+        logger.exception(
+            "Could not check Keycloak username"
+        )
+        raise HTTPException( status_code=503, detail="Could not verify Keycloak username", )
+
+    if existing_user is not None:
+        raise HTTPException( status_code=409, detail="Keycloak username already exists", )
+    # Δημιουργούμε το identity του Fleet Manager στο Keycloak.
+    #
+    # Δεν ορίζουμε προκαθορισμένο password εδώ.
+    # Το Keycloak θα διαχειριστεί τη διαδικασία ώστε ο χρήστης
+    # να ορίσει τον δικό του κωδικό.
+    try:
+        keycloak_user_id = await keycloak_admin_client.create_user(
+            username=fleet_manager.username,
+            email=str(fleet_manager.email),
+            first_name=fleet_manager.first_name,
+            last_name=fleet_manager.last_name,
+        )
+
+    except httpx.RequestError:
+        # Ένα timeout ή άλλο πρόβλημα επικοινωνίας μπορεί να συμβεί
+        # αφού το Keycloak έχει ήδη δημιουργήσει τον χρήστη.
+        #
+        # Για αυτό δεν επιχειρούμε αυτόματα δεύτερη δημιουργία,
+        # γιατί υπάρχει κίνδυνος να δημιουργήσουμε ασυνεπή κατάσταση.
+        logger.exception(
+            "Uncertain Keycloak Fleet Manager creation: username=%s",
+            fleet_manager.username,
+        )
+
+        raise HTTPException( status_code=503, detail=( "Keycloak creation outcome is uncertain. Check the user before retrying." ), )
+
+    except Exception:
+        logger.exception(
+            "Keycloak Fleet Manager creation failed: username=%s",
+            fleet_manager.username,
+        )
+
+        raise HTTPException( status_code=502, detail="Could not create Keycloak user", )
+    # Από τη στιγμή που δημιουργήθηκε επιτυχώς το Keycloak identity,
+    # του αναθέτουμε το realm role "fleet_manager".
+    #
+    # Το role είναι απαραίτητο ώστε το JWT του χρήστη να περιέχει
+    # το "fleet_manager" και το API Gateway να μπορεί αργότερα
+    # να εφαρμόζει σωστά το authorization.
+    #
+    # Αν η ανάθεση του role αποτύχει, δεν αφήνουμε ορφανό
+    # Keycloak user. Προσπαθούμε να διαγράψουμε το identity
+    # που μόλις δημιουργήσαμε.
+    try:
+        await keycloak_admin_client.assign_realm_role( keycloak_user_id=keycloak_user_id, role_name="fleet_manager", )
+
+    except Exception:
+        logger.exception(
+            "Could not assign fleet_manager role: "
+            "keycloak_user_id=%s",
+            keycloak_user_id,
+        )
+
+        try:
+            await keycloak_admin_client.delete_user( keycloak_user_id )
+
+        except Exception:
+            logger.exception(
+                "Manual cleanup required after Fleet Manager "
+                "role assignment failure: keycloak_user_id=%s",
+                keycloak_user_id,
+            )
+
+            raise HTTPException( status_code=503, detail=( "Fleet Manager role assignment failed and automatic cleanup could not be confirmed"
+                ),
+            )
+
+        raise HTTPException( status_code=502, detail="Could not assign fleet_manager role", )
+    # Το username αφορά αποκλειστικά το Keycloak και δεν αποτελεί
+    # business δεδομένο του Fleet Manager μέσα στο Fleet API.
+    #
+    # Δημιουργούμε λοιπόν το payload χωρίς το username και
+    # προσθέτουμε το πραγματικό Keycloak ID που δημιουργήθηκε
+    # από το Gateway.
+    fleet_manager_data = fleet_manager.model_dump( mode="json", exclude={"username"}, )
+
+    fleet_manager_data["keycloak_user_id"] = keycloak_user_id
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            fleet_response = await client.post( f"{FLEET_API_URL}/fleet-managers", json=fleet_manager_data, )
+
+        except httpx.RequestError:
+            # Δεν γνωρίζουμε αν το Fleet API πρόλαβε να
+            # αποθηκεύσει το Fleet Manager Profile πριν
+            # παρουσιαστεί το πρόβλημα επικοινωνίας.
+            logger.exception(
+                "Uncertain Fleet Manager Profile creation: "
+                "keycloak_user_id=%s",
+                keycloak_user_id,
+            )
+
+            # Ελέγχουμε την πραγματική κατάσταση στο Fleet API
+            # χρησιμοποιώντας το σταθερό Keycloak user ID.
+            try:
+                profile_response = await client.get( f"{FLEET_API_URL}/fleet-managers/by-keycloak-user/{keycloak_user_id}" )
+
+            except httpx.RequestError:
+                logger.exception(
+                    "Could not reconcile Fleet Manager Profile: "
+                    "keycloak_user_id=%s",
+                    keycloak_user_id,
+                )
+
+                raise HTTPException( status_code=503, detail=( "Fleet Manager creation outcome is uncertain. Manual reconciliation is required." ), )
+
+            if profile_response.status_code == 200:
+                # Το Profile δημιουργήθηκε κανονικά, παρόλο που
+                # το αρχικό request εμφάνισε πρόβλημα επικοινωνίας.
+                return profile_response.json()
+
+            if profile_response.status_code != 404:
+                raise HTTPException( status_code=503, detail="Could not reconcile Fleet Manager Profile", )
+
+            # Το άμεσο 404 μετά από timeout δεν αποτελεί ασφαλή
+            # απόδειξη ότι το αρχικό POST δεν εκτελείται ακόμη.
+            # Δεν διαγράφουμε λοιπόν αυτόματα τον Keycloak user.
+            raise HTTPException( status_code=503, detail=( "Fleet Manager Profile not found after timeout. Reconciliation is required before retrying." ), )
+    # Αν το Fleet API δημιούργησε κανονικά το Profile,
+    # η συνολική διαδικασία δημιουργίας ολοκληρώθηκε επιτυχώς.
+    if fleet_response.status_code == 200:
+        logger.info(
+            "Created Fleet Manager: manager_id=%s keycloak_user_id=%s",
+            fleet_manager.manager_id,
+            keycloak_user_id,
+        )
+
+        return fleet_response.json()
+
+    # Σε server error του Fleet API δεν γνωρίζουμε με βεβαιότητα
+    # αν κάποια αλλαγή πραγματοποιήθηκε πριν από την αποτυχία.
+    # Για αυτό δεν διαγράφουμε αυτόματα το Keycloak identity.
+    if fleet_response.status_code >= 500:
+        raise HTTPException( status_code=503, detail=( "Fleet API failed. Reconciliation is required before cleanup." ), )
+
+    # Αν το Fleet API επέστρεψε σαφή απόρριψη, όπως validation
+    # error ή conflict, το Profile δεν δημιουργήθηκε επιτυχώς.
+    # Διαγράφουμε λοιπόν το Keycloak identity που δημιουργήσαμε
+    # νωρίτερα, ώστε να μη μείνει ορφανός χρήστης.
+    try:
+        await keycloak_admin_client.delete_user( keycloak_user_id )
+
+    except Exception:
+        logger.exception(
+            "Could not compensate failed Fleet Manager creation: "
+            "keycloak_user_id=%s",
+            keycloak_user_id,
+        )
+
+        raise HTTPException( status_code=503,
+                             detail=( "Fleet Manager Profile was rejected, but Keycloak user cleanup could not be confirmed" ), )
+
+    # Αφού ολοκληρώθηκε το cleanup στο Keycloak,
+    # επιστρέφουμε στον Admin το πραγματικό validation/conflict
+    # error που επέστρεψε το Fleet API.
+    raise HTTPException( status_code=fleet_response.status_code,
+                         detail=(fleet_response.json().get( "detail", "Could not create Fleet Manager Profile", ) ),)
+
+@app.patch("/api/v1/admin/fleet-managers/{manager_id}")
+async def admin_update_fleet_manager(
+    manager_id: str,
+    fleet_manager_update: AdminFleetManagerUpdate,
+    token_payload: dict = Depends(validate_access_token),
+):
+    """
+    Ενημερώνει το Fleet Manager Profile και, όταν χρειάζεται,
+    τα αντίστοιχα προσωπικά στοιχεία στο Keycloak.
+
+    Το Fleet API παραμένει υπεύθυνο για τα business δεδομένα,
+    ενώ το Keycloak παραμένει υπεύθυνο για τα identity δεδομένα.
+    """
+
+    role_checker(token_payload, ADMIN_ROLES)
+
+    # Κρατάμε μόνο τα πεδία που έστειλε πραγματικά ο Admin.
+    # Έτσι ένα PATCH δεν αντικαθιστά κατά λάθος άλλα πεδία
+    # με τις default τιμές του Pydantic model.
+    update_data = fleet_manager_update.model_dump(
+        exclude_unset=True,
+        mode="json",
+    )
+
+    if not update_data:
+        raise HTTPException(
+            status_code=400,
+            detail="No fields provided for update",
+        )
+
+    # Τα συγκεκριμένα πεδία υπάρχουν τόσο στο Fleet Manager Profile
+    # όσο και στο Keycloak identity.
+    #
+    # Στο Fleet API χρησιμοποιούμε snake_case,
+    # ενώ το Keycloak χρησιμοποιεί τα αντίστοιχα ονόματα
+    # firstName, lastName και email.
+    identity_fields = {
+        "first_name": "firstName",
+        "last_name": "lastName",
+        "email": "email",
+    }
+
+    # Τα βασικά identity fields δεν επιτρέπεται να γίνουν null.
+    # Διαφορετικά θα μπορούσαμε να αφήσουμε ασυνεπή στοιχεία
+    # μεταξύ Keycloak και Fleet Manager Profile.
+    if any(
+        field in update_data and update_data[field] is None
+        for field in identity_fields
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Identity fields cannot be null",
+        )
+
+    # Ανακτούμε πρώτα το υπάρχον Fleet Manager Profile.
+    # Το Fleet API παραμένει ο αποκλειστικός ιδιοκτήτης
+    # των business δεδομένων.
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            managers_response = await client.get(
+                f"{FLEET_API_URL}/fleet-managers"
+            )
+
+    except httpx.RequestError:
+        logger.exception(
+            "Could not retrieve Fleet Manager Profile: "
+            "manager_id=%s",
+            manager_id,
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail="Fleet API unavailable",
+        )
+
+    if managers_response.status_code != 200:
+        raise HTTPException(
+            status_code=503,
+            detail="Could not retrieve Fleet Manager Profile",
+        )
+
+    existing_fleet_manager = next(
+        (
+            fleet_manager
+            for fleet_manager in managers_response.json()
+            if fleet_manager.get("manager_id") == manager_id
+        ),
+        None,
+    )
+
+    if existing_fleet_manager is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Fleet Manager not found",
+        )
+
+    keycloak_user_id = existing_fleet_manager.get(
+        "keycloak_user_id"
+    )
+
+    if not keycloak_user_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Fleet Manager has no Keycloak identity",
+        )
+
+    # Δημιουργούμε ξεχωριστό payload μόνο για τα identity fields
+    # που πρέπει να ενημερωθούν και στο Keycloak.
+    identity_update = {
+        keycloak_field: update_data[field]
+        for field, keycloak_field in identity_fields.items()
+        if field in update_data
+    }
+
+    # Αν το PATCH αφορά αποκλειστικά business δεδομένα,
+    # δεν υπάρχει λόγος να κάνουμε αλλαγή στο Keycloak.
+    original_identity = None
+
+    if identity_update:
+        try:
+            existing_user = (
+                await keycloak_admin_client.get_user_by_id(
+                    keycloak_user_id
+                )
+            )
+
+        except (httpx.RequestError, httpx.HTTPStatusError):
+            logger.exception(
+                "Could not retrieve Fleet Manager "
+                "Keycloak user: user_id=%s",
+                keycloak_user_id,
+            )
+
+            raise HTTPException(
+                status_code=503,
+                detail="Could not retrieve Keycloak identity",
+            )
+
+        if existing_user is None:
+            raise HTTPException(
+                status_code=409,
+                detail="Keycloak identity not found",
+            )
+
+        # Αποθηκεύουμε τις προηγούμενες τιμές μόνο για τα πεδία
+        # που πρόκειται να αλλάξουν.
+        #
+        # Θα χρησιμοποιηθούν για rollback μόνο αν το Fleet API
+        # απορρίψει ρητά το PATCH με 4xx.
+        original_identity = {
+            field: existing_user.get(field)
+            for field in identity_update
+        }
+
+        try:
+            await keycloak_admin_client.update_user(
+                keycloak_user_id,
+                identity_update,
+            )
+
+        except httpx.RequestError:
+            # Ένα communication error δεν αποδεικνύει ότι
+            # το Keycloak δεν αποθήκευσε την αλλαγή.
+            #
+            # Διαβάζουμε ξανά το identity και ελέγχουμε
+            # την πραγματική κατάσταση.
+            try:
+                current_user = (
+                    await keycloak_admin_client.get_user_by_id(
+                        keycloak_user_id
+                    )
+                )
+
+            except (httpx.RequestError, httpx.HTTPStatusError):
+                current_user = None
+
+            identity_confirmed = (
+                current_user is not None
+                and all(
+                    current_user.get(field) == value
+                    for field, value in identity_update.items()
+                )
+            )
+
+            if not identity_confirmed:
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "Keycloak update could not be confirmed. "
+                        "Check identity before retrying."
+                    ),
+                )
+
+            logger.info(
+                "Confirmed Fleet Manager Keycloak update "
+                "after request error: user_id=%s",
+                keycloak_user_id,
+            )
+
+        except httpx.HTTPStatusError as error:
+            logger.warning(
+                "Keycloak rejected Fleet Manager update: "
+                "user_id=%s status=%s",
+                keycloak_user_id,
+                error.response.status_code,
+            )
+
+            raise HTTPException(
+                status_code=502,
+                detail="Keycloak rejected identity update",
+            )
+
+    # Στέλνουμε ολόκληρο το update_data στο Fleet API.
+    # Εκεί γίνεται η ενημέρωση του business Profile.
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            fleet_response = await client.patch(
+                f"{FLEET_API_URL}/fleet-managers/{manager_id}",
+                json=update_data,
+            )
+
+    except httpx.RequestError:
+        # Αν χάθηκε η HTTP απάντηση, δεν γνωρίζουμε αν το
+        # Fleet API πρόλαβε να αποθηκεύσει τις αλλαγές.
+        #
+        # Χρησιμοποιούμε τον helper που δημιουργήσαμε ώστε
+        # να ελέγξουμε την πραγματική κατάσταση.
+        update_confirmed = (
+            await check_fleet_manager_update_state(
+                manager_id,
+                update_data,
+            )
+        )
+
+        if update_confirmed is True:
+            # Οι αλλαγές επιβεβαιώθηκαν.
+            # Ανακτούμε και επιστρέφουμε το ενημερωμένο Profile.
+            try:
+                async with httpx.AsyncClient(
+                    timeout=10.0
+                ) as client:
+                    response = await client.get(
+                        f"{FLEET_API_URL}/fleet-managers"
+                    )
+
+                if response.status_code == 200:
+                    updated_fleet_manager = next(
+                        (
+                            item
+                            for item in response.json()
+                            if item.get("manager_id") == manager_id
+                        ),
+                        None,
+                    )
+
+                    if updated_fleet_manager is not None:
+                        return updated_fleet_manager
+
+            except (httpx.RequestError, ValueError):
+                logger.exception(
+                    "Could not retrieve updated Fleet Manager: "
+                    "manager_id=%s",
+                    manager_id,
+                )
+
+        # Αν δεν μπορούμε να επιβεβαιώσουμε την κατάσταση,
+        # δεν κάνουμε τυφλό rollback.
+        #
+        # Το Fleet API μπορεί να έχει ήδη εφαρμόσει την αλλαγή.
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Fleet API update could not be confirmed. "
+                "Recheck the Fleet Manager Profile before retrying."
+            ),
+        )
+
+    # Κανονική επιτυχία.
+    if fleet_response.status_code == 200:
+        logger.info(
+            "Updated Fleet Manager: manager_id=%s",
+            manager_id,
+        )
+
+        return fleet_response.json()
+
+    # Rollback του Keycloak κάνουμε μόνο όταν έχουμε σαφή
+    # απόρριψη 4xx από το Fleet API.
+    #
+    # Σε αυτή την περίπτωση γνωρίζουμε ότι το business update
+    # δεν έγινε αποδεκτό και μπορούμε να επαναφέρουμε με ασφάλεια
+    # τα identity fields στις προηγούμενες τιμές τους.
+    if (
+        400 <= fleet_response.status_code < 500
+        and original_identity is not None
+    ):
+        try:
+            await keycloak_admin_client.update_user(
+                keycloak_user_id,
+                original_identity,
+            )
+
+        except Exception:
+            logger.exception(
+                "Fleet Manager identity rollback requires "
+                "reconciliation: manager_id=%s user_id=%s",
+                manager_id,
+                keycloak_user_id,
+            )
+
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Fleet API rejected the update, but "
+                    "Keycloak rollback could not be confirmed."
+                ),
+            )
+
+    # Σε 5xx δεν γνωρίζουμε αν το Fleet API πραγματοποίησε
+    # κάποια αλλαγή πριν από την αποτυχία.
+    #
+    # Δεν κάνουμε rollback επειδή μπορεί να δημιουργήσουμε
+    # μεγαλύτερη ασυνέπεια μεταξύ Fleet API και Keycloak.
+    if fleet_response.status_code >= 500:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Fleet API update failed. "
+                "Reconciliation may be required."
+            ),
+        )
+
+    # Για validation/conflict errors επιστρέφουμε στον Admin
+    # το πραγματικό error που έδωσε το Fleet API.
+    try:
+        error_detail = fleet_response.json().get(
+            "detail",
+            "Fleet Manager update rejected",
+        )
+
+    except ValueError:
+        error_detail = "Fleet Manager update rejected"
+
+    raise HTTPException(
+        status_code=fleet_response.status_code,
+        detail=error_detail,
+    )
+@app.post("/api/v1/admin/fleet-managers/{keycloak_user_id}/recover")
+async def recover_admin_fleet_manager( keycloak_user_id: str, fleet_manager: AdminFleetManagerCreate, token_payload: dict = Depends(validate_access_token),):
+    """
+    Ολοκληρώνει τη δημιουργία Fleet Manager Profile μετά από
+    αβέβαιη αποτυχία, χωρίς να δημιουργεί δεύτερο χρήστη
+    στο Keycloak.
+    """
+
+    role_checker(token_payload, ADMIN_ROLES)
+
+    # Επιβεβαιώνουμε ότι το συγκεκριμένο Keycloak ID αντιστοιχεί
+    # στα στοιχεία του Fleet Manager που θέλει να ανακτήσει ο Admin.
+    try:
+        existing_user = ( await keycloak_admin_client.get_user_by_username( fleet_manager.username )
+        )
+
+    except (httpx.RequestError, httpx.HTTPStatusError):
+        logger.exception(
+            "Could not verify Fleet Manager recovery identity: "
+            "username=%s",
+            fleet_manager.username,
+        )
+
+        raise HTTPException( status_code=503, detail="Could not verify Keycloak identity", )
+
+    if existing_user is None:
+        raise HTTPException( status_code=404, detail="Keycloak user not found", )
+
+    # Δεν αρκεί να υπάρχει ένας χρήστης με το συγκεκριμένο username.
+    # Επιβεβαιώνουμε ότι το ID και τα βασικά identity στοιχεία
+    # αντιστοιχούν στην αίτηση Recovery.
+    if ( existing_user.get("id") != keycloak_user_id
+        or existing_user.get("username") != fleet_manager.username
+        or (existing_user.get("email")  or "").lower() != str(fleet_manager.email).lower()
+        or existing_user.get("firstName") != fleet_manager.first_name
+        or existing_user.get("lastName") != fleet_manager.last_name
+    ):
+        raise HTTPException( status_code=409, detail=( "Keycloak identity does not match recovery request" ), )
+
+    # Το username ανήκει αποκλειστικά στο Keycloak.
+    # Το Fleet API λαμβάνει τα business δεδομένα μαζί με
+    # το ήδη υπάρχον Keycloak user ID.
+    fleet_manager_data = fleet_manager.model_dump( mode="json", exclude={"username"}, )
+
+    fleet_manager_data["keycloak_user_id"] = keycloak_user_id
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        # Πριν επιχειρήσουμε νέα δημιουργία, ελέγχουμε αν
+        # το Fleet Manager Profile υπάρχει ήδη.
+        try:
+            profile_response = await client.get( f"{FLEET_API_URL}/fleet-managers/by-keycloak-user/{keycloak_user_id}" )
+
+        except httpx.RequestError:
+            logger.exception(
+                "Could not check Fleet Manager recovery profile: "
+                "keycloak_user_id=%s",
+                keycloak_user_id,
+            )
+
+            raise HTTPException(status_code=503, detail=( "Could not check existing Fleet Manager Profile" ), )
+
+        if profile_response.status_code == 200:
+            existing_profile = profile_response.json()
+
+            # Αν το Profile υπάρχει ήδη, το Recovery είναι
+            # idempotent μόνο όταν τα αποθηκευμένα δεδομένα
+            # αντιστοιχούν στην ίδια αίτηση.
+            if any(
+                existing_profile.get(field) != value
+                for field, value in fleet_manager_data.items()
+            ):
+                raise HTTPException( status_code=409, detail=( "Existing Fleet Manager Profile has different data" ), )
+
+            logger.info(
+                "Recovered existing Fleet Manager Profile: "
+                "keycloak_user_id=%s",
+                keycloak_user_id,
+            )
+
+            return existing_profile
+
+        if profile_response.status_code != 404:
+            raise HTTPException( status_code=503, detail=( "Could not verify Fleet Manager Profile state" ),)
+
+        # Αν δεν υπάρχει Profile, χρησιμοποιούμε το ήδη υπάρχον
+        # Keycloak identity και δημιουργούμε μόνο το business Profile.
+        #
+        # Δεν δημιουργούμε δεύτερο Keycloak user.
+        try:
+            fleet_response = await client.post( f"{FLEET_API_URL}/fleet-managers", json=fleet_manager_data, )
+
+        except httpx.RequestError:
+            # Δεν γνωρίζουμε αν το Fleet API πρόλαβε να ολοκληρώσει
+            # το POST πριν παρουσιαστεί το πρόβλημα επικοινωνίας.
+            # Δεν επαναλαμβάνουμε αυτόματα τη δημιουργία.
+            logger.exception(
+                "Uncertain Fleet Manager recovery: "
+                "keycloak_user_id=%s",
+                keycloak_user_id,
+            )
+
+            raise HTTPException( status_code=503, detail=( "Recovery outcome is uncertain. " "Check the profile before retrying." ), )
+
+    if fleet_response.status_code == 200:
+        logger.info(
+            "Recovered Fleet Manager Profile: "
+            "manager_id=%s keycloak_user_id=%s",
+            fleet_manager.manager_id,
+            keycloak_user_id,
+        )
+
+        return fleet_response.json()
+
+    # Σε server error δεν μπορούμε να γνωρίζουμε με βεβαιότητα
+    # αν το Fleet API πραγματοποίησε κάποια αλλαγή.
+    if fleet_response.status_code >= 500:
+        raise HTTPException( status_code=503, detail=( "Fleet API recovery outcome is uncertain" ), )
+
+    # Σε σαφές validation/conflict error επιστρέφουμε το
+    # πραγματικό σφάλμα του Fleet API.
+    #
+    # Δεν διαγράφουμε τον Keycloak user, επειδή στο Recovery
+    # χρησιμοποιούμε identity που προϋπήρχε.
+    raise HTTPException( status_code=fleet_response.status_code,
+                         detail=fleet_response.json().get( "detail", "Could not recover Fleet Manager Profile", ), )
+
+@app.post("/api/v1/admin/fleet-managers/{manager_id}/activate")
+async def admin_activate_fleet_manager( manager_id: str, token_payload: dict = Depends(validate_access_token), ):
+    """
+    Επανενεργοποιεί τον Fleet Manager στο Fleet API και στο Keycloak.
+
+    Αν προκύψει αβέβαιη έκβαση, ελέγχουμε την πραγματική
+    κατάσταση πριν επιστρέψουμε αποτέλεσμα.
+    """
+
+    role_checker(token_payload, ADMIN_ROLES)
+
+    # Ανακτούμε το Fleet Manager Profile από το Fleet API.
+    # Το API Gateway δεν έχει άμεση πρόσβαση στη MongoDB.
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            managers_response = await client.get( f"{FLEET_API_URL}/fleet-managers" )
+            managers_response.raise_for_status()
+
+    except (httpx.RequestError, httpx.HTTPStatusError):
+        logger.exception(
+            "Could not retrieve Fleet Manager Profile: manager_id=%s",
+            manager_id,
+        )
+        raise HTTPException( status_code=503, detail="Could not retrieve Fleet Manager Profile", )
+
+    fleet_manager = next(
+        (
+            item
+            for item in managers_response.json()
+            if item.get("manager_id") == manager_id
+        ),
+        None,
+    )
+
+    if fleet_manager is None:
+        raise HTTPException( status_code=404, detail="Fleet Manager not found", )
+
+    keycloak_user_id = fleet_manager.get("keycloak_user_id")
+
+    if not keycloak_user_id:
+        raise HTTPException( status_code=409, detail="Fleet Manager has no linked Keycloak account", )
+        # Επιβεβαιώνουμε ότι το συνδεδεμένο Keycloak identity
+        # υπάρχει πριν αλλάξουμε το Fleet Manager Profile.
+    try:
+        keycloak_user = await keycloak_admin_client.get_user_by_id( keycloak_user_id )
+
+    except Exception:
+        logger.exception(
+            "Could not retrieve Keycloak user: manager_id=%s",
+            manager_id,
+        )
+        raise HTTPException( status_code=503, detail="Could not verify Keycloak account", )
+
+    if keycloak_user is None:
+        raise HTTPException( status_code=409, detail="Linked Keycloak account does not exist", )
+    # Πρώτα ενεργοποιούμε το Fleet Manager Profile.
+    # Αν χαθεί η HTTP απάντηση, ελέγχουμε την πραγματική
+    # κατάσταση πριν θεωρήσουμε ότι η ενεργοποίηση απέτυχε.
+    fleet_response = None
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            fleet_response = await client.post( f"{FLEET_API_URL}/fleet-managers/{manager_id}/activate" )
+
+    except httpx.RequestError:
+        # Η απάντηση μπορεί να χάθηκε αφού το Fleet API
+        # είχε ήδη ενεργοποιήσει το Fleet Manager Profile.
+        logger.warning(
+            "Fleet API Fleet Manager activation response lost: "
+            "manager_id=%s",
+            manager_id,
+        )
+
+        activation_confirmed = await check_fleet_manager_status( manager_id, "ACTIVE", )
+
+        if activation_confirmed is not True:
+            raise HTTPException( status_code=503, detail=( "Fleet Manager activation outcome is uncertain. Check the Fleet Manager Profile before retrying." ), )
+
+    if fleet_response is not None:
+        if fleet_response.status_code >= 500:
+            raise HTTPException( status_code=503, detail="Fleet Manager activation outcome is uncertain", )
+
+        if fleet_response.status_code != 200:
+            raise HTTPException( status_code=fleet_response.status_code, detail=fleet_response.json().get( "detail", "Could not activate Fleet Manager Profile", ), )
+        updated_fleet_manager = fleet_response.json()
+    else:
+        # Αν χάθηκε η απάντηση αλλά επιβεβαιώσαμε ότι ο Fleet Manager
+        # έγινε ACTIVE, ανακτούμε το ενημερωμένο Profile.
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                profile_response = await client.get( f"{FLEET_API_URL}/fleet-managers" )
+
+        except httpx.RequestError:
+            raise HTTPException( status_code=503, detail="Could not retrieve activated Fleet Manager Profile", )
+
+        if profile_response.status_code != 200:
+            raise HTTPException( status_code=503, detail="Could not retrieve activated Fleet Manager Profile", )
+
+        updated_fleet_manager = next(
+            (
+                item
+                for item in profile_response.json()
+                if item.get("manager_id") == manager_id
+            ),
+            None,
+        )
+
+        if updated_fleet_manager is None:
+            raise HTTPException( status_code=503, detail="Activated Fleet Manager Profile could not be found", )
+    # Πριν ενεργοποιήσουμε το Keycloak identity,
+    # επιβεβαιώνουμε ότι το business Profile είναι πράγματι ACTIVE.
+    if updated_fleet_manager.get("status") != "ACTIVE":
+        raise HTTPException(
+            status_code=503,
+            detail="Fleet Manager activation could not be confirmed",
+        )
+    # Ενεργοποιούμε το Keycloak account μόνο αν είναι ανενεργό.
+    # Αν χαθεί η απάντηση, ξαναδιαβάζουμε την πραγματική
+    # κατάσταση του identity πριν θεωρήσουμε ότι απέτυχε.
+    if keycloak_user.get("enabled") is not True:
+        try:
+            await keycloak_admin_client.set_user_enabled( keycloak_user_id, True, )
+
+        except Exception:
+            logger.exception(
+                "Could not confirm Keycloak activation: "
+                "manager_id=%s",
+                manager_id,
+            )
+
+            try:
+                current_user = ( await keycloak_admin_client.get_user_by_id( keycloak_user_id ) )
+
+            except Exception:
+                current_user = None
+
+            if ( current_user is None or current_user.get("enabled") is not True ):
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "Fleet Manager Profile is ACTIVE, but Keycloak "
+                        "activation could not be confirmed. "
+                        "Check both systems before retrying."
+                    ),
+                )
+    logger.info( "Activated Fleet Manager in Fleet API and Keycloak: manager_id=%s", manager_id, )
+
+    return updated_fleet_manager
+
+@app.post("/api/v1/admin/fleet-managers/{manager_id}/deactivate")
+async def admin_deactivate_fleet_manager( manager_id: str, token_payload: dict = Depends(validate_access_token),):
+    """
+    Απενεργοποιεί τον Fleet Manager στο Keycloak και στο Fleet API.
+
+    Αν προκύψει αβέβαιη έκβαση, ελέγχουμε την πραγματική
+    κατάσταση πριν θεωρήσουμε ότι η ενέργεια απέτυχε.
+    """
+
+    role_checker(token_payload, ADMIN_ROLES)
+
+    # Ανακτούμε το Fleet Manager Profile από το Fleet API.
+    # Το API Gateway δεν έχει άμεση πρόσβαση στη MongoDB.
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            managers_response = await client.get( f"{FLEET_API_URL}/fleet-managers" )
+            managers_response.raise_for_status()
+
+    except (httpx.RequestError, httpx.HTTPStatusError):
+        logger.exception(
+            "Could not retrieve Fleet Manager Profile: manager_id=%s",
+            manager_id,
+        )
+        raise HTTPException( status_code=503, detail="Could not retrieve Fleet Manager Profile", )
+    fleet_manager = next(
+        (
+            item
+            for item in managers_response.json()
+            if item.get("manager_id") == manager_id
+        ),
+        None,
+    )
+
+    if fleet_manager is None:
+        raise HTTPException( status_code=404, detail="Fleet Manager not found", )
+
+    keycloak_user_id = fleet_manager.get("keycloak_user_id")
+
+    if not keycloak_user_id:
+        raise HTTPException( status_code=409, detail="Fleet Manager has no linked Keycloak account", )
+
+    # Διαβάζουμε την τρέχουσα κατάσταση του Keycloak identity
+    # πριν κάνουμε οποιαδήποτε αλλαγή.
+    try:
+        keycloak_user = await keycloak_admin_client.get_user_by_id( keycloak_user_id )
+
+    except Exception:
+        logger.exception(
+            "Could not retrieve Keycloak user: manager_id=%s",
+            manager_id,
+        )
+        raise HTTPException( status_code=503, detail="Could not verify Keycloak account", )
+
+    if keycloak_user is None:
+        raise HTTPException( status_code=409, detail="Linked Keycloak account does not exist", )
+
+    # Κρατάμε την πραγματική προηγούμενη κατάσταση του Keycloak account
+    # ώστε να γνωρίζουμε αν χρειάζεται rollback σε περίπτωση αποτυχίας.
+    originally_enabled = keycloak_user.get("enabled")
+
+    if not isinstance(originally_enabled, bool):
+        raise HTTPException( status_code=503, detail="Could not determine Keycloak account state", )
+    # Απενεργοποιούμε πρώτα το Keycloak account ώστε ο Fleet Manager
+    # να μην μπορεί να συνεχίσει να χρησιμοποιεί ενεργό identity.
+    if originally_enabled:
+        try:
+            await keycloak_admin_client.set_user_enabled( keycloak_user_id, False, )
+
+        except Exception:
+            logger.exception(
+                "Could not confirm Keycloak deactivation: "
+                "manager_id=%s",
+                manager_id,
+            )
+
+            # Η απάντηση μπορεί να χάθηκε αφού το Keycloak
+            # είχε ήδη απενεργοποιήσει τον χρήστη.
+            try:
+                current_user = ( await keycloak_admin_client.get_user_by_id( keycloak_user_id ) )
+
+            except Exception:
+                current_user = None
+
+            if ( current_user is None or current_user.get("enabled") is not False ):
+                raise HTTPException( status_code=503, detail="Could not disable Fleet Manager Keycloak account", )
+    # Αφού έχει απενεργοποιηθεί το Keycloak identity,
+    # απενεργοποιούμε και το Fleet Manager Profile.
+    fleet_response = None
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            fleet_response = await client.post( f"{FLEET_API_URL}/fleet-managers/{manager_id}/deactivate" )
+
+    except httpx.RequestError:
+        # Η HTTP απάντηση μπορεί να χάθηκε αφού το Fleet API
+        # είχε ήδη αλλάξει το Profile σε INACTIVE.
+        logger.warning(
+            "Fleet API Fleet Manager deactivation response lost: "
+            "manager_id=%s",
+            manager_id,
+        )
+
+        deactivation_confirmed = await check_fleet_manager_status(
+            manager_id,
+            "INACTIVE",
+        )
+
+        if deactivation_confirmed is not True:
+            raise HTTPException( status_code=503, detail=( "Fleet Manager deactivation outcome is uncertain. Check the Fleet Manager Profile before retrying." ),)
+
+    if fleet_response is not None:
+        if fleet_response.status_code >= 500:
+            raise HTTPException( status_code=503, detail="Fleet Manager deactivation outcome is uncertain", )
+
+        if fleet_response.status_code != 200:
+            # Το Fleet API απέρριψε οριστικά το deactivate.
+            # Επαναφέρουμε το Keycloak μόνο αν ήταν αρχικά enabled.
+            if originally_enabled:
+                try:
+                    await keycloak_admin_client.set_user_enabled( keycloak_user_id, True, )
+
+                except Exception:
+                    # Η απάντηση του Keycloak μπορεί να χάθηκε ενώ
+                    # το account είχε ήδη επανενεργοποιηθεί.
+                    try:
+                        current_user = ( await keycloak_admin_client.get_user_by_id( keycloak_user_id ) )
+
+                    except Exception:
+                        current_user = None
+
+                    if (current_user is None or current_user.get("enabled") is not True ):
+                        logger.exception(
+                            "Could not confirm Fleet Manager Keycloak rollback: "
+                            "manager_id=%s",
+                            manager_id,
+                        )
+                        raise HTTPException( status_code=503, detail=( "Fleet Manager deactivation failed and Keycloak rollback could not be confirmed" ),)
+
+            raise HTTPException( status_code=fleet_response.status_code, detail=fleet_response.json().get( "detail", "Could not deactivate Fleet Manager Profile",),)
+
+        updated_fleet_manager = fleet_response.json()
+
+    else:
+        # Αν χάθηκε η απάντηση αλλά επιβεβαιώσαμε ότι ο Fleet Manager
+        # έγινε INACTIVE, ανακτούμε το ενημερωμένο Profile.
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                profile_response = await client.get( f"{FLEET_API_URL}/fleet-managers" )
+
+        except httpx.RequestError:
+            raise HTTPException( status_code=503, detail="Could not retrieve deactivated Fleet Manager Profile", )
+
+        if profile_response.status_code != 200:
+            raise HTTPException( status_code=503, detail="Could not retrieve deactivated Fleet Manager Profile", )
+
+        updated_fleet_manager = next(
+            (
+                item
+                for item in profile_response.json()
+                if item.get("manager_id") == manager_id
+            ),
+            None,
+        )
+
+        if updated_fleet_manager is None:
+            raise HTTPException( status_code=503, detail="Deactivated Fleet Manager Profile could not be found", )
+    # Επιβεβαιώνουμε ότι το Fleet Manager Profile
+    # βρίσκεται πράγματι σε κατάσταση INACTIVE.
+    if updated_fleet_manager.get("status") != "INACTIVE":
+        raise HTTPException( status_code=503, detail="Fleet Manager deactivation could not be confirmed", )
+    # Τερματίζουμε τα υπάρχοντα Keycloak sessions ώστε ο Fleet Manager
+    # να μην μπορεί να συνεχίσει να χρησιμοποιεί ήδη ενεργό session.
+    try:
+        await keycloak_admin_client.logout_user( keycloak_user_id )
+
+    except Exception:
+        logger.exception(
+            "Could not logout Fleet Manager from Keycloak: "
+            "manager_id=%s",
+            manager_id,
+        )
+        raise HTTPException( status_code=503, detail=("Fleet Manager Profile is INACTIVE and Keycloak account is disabled, but logout could not be confirmed" ), )
+
+    logger.info(
+        "Deactivated Fleet Manager in Fleet API and Keycloak: "
+        "manager_id=%s",
+        manager_id,
+    )
+
+    return updated_fleet_manager
+
+@app.delete("/api/v1/admin/fleet-managers/{manager_id}")
+async def admin_delete_fleet_manager( manager_id: str, token_payload: dict = Depends(validate_access_token),):
+    """
+    Εκτελεί Hard Delete ενός Fleet Manager.
+
+    Το Hard Delete:
+    - διαγράφει οριστικά το Fleet Manager Profile από το Fleet API,
+    - διαγράφει το αντίστοιχο Keycloak identity,
+    - διατηρεί το audit history,
+    - υποστηρίζει retry όταν το Fleet Manager Profile
+      έχει ήδη διαγραφεί.
+
+    Το Fleet API παραμένει υπεύθυνο για τα business δεδομένα.
+    Το Keycloak παραμένει υπεύθυνο για το identity.
+    """
+
+    role_checker(token_payload, ADMIN_ROLES)
+
+    keycloak_user_id = None
+    fleet_manager_found = False
+
+    # ---------------------------------------------------------
+    # 1. Αναζητούμε πρώτα το υπάρχον Fleet Manager Profile.
+    # ---------------------------------------------------------
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            managers_response = await client.get( f"{FLEET_API_URL}/fleet-managers" )
+
+        managers_response.raise_for_status()
+
+        existing_fleet_manager = next(
+            (
+                fleet_manager
+                for fleet_manager in managers_response.json()
+                if fleet_manager.get("manager_id") == manager_id
+            ),
+            None,
+        )
+
+    except httpx.RequestError:
+        logger.exception(
+            "Could not connect to Fleet API before "
+            "Fleet Manager hard delete: manager_id=%s",
+            manager_id,
+        )
+
+        raise HTTPException( status_code=503, detail="Fleet API is unavailable", )
+
+    except httpx.HTTPStatusError:
+        logger.exception(
+            "Fleet API rejected Fleet Manager lookup before "
+            "hard delete: manager_id=%s",
+            manager_id,
+        )
+
+        raise HTTPException( status_code=503, detail="Could not verify Fleet Manager state", )
+
+    if existing_fleet_manager is not None:
+        fleet_manager_found = True
+
+        keycloak_user_id = existing_fleet_manager.get( "keycloak_user_id" )
+
+        if not keycloak_user_id:
+            raise HTTPException( status_code=500, detail=( "Fleet Manager does not have a Keycloak user ID" ), )
+
+        # Hard Delete επιτρέπεται μόνο αφού έχει προηγηθεί
+        # η απενεργοποίηση του Fleet Manager.
+        if existing_fleet_manager.get("status") != "INACTIVE":
+            raise HTTPException( status_code=409, detail=( "Fleet Manager must be deactivated before hard delete" ), )
+
+    else:
+    # -----------------------------------------------------
+    # 2. Το Profile μπορεί να έχει ήδη διαγραφεί από
+    #    προηγούμενη μερικώς επιτυχημένη προσπάθεια.
+    #
+    #    Σε αυτή την περίπτωση ανακτούμε το Keycloak ID
+    #    από το μόνιμο DELETED audit.
+    # -----------------------------------------------------
+        keycloak_user_id = ( await get_deleted_fleet_manager_keycloak_user_id( manager_id ) )
+
+        if keycloak_user_id is None:
+            raise HTTPException( status_code=404, detail="Fleet Manager not found", )
+    # ---------------------------------------------------------
+    # 3. Αν το Fleet Manager Profile υπάρχει ακόμη,
+    #    εκτελούμε το business Hard Delete στο Fleet API.
+    # ---------------------------------------------------------
+    if fleet_manager_found:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                delete_response = await client.delete( f"{FLEET_API_URL}/fleet-managers/{manager_id}" )
+
+            if 400 <= delete_response.status_code < 500:
+                raise HTTPException( status_code=delete_response.status_code, detail=delete_response.text, )
+
+            if delete_response.status_code >= 500:
+                raise HTTPException( status_code=503, detail=( "Fleet API could not complete Fleet Manager hard delete" ), )
+
+        except httpx.RequestError:
+            # Το request μπορεί να ολοκληρώθηκε στο Fleet API,
+            # αλλά να χάθηκε η HTTP απάντηση.
+            deletion_confirmed = ( await check_fleet_manager_deleted_from_fleet( manager_id ) )
+
+            if deletion_confirmed is not True:
+                raise HTTPException( status_code=503, detail=( "Fleet Manager hard delete result could not be confirmed" ), )
+    # ---------------------------------------------------------
+    # 4. Πριν πειράξουμε το Keycloak επιβεβαιώνουμε ότι
+    #    το Fleet Manager Profile πράγματι δεν υπάρχει πλέον.
+    # ---------------------------------------------------------
+    deletion_confirmed = ( await check_fleet_manager_deleted_from_fleet( manager_id ))
+
+    if deletion_confirmed is not True:
+        raise HTTPException( status_code=503, detail=( "Fleet Manager deletion from Fleet API " "could not be confirmed" ), )
+    # ---------------------------------------------------------
+    # 5. Διαγράφουμε το Keycloak identity.
+    #
+    #    Η delete_user() είναι idempotent:
+    #    204 -> διαγράφηκε τώρα
+    #    404 -> είχε ήδη διαγραφεί
+    # ---------------------------------------------------------
+    try:
+        await keycloak_admin_client.delete_user( keycloak_user_id )
+
+    except httpx.RequestError:
+        # Μπορεί το Keycloak να εκτέλεσε το DELETE αλλά να
+        # χάθηκε η απάντηση. Κάνουμε read-after-error verification.
+        try:
+            keycloak_user = ( await keycloak_admin_client.get_user_by_id( keycloak_user_id ) )
+
+        except ( httpx.RequestError, httpx.HTTPStatusError, RuntimeError, ):
+            logger.exception(
+                "Could not verify Keycloak user after "
+                "Fleet Manager hard delete error: "
+                "manager_id=%s keycloak_user_id=%s",
+                manager_id,
+                keycloak_user_id,
+            )
+
+            raise HTTPException( status_code=503, detail=( "Fleet Manager Profile was deleted, but Keycloak deletion could not be confirmed" ), )
+
+        if keycloak_user is not None:
+            raise HTTPException( status_code=503, detail=( "Fleet Manager Profile was deleted, but Keycloak identity still exists" ), )
+
+    except RuntimeError:
+        # Για οποιαδήποτε επιβεβαιωμένη αποτυχία του Keycloak
+        # ελέγχουμε ξανά την πραγματική τελική κατάσταση.
+        try:
+            keycloak_user = ( await keycloak_admin_client.get_user_by_id( keycloak_user_id ) )
+
+        except ( httpx.RequestError, httpx.HTTPStatusError, RuntimeError, ):
+            logger.exception(
+                "Could not verify Keycloak user after "
+                "Fleet Manager hard delete failure: "
+                "manager_id=%s keycloak_user_id=%s",
+                manager_id,
+                keycloak_user_id,
+            )
+
+            raise HTTPException(status_code=503, detail=( "Fleet Manager Profile was deleted, but Keycloak deletion could not be confirmed" ), )
+
+        if keycloak_user is not None:
+            raise HTTPException( status_code=503, detail=( "Fleet Manager Profile was deleted, but Keycloak identity could not be deleted" ), )
+    # ---------------------------------------------------------
+    # 6. Τελική επιβεβαίωση του Keycloak state.
+    # ---------------------------------------------------------
+    try:
+        remaining_keycloak_user = ( await keycloak_admin_client.get_user_by_id( keycloak_user_id ) )
+
+    except ( httpx.RequestError, httpx.HTTPStatusError, RuntimeError, ):
+        logger.exception(
+            "Could not perform final Keycloak verification for "
+            "Fleet Manager: manager_id=%s keycloak_user_id=%s",
+            manager_id,
+            keycloak_user_id,
+        )
+
+        raise HTTPException( status_code=503, detail=( "Fleet Manager Profile was deleted, but final Keycloak verification failed" ), )
+
+    if remaining_keycloak_user is not None:
+        raise HTTPException( status_code=503, detail=( "Fleet Manager Profile was deleted, but Keycloak identity still exists" ), )
+
+    logger.info(
+        "Hard deleted Fleet Manager: "
+        "manager_id=%s keycloak_user_id=%s",
+        manager_id,
+        keycloak_user_id,
+    )
+
+    return { "message": "Fleet Manager permanently deleted", "manager_id": manager_id, }
 
 @app.api_route( "/api/v1/vehicles", methods=["GET", "POST"],)
 async def vehicles_collection( request: Request, token_payload: dict = Depends(validate_access_token), ):

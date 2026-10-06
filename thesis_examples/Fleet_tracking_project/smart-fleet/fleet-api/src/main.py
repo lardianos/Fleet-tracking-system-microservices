@@ -88,27 +88,31 @@ drivers_collection = database["drivers"]
 # προφίλ για το ίδιο keycloak_user_id.
 #
 # Αν ο δείκτης υπάρχει ήδη, η MongoDB δεν τον δημιουργεί ξανά.
-drivers_collection.create_index(
-    [("keycloak_user_id", 1)],
-    unique=True,
-    name="uq_drivers_keycloak_user_id",
-)
+drivers_collection.create_index( [("keycloak_user_id", 1)], unique=True, name="uq_drivers_keycloak_user_id",)
 
 # Εξασφαλίζουμε ότι κάθε Driver έχει μοναδικό business identifier.
 #
 # Ο δείκτης προστατεύει από διπλές εγγραφές ακόμη και όταν
 # δύο αιτήσεις δημιουργίας φτάσουν ταυτόχρονα.
 # Αν υπάρχει ήδη, η MongoDB δεν τον δημιουργεί ξανά.
-drivers_collection.create_index(
-    [("driver_id", 1)],
-    unique=True,
-    name="uq_drivers_driver_id",
-)
+drivers_collection.create_index( [("driver_id", 1)], unique=True, name="uq_drivers_driver_id", )
 
 # Αποθηκεύει τα business profiles των Fleet Managers.
 # Το Keycloak παραμένει υπεύθυνο για authentication και roles,
 # ενώ εδώ κρατάμε τη σχέση του manager με το fleet που διαχειρίζεται.
 fleet_managers_collection = database["fleet_managers"]
+
+# Εξασφαλίζουμε ότι κάθε Fleet Manager έχει μοναδικό
+# business identifier μέσα στο σύστημα.
+fleet_managers_collection.create_index( [("manager_id", 1)], unique=True, name="uq_fleet_managers_manager_id",)
+
+# Κάθε Keycloak identity μπορεί να αντιστοιχεί
+# σε ένα μόνο Fleet Manager Profile.
+#
+# Ο μοναδικός δείκτης προστατεύει και από ταυτόχρονες αιτήσεις
+# δημιουργίας που μπορεί να περάσουν τους αρχικούς find_one ελέγχους.
+fleet_managers_collection.create_index( [("keycloak_user_id", 1)], unique=True, name="uq_fleet_managers_keycloak_user_id",)
+
 
 # Αποθηκεύει τα business δεδομένα των fleets.
 # Κάθε fleet αποτελεί την κεντρική οντότητα που συνδέει
@@ -318,7 +322,7 @@ class FleetManagerUpdate(BaseModel):
     department_id: str | None = None
 
     hire_date: date | None = None
-    status: str | None = None
+    #status: str | None = None
 
 class BaseLocation(BaseModel):
     """
@@ -1857,26 +1861,59 @@ def create_fleet_manager(    fleet_manager: FleetManagerCreate,):
     - δύο profiles για το ίδιο Keycloak user.
     """
 
-    existing_manager_id = fleet_managers_collection.find_one({
-        "manager_id": fleet_manager.manager_id
-    })
+    existing_manager = fleet_managers_collection.find_one({ "manager_id": fleet_manager.manager_id })
 
-    if existing_manager_id:
+    if existing_manager is not None:
+        # Αν το ίδιο manager_id είναι ήδη συνδεδεμένο με το ίδιο
+        # Keycloak identity, θεωρούμε το request ασφαλές retry.
+        #
+        # Επιστρέφουμε το υπάρχον Fleet Manager Profile αντί να
+        # δημιουργήσουμε duplicate ή να επιστρέψουμε conflict.
+        if ( existing_manager.get("keycloak_user_id") == fleet_manager.keycloak_user_id ):
+            logger.info(
+                "Fleet Manager already exists, returning existing profile: "
+                "manager_id=%s keycloak_user_id=%s",
+                fleet_manager.manager_id,
+                fleet_manager.keycloak_user_id,
+            )
+
+            return fleet_manager_document_to_response(existing_manager)
+
+        # Αν το ίδιο business ID αντιστοιχεί σε διαφορετικό Keycloak
+        # identity, τότε πρόκειται για πραγματικό conflict.
         raise HTTPException(
             status_code=409,
-            detail="Fleet manager with this manager_id already exists",
+            detail="Fleet Manager with this manager_id already exists",
         )
 
     existing_keycloak_user = fleet_managers_collection.find_one({
         "keycloak_user_id": fleet_manager.keycloak_user_id
     })
 
-    if existing_keycloak_user:
+    if existing_keycloak_user is not None:
+        # Αν το ίδιο Keycloak identity είναι ήδη συνδεδεμένο
+        # με το ίδιο manager_id, θεωρούμε το request ασφαλές retry.
+        if (
+                existing_keycloak_user.get("manager_id")
+                == fleet_manager.manager_id
+        ):
+            logger.info(
+                "Fleet Manager already exists, returning existing profile: "
+                "manager_id=%s keycloak_user_id=%s",
+                fleet_manager.manager_id,
+                fleet_manager.keycloak_user_id,
+            )
+
+            return fleet_manager_document_to_response(
+                existing_keycloak_user
+            )
+
+        # Αν το ίδιο Keycloak identity είναι ήδη συνδεδεμένο
+        # με διαφορετικό Fleet Manager Profile, έχουμε πραγματικό conflict.
         raise HTTPException(
             status_code=409,
-            detail="Fleet manager with this Keycloak user already exists",
+            detail="Fleet Manager with this keycloak_user_id already exists",
         )
-
     # Μετατρέπουμε σε JSON-compatible dictionary
     # πριν από την αποθήκευση στη MongoDB.
     document = fleet_manager.model_dump(mode="json")
@@ -1885,7 +1922,32 @@ def create_fleet_manager(    fleet_manager: FleetManagerCreate,):
     # επομένως επιβεβαιώνουμε το fleet_id πριν την αποθήκευση.
     validate_fleet_exists(fleet_manager.fleet_id)
 
-    result = fleet_managers_collection.insert_one(document)
+    try:
+        fleet_managers_collection.insert_one(document)
+
+    except DuplicateKeyError:
+        # Ένα ταυτόχρονο request μπορεί να δημιούργησε το ίδιο
+        # Fleet Manager Profile αφού ολοκληρώθηκαν οι αρχικοί έλεγχοι.
+        #
+        # Ξαναδιαβάζουμε το profile ώστε να ξεχωρίσουμε ένα ασφαλές
+        # retry από ένα πραγματικό conflict.
+        existing_manager = fleet_managers_collection.find_one({ "manager_id": fleet_manager.manager_id })
+
+        if ( existing_manager is not None and existing_manager.get("keycloak_user_id") == fleet_manager.keycloak_user_id ):
+            logger.info(
+                "Fleet Manager was created concurrently, "
+                "returning existing profile: "
+                "manager_id=%s keycloak_user_id=%s",
+                fleet_manager.manager_id,
+                fleet_manager.keycloak_user_id,
+            )
+
+            return fleet_manager_document_to_response(existing_manager)
+
+        raise HTTPException(
+            status_code=409,
+            detail="Fleet Manager already exists",
+        )
 
     created_manager = fleet_managers_collection.find_one({"_id": result.inserted_id})
 
@@ -1935,6 +1997,22 @@ def create_fleet_manager(    fleet_manager: FleetManagerCreate,):
     )
 
     return fleet_manager_document_to_response(created_manager)
+
+@app.get( "/fleet-managers", response_model=list[FleetManagerResponse],)
+def get_all_fleet_managers():
+    """
+    Επιστρέφει όλα τα Fleet Manager Profiles από τη MongoDB.
+
+    Το Fleet API παραμένει ο αποκλειστικός υπεύθυνος
+    για την ανάγνωση των business δεδομένων των Fleet Managers.
+    """
+
+    fleet_manager_documents = ( fleet_managers_collection.find().sort("manager_id", 1) )
+
+    return [
+        fleet_manager_document_to_response(document)
+        for document in fleet_manager_documents
+    ]
 
 @app.get( "/fleet-managers/by-keycloak-user/{keycloak_user_id}", response_model=FleetManagerResponse, )
 def get_fleet_manager_by_keycloak_user(keycloak_user_id: str,):
@@ -2078,6 +2156,17 @@ def update_fleet_manager( manager_id: str, fleet_manager: FleetManagerUpdate, ):
             status_code=400,
             detail="No update data provided",
         )
+    # Η ενεργοποίηση και η απενεργοποίηση γίνονται αποκλειστικά
+    # από τα ειδικά lifecycle endpoints, ώστε να εφαρμόζονται
+    # όλοι οι απαραίτητοι business κανόνες.
+    if "status" in update_data:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Fleet Manager status cannot be changed through PATCH. "
+                "Use the dedicated activation or deactivation endpoint."
+            ),
+        )
 
     old_fleet_id = existing_manager.get("fleet_id")
 
@@ -2183,6 +2272,138 @@ def update_fleet_manager( manager_id: str, fleet_manager: FleetManagerUpdate, ):
 
     return fleet_manager_document_to_response(updated_manager)
 
+@app.post("/fleet-managers/{manager_id}/activate", response_model=FleetManagerResponse, )
+def activate_fleet_manager(manager_id: str):
+    """
+    Επανενεργοποιεί το Fleet Manager Profile.
+
+    Η ενεργοποίηση αφορά μόνο την business κατάσταση
+    του Fleet Manager μέσα στο Fleet API.
+
+    Το αντίστοιχο Keycloak account ενεργοποιείται
+    ξεχωριστά από το API Gateway.
+    """
+
+    # Βρίσκουμε τον Fleet Manager από το μοναδικό business ID.
+    existing_manager = fleet_managers_collection.find_one({
+        "manager_id": manager_id
+    })
+
+    if existing_manager is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Fleet Manager not found",
+        )
+
+    # Αν ο Fleet Manager είναι ήδη ενεργός, η επιθυμητή κατάσταση
+    # έχει ήδη επιτευχθεί. Δεν δημιουργούμε δεύτερο audit event.
+    if existing_manager.get("status") == "ACTIVE":
+        return fleet_manager_document_to_response(existing_manager)
+
+    # Αλλάζουμε αποκλειστικά την business κατάσταση.
+    # Δεν αλλάζουμε το Fleet στο οποίο ανήκει ο Manager.
+    fleet_managers_collection.update_one(
+        {"manager_id": manager_id},
+        {"$set": {"status": "ACTIVE"}},
+    )
+
+    updated_manager = fleet_managers_collection.find_one({
+        "manager_id": manager_id
+    })
+
+    # Καταγράφουμε την επανενεργοποίηση στο μόνιμο audit trail.
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="FLEET_MANAGER",
+            entity_id=manager_id,
+            action="ACTIVATED",
+            description=f"Fleet Manager {manager_id} was activated",
+            related_entities=AuditRelatedEntities(
+                manager_id=manager_id,
+                fleet_id=existing_manager.get("fleet_id"),
+            ),
+            changes={
+                "status": AuditChange(
+                    from_value=existing_manager.get("status"),
+                    to_value="ACTIVE",
+                ),
+            },
+        )
+    )
+
+    logger.info(
+        "Activated fleet manager: manager_id=%s",
+        manager_id,
+    )
+
+    return fleet_manager_document_to_response(updated_manager)
+
+@app.post( "/fleet-managers/{manager_id}/deactivate", response_model=FleetManagerResponse,)
+def deactivate_fleet_manager(manager_id: str):
+    """
+    Απενεργοποιεί ένα Fleet Manager Profile χωρίς να το διαγράφει.
+
+    Ο Fleet Manager παραμένει συνδεδεμένος με το Fleet του.
+    Δεν επηρεάζονται Drivers, Vehicles ή άλλα business δεδομένα.
+
+    Το αντίστοιχο Keycloak account απενεργοποιείται
+    ξεχωριστά από το API Gateway.
+    """
+
+    # Διαβάζουμε τον Fleet Manager πριν από οποιαδήποτε αλλαγή.
+    existing_manager = fleet_managers_collection.find_one({
+        "manager_id": manager_id
+    })
+
+    if existing_manager is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Fleet Manager not found",
+        )
+
+    # Αν είναι ήδη ανενεργός, η επιθυμητή κατάσταση έχει ήδη επιτευχθεί.
+    # Δεν δημιουργούμε δεύτερο audit event.
+    if existing_manager.get("status") == "INACTIVE":
+        return fleet_manager_document_to_response(existing_manager)
+
+    # Διατηρούμε ολόκληρο το Fleet Manager Profile και αλλάζουμε
+    # αποκλειστικά την business κατάστασή του.
+    fleet_managers_collection.update_one(
+        {"manager_id": manager_id},
+        {"$set": {"status": "INACTIVE"}},
+    )
+
+    updated_manager = fleet_managers_collection.find_one({
+        "manager_id": manager_id
+    })
+
+    # Καταγράφουμε την απενεργοποίηση στο μόνιμο audit trail.
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="FLEET_MANAGER",
+            entity_id=manager_id,
+            action="DEACTIVATED",
+            description=f"Fleet Manager {manager_id} was deactivated",
+            related_entities=AuditRelatedEntities(
+                manager_id=manager_id,
+                fleet_id=existing_manager.get("fleet_id"),
+            ),
+            changes={
+                "status": AuditChange(
+                    from_value=existing_manager.get("status", "ACTIVE"),
+                    to_value="INACTIVE",
+                ),
+            },
+        )
+    )
+
+    logger.info(
+        "Deactivated fleet manager: manager_id=%s",
+        manager_id,
+    )
+
+    return fleet_manager_document_to_response(updated_manager)
+
 @app.delete("/fleet-managers/{manager_id}")
 def delete_fleet_manager(manager_id: str):
     """
@@ -2211,15 +2432,24 @@ def delete_fleet_manager(manager_id: str):
             status_code=404,
             detail="Fleet Manager not found",
         )
-
+    # Το Hard Delete επιτρέπεται μόνο αφού ο Fleet Manager
+    # έχει πρώτα απενεργοποιηθεί μέσω του lifecycle endpoint.
+    #
+    # Έτσι διαχωρίζουμε καθαρά το Soft Delete (INACTIVE)
+    # από την οριστική διαγραφή του business profile.
+    if existing_manager.get("status") != "INACTIVE":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Fleet Manager must be deactivated before hard delete"
+            ),
+        )
     # Διαγράφουμε μόνο το business Fleet Manager Profile.
     #
     # Δεν υπάρχει cascade προς Fleet, Drivers ή Vehicles,
     # επειδή ο Manager διαχειρίζεται το Fleet αλλά δεν είναι
     # ιδιοκτήτης των business entities που ανήκουν σε αυτό.
-    result = fleet_managers_collection.delete_one({
-        "manager_id": manager_id
-    })
+    result = fleet_managers_collection.delete_one({ "manager_id": manager_id })
 
     if result.deleted_count == 0:
         raise HTTPException(
@@ -2237,6 +2467,18 @@ def delete_fleet_manager(manager_id: str):
             from_value=existing_manager["manager_id"],
             to_value=None,
         ),
+
+        # Κρατάμε το Keycloak user ID στο audit της οριστικής διαγραφής.
+        #
+        # Μετά το Hard Delete το Fleet Manager Profile δεν υπάρχει πλέον.
+        # Το identifier αυτό επιτρέπει στο API Gateway να ολοκληρώσει
+        # ή να επαναλάβει με ασφάλεια τη διαγραφή του αντίστοιχου
+        # Keycloak identity αν χαθεί η απάντηση από το Fleet API.
+        "keycloak_user_id": AuditChange(
+            from_value=existing_manager["keycloak_user_id"],
+            to_value=None,
+        ),
+
         "first_name": AuditChange(
             from_value=existing_manager.get("first_name"),
             to_value=None,
@@ -2281,6 +2523,7 @@ def delete_fleet_manager(manager_id: str):
         "message": "Fleet Manager deleted successfully",
         "manager_id": manager_id,
     }
+
 
 @app.post("/fleets", response_model=FleetResponse, status_code=201)
 def create_fleet(fleet: FleetCreate):

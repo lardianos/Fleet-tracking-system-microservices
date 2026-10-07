@@ -144,11 +144,14 @@ class VehicleCreate(BaseModel):
     device_imei: str
     driver_id: str | None = None
     fleet_id: str | None = None
-    status: str = "ACTIVE"
+   # status: str = "ACTIVE"
 
 class VehicleResponse(VehicleCreate):
     # Το id είναι το MongoDB ObjectId σε μορφή string.
     id: str
+    # Το status επιστρέφεται στον client, παρόλο που δεν επιτρέπεται
+    # να οριστεί κατά τη δημιουργία του Vehicle.
+    status: str
 
 class VehicleUpdate(BaseModel):
     """
@@ -162,7 +165,7 @@ class VehicleUpdate(BaseModel):
     device_imei: str | None = None
     driver_id: str | None = None
     fleet_id: str | None = None
-    status: str | None = None
+    #status: str | None = None
 
 class DriverCreate(BaseModel):
     """
@@ -728,6 +731,9 @@ def create_vehicle(vehicle: VehicleCreate):
         raise HTTPException( status_code=409, detail="Vehicle with this device IMEI already exists", )
 
     document = vehicle.model_dump()
+    # Κάθε νέο Vehicle ξεκινά υποχρεωτικά ως ACTIVE.
+    # Το lifecycle status ελέγχεται από το Fleet API και όχι από τον client.
+    document["status"] = "ACTIVE"
 
     # Αν το Vehicle δημιουργείται με ανατεθειμένο Driver,
     # ελέγχουμε ότι ο Driver υπάρχει και ότι ανήκει ήδη σε Fleet.
@@ -862,10 +868,13 @@ def update_vehicle(vehicle_id: str, vehicle: VehicleUpdate):
     if "driver_id" in update_data:
 
         if update_data["driver_id"] is not None:
+            # Driver μπορεί να ανατεθεί μόνο σε ACTIVE Vehicle.
+            # Αν το Vehicle είναι INACTIVE, πρέπει πρώτα να ενεργοποιηθεί
+            # μέσω του ειδικού lifecycle endpoint.
+            if existing_vehicle.get("status") != "ACTIVE":
+                raise HTTPException( status_code=409, detail="Vehicle must be ACTIVE before assigning a Driver", )
             # Ο νέος Driver πρέπει να υπάρχει και να ανήκει σε Fleet.
-            driver_document = get_driver_for_vehicle_assignment(
-                update_data["driver_id"]
-            )
+            driver_document = get_driver_for_vehicle_assignment( update_data["driver_id"] )
 
             driver_fleet_id = driver_document["fleet_id"]
 
@@ -1024,15 +1033,18 @@ def delete_vehicle(vehicle_id: str):
     if existing_vehicle is None:
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
-    result = vehicles_collection.delete_one(
-        {"_id": ObjectId(vehicle_id)}
-    )
+    # Το Hard Delete επιτρέπεται μόνο αφού το Vehicle
+    # έχει πρώτα τεθεί σε INACTIVE κατάσταση.
+    #
+    # Με αυτόν τον τρόπο ένα ενεργό Vehicle δεν μπορεί
+    # να διαγραφεί οριστικά κατά λάθος.
+    if existing_vehicle.get("status") != "INACTIVE":
+        raise HTTPException( status_code=409, detail=( "Vehicle must be INACTIVE before permanent deletion" ), )
+
+    result = vehicles_collection.delete_one( {"_id": ObjectId(vehicle_id)} )
 
     if result.deleted_count == 0:
-        raise HTTPException(
-            status_code=500,
-            detail="Vehicle could not be deleted",
-        )
+        raise HTTPException( status_code=500, detail="Vehicle could not be deleted", )
 
     # Η εγγραφή του audit παραμένει ακόμα και μετά τη διαγραφή
     # του Vehicle, ώστε να υπάρχει μόνιμο ιστορικό της οντότητας.
@@ -1064,6 +1076,176 @@ def delete_vehicle(vehicle_id: str):
         "message": "Vehicle deleted successfully",
         "vehicle_id": vehicle_id,
     }
+
+@app.post("/vehicles/{vehicle_id}/deactivate", response_model=VehicleResponse)
+def deactivate_vehicle(vehicle_id: str):
+    """
+    Θέτει ένα Vehicle σε INACTIVE κατάσταση.
+
+    Κατά το deactivation:
+    - το Vehicle παραμένει στο ίδιο Fleet,
+    - ο τυχόν ανατεθειμένος Driver αφαιρείται,
+    - δεν διαγράφεται κανένα business δεδομένο,
+    - η αλλαγή καταγράφεται στο audit history.
+
+    Η λειτουργία είναι idempotent:
+    αν το Vehicle είναι ήδη INACTIVE, επιστρέφεται χωρίς νέα αλλαγή.
+    """
+
+    if not ObjectId.is_valid(vehicle_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid vehicle id",
+        )
+
+    existing_vehicle = vehicles_collection.find_one(
+        {"_id": ObjectId(vehicle_id)}
+    )
+
+    if existing_vehicle is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Vehicle not found",
+        )
+
+    # Αν είναι ήδη INACTIVE δεν δημιουργούμε δεύτερο audit event.
+    if existing_vehicle.get("status") == "INACTIVE":
+        return vehicle_document_to_response(existing_vehicle)
+
+    old_driver_id = existing_vehicle.get("driver_id")
+
+    # Το Vehicle παραμένει στο Fleet του, αλλά δεν πρέπει να παραμένει
+    # ανατεθειμένο σε Driver όσο βρίσκεται εκτός λειτουργίας.
+    vehicles_collection.update_one(
+        {"_id": ObjectId(vehicle_id)},
+        {
+            "$set": {
+                "status": "INACTIVE",
+                "driver_id": None,
+            }
+        },
+    )
+
+    updated_vehicle = vehicles_collection.find_one(
+        {"_id": ObjectId(vehicle_id)}
+    )
+
+    audit_changes = {
+        "status": AuditChange(
+            from_value=existing_vehicle.get("status"),
+            to_value="INACTIVE",
+        )
+    }
+
+    # Καταγράφουμε και την αφαίρεση του Driver μόνο όταν
+    # υπήρχε πραγματικά Driver πριν από το deactivation.
+    if old_driver_id is not None:
+        audit_changes["driver_id"] = AuditChange(
+            from_value=old_driver_id,
+            to_value=None,
+        )
+
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="VEHICLE",
+            entity_id=vehicle_id,
+            action="DEACTIVATED",
+            description=(
+                f"Vehicle {updated_vehicle['plate_number']} was deactivated"
+            ),
+            related_entities=AuditRelatedEntities(
+                vehicle_id=vehicle_id,
+                plate_number=updated_vehicle["plate_number"],
+                fleet_id=updated_vehicle.get("fleet_id"),
+                driver_id=updated_vehicle.get("driver_id"),
+            ),
+            changes=audit_changes,
+        )
+    )
+
+    logger.info(
+        "Deactivated vehicle: vehicle_id=%s plate_number=%s",
+        vehicle_id,
+        updated_vehicle["plate_number"],
+    )
+
+    return vehicle_document_to_response(updated_vehicle)
+
+@app.post("/vehicles/{vehicle_id}/activate", response_model=VehicleResponse)
+def activate_vehicle(vehicle_id: str):
+    """
+    Επανενεργοποιεί ένα Vehicle.
+
+    Το προηγούμενο Driver assignment δεν επαναφέρεται αυτόματα.
+    Η ανάθεση Driver αποτελεί ξεχωριστή business ενέργεια.
+
+    Η λειτουργία είναι idempotent:
+    αν το Vehicle είναι ήδη ACTIVE, επιστρέφεται χωρίς νέα αλλαγή.
+    """
+
+    if not ObjectId.is_valid(vehicle_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid vehicle id",
+        )
+
+    existing_vehicle = vehicles_collection.find_one(
+        {"_id": ObjectId(vehicle_id)}
+    )
+
+    if existing_vehicle is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Vehicle not found",
+        )
+
+    # Αν είναι ήδη ACTIVE δεν δημιουργούμε δεύτερο audit event.
+    if existing_vehicle.get("status") == "ACTIVE":
+        return vehicle_document_to_response(existing_vehicle)
+
+    vehicles_collection.update_one(
+        {"_id": ObjectId(vehicle_id)},
+        {
+            "$set": {
+                "status": "ACTIVE",
+            }
+        },
+    )
+
+    updated_vehicle = vehicles_collection.find_one(
+        {"_id": ObjectId(vehicle_id)}
+    )
+
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="VEHICLE",
+            entity_id=vehicle_id,
+            action="ACTIVATED",
+            description=(
+                f"Vehicle {updated_vehicle['plate_number']} was activated"
+            ),
+            related_entities=AuditRelatedEntities(
+                vehicle_id=vehicle_id,
+                plate_number=updated_vehicle["plate_number"],
+                fleet_id=updated_vehicle.get("fleet_id"),
+                driver_id=updated_vehicle.get("driver_id"),
+            ),
+            changes={
+                "status": AuditChange(
+                    from_value=existing_vehicle.get("status"),
+                    to_value="ACTIVE",
+                )
+            },
+        )
+    )
+
+    logger.info(
+        "Activated vehicle: vehicle_id=%s plate_number=%s",
+        vehicle_id,
+        updated_vehicle["plate_number"],
+    )
+
+    return vehicle_document_to_response(updated_vehicle)
 
 @app.post("/drivers", response_model=DriverResponse)
 def create_driver(driver: DriverCreate):
@@ -1923,7 +2105,7 @@ def create_fleet_manager(    fleet_manager: FleetManagerCreate,):
     validate_fleet_exists(fleet_manager.fleet_id)
 
     try:
-        fleet_managers_collection.insert_one(document)
+        result = fleet_managers_collection.insert_one(document)
 
     except DuplicateKeyError:
         # Ένα ταυτόχρονο request μπορεί να δημιούργησε το ίδιο
@@ -2523,7 +2705,6 @@ def delete_fleet_manager(manager_id: str):
         "message": "Fleet Manager deleted successfully",
         "manager_id": manager_id,
     }
-
 
 @app.post("/fleets", response_model=FleetResponse, status_code=201)
 def create_fleet(fleet: FleetCreate):

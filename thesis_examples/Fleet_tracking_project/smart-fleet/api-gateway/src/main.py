@@ -21,6 +21,8 @@ import jwt
 from keycloak_admin_client import KeycloakAdminClient
 from admin_driver import AdminDriverCreate, AdminDriverUpdate
 from admin_fleet_manager import AdminFleetManagerCreate, AdminFleetManagerUpdate
+from admin_vehicle import VehicleCreateRequest, VehicleUpdateRequest
+
 from fastapi import FastAPI, Request, Response, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from jwt import PyJWKClient, PyJWTError
@@ -805,6 +807,46 @@ async def get_deleted_fleet_manager_keycloak_user_id( manager_id: str,) -> str |
         )
 
         return None
+
+async def get_authenticated_fleet_manager_fleet_id( token_payload: dict,) -> str:
+    """
+    Επιστρέφει το fleet_id του authenticated Fleet Manager.
+
+    Το fleet_id δεν λαμβάνεται ποτέ από τον client.
+    Χρησιμοποιούμε το Keycloak user id από το validated JWT
+    και ζητάμε το αντίστοιχο Fleet Manager Profile από το Fleet API.
+    """
+
+    keycloak_user_id = token_payload.get("sub")
+
+    if not keycloak_user_id:
+        raise HTTPException( status_code=401, detail="Token does not contain user identifier", )
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get( f"{FLEET_API_URL}/fleet-managers/by-keycloak-user/{keycloak_user_id}"
+            )
+    except httpx.RequestError:
+        logger.exception(
+            "Could not retrieve Fleet Manager Profile: "
+            "keycloak_user_id=%s",
+            keycloak_user_id,
+        )
+        raise HTTPException( status_code=503, detail="Fleet API unavailable", )
+
+    if response.status_code == 404:
+        raise HTTPException( status_code=403, detail="Fleet Manager Profile not found", )
+
+    if response.status_code != 200:
+        raise HTTPException( status_code=503, detail="Could not retrieve Fleet Manager Profile", )
+
+    fleet_manager = response.json()
+    fleet_id = fleet_manager.get("fleet_id")
+
+    if not fleet_id:
+        raise HTTPException( status_code=409, detail="Fleet Manager is not assigned to a fleet", )
+
+    return fleet_id
 # -------------------------
 # API Endpoints
 # -------------------------
@@ -1595,7 +1637,6 @@ async def admin_update_driver( driver_id: str, driver_update: AdminDriverUpdate,
         status_code=fleet_response.status_code,
         detail=error_detail,
     )
-
 
 @app.post("/api/v1/admin/drivers/{driver_id}/activate")
 async def admin_activate_driver( driver_id: str, token_payload: dict = Depends(validate_access_token),):
@@ -2539,12 +2580,135 @@ async def admin_create_fleet_manager( fleet_manager: AdminFleetManagerCreate, to
     raise HTTPException( status_code=fleet_response.status_code,
                          detail=(fleet_response.json().get( "detail", "Could not create Fleet Manager Profile", ) ),)
 
+
+@app.post("/api/v1/admin/fleet-managers/{keycloak_user_id}/recover")
+async def recover_admin_fleet_manager( keycloak_user_id: str, fleet_manager: AdminFleetManagerCreate, token_payload: dict = Depends(validate_access_token),):
+    """
+    Ολοκληρώνει τη δημιουργία Fleet Manager Profile μετά από
+    αβέβαιη αποτυχία, χωρίς να δημιουργεί δεύτερο χρήστη
+    στο Keycloak.
+    """
+
+    role_checker(token_payload, ADMIN_ROLES)
+
+    # Επιβεβαιώνουμε ότι το συγκεκριμένο Keycloak ID αντιστοιχεί
+    # στα στοιχεία του Fleet Manager που θέλει να ανακτήσει ο Admin.
+    try:
+        existing_user = ( await keycloak_admin_client.get_user_by_username( fleet_manager.username )
+        )
+
+    except (httpx.RequestError, httpx.HTTPStatusError):
+        logger.exception(
+            "Could not verify Fleet Manager recovery identity: "
+            "username=%s",
+            fleet_manager.username,
+        )
+
+        raise HTTPException( status_code=503, detail="Could not verify Keycloak identity", )
+
+    if existing_user is None:
+        raise HTTPException( status_code=404, detail="Keycloak user not found", )
+
+    # Δεν αρκεί να υπάρχει ένας χρήστης με το συγκεκριμένο username.
+    # Επιβεβαιώνουμε ότι το ID και τα βασικά identity στοιχεία
+    # αντιστοιχούν στην αίτηση Recovery.
+    if ( existing_user.get("id") != keycloak_user_id
+        or existing_user.get("username") != fleet_manager.username
+        or (existing_user.get("email")  or "").lower() != str(fleet_manager.email).lower()
+        or existing_user.get("firstName") != fleet_manager.first_name
+        or existing_user.get("lastName") != fleet_manager.last_name
+    ):
+        raise HTTPException( status_code=409, detail=( "Keycloak identity does not match recovery request" ), )
+
+    # Το username ανήκει αποκλειστικά στο Keycloak.
+    # Το Fleet API λαμβάνει τα business δεδομένα μαζί με
+    # το ήδη υπάρχον Keycloak user ID.
+    fleet_manager_data = fleet_manager.model_dump( mode="json", exclude={"username"}, )
+
+    fleet_manager_data["keycloak_user_id"] = keycloak_user_id
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        # Πριν επιχειρήσουμε νέα δημιουργία, ελέγχουμε αν
+        # το Fleet Manager Profile υπάρχει ήδη.
+        try:
+            profile_response = await client.get( f"{FLEET_API_URL}/fleet-managers/by-keycloak-user/{keycloak_user_id}" )
+
+        except httpx.RequestError:
+            logger.exception(
+                "Could not check Fleet Manager recovery profile: "
+                "keycloak_user_id=%s",
+                keycloak_user_id,
+            )
+
+            raise HTTPException(status_code=503, detail=( "Could not check existing Fleet Manager Profile" ), )
+
+        if profile_response.status_code == 200:
+            existing_profile = profile_response.json()
+
+            # Αν το Profile υπάρχει ήδη, το Recovery είναι
+            # idempotent μόνο όταν τα αποθηκευμένα δεδομένα
+            # αντιστοιχούν στην ίδια αίτηση.
+            if any(
+                existing_profile.get(field) != value
+                for field, value in fleet_manager_data.items()
+            ):
+                raise HTTPException( status_code=409, detail=( "Existing Fleet Manager Profile has different data" ), )
+
+            logger.info(
+                "Recovered existing Fleet Manager Profile: "
+                "keycloak_user_id=%s",
+                keycloak_user_id,
+            )
+
+            return existing_profile
+
+        if profile_response.status_code != 404:
+            raise HTTPException( status_code=503, detail=( "Could not verify Fleet Manager Profile state" ),)
+
+        # Αν δεν υπάρχει Profile, χρησιμοποιούμε το ήδη υπάρχον
+        # Keycloak identity και δημιουργούμε μόνο το business Profile.
+        #
+        # Δεν δημιουργούμε δεύτερο Keycloak user.
+        try:
+            fleet_response = await client.post( f"{FLEET_API_URL}/fleet-managers", json=fleet_manager_data, )
+
+        except httpx.RequestError:
+            # Δεν γνωρίζουμε αν το Fleet API πρόλαβε να ολοκληρώσει
+            # το POST πριν παρουσιαστεί το πρόβλημα επικοινωνίας.
+            # Δεν επαναλαμβάνουμε αυτόματα τη δημιουργία.
+            logger.exception(
+                "Uncertain Fleet Manager recovery: "
+                "keycloak_user_id=%s",
+                keycloak_user_id,
+            )
+
+            raise HTTPException( status_code=503, detail=( "Recovery outcome is uncertain. " "Check the profile before retrying." ), )
+
+    if fleet_response.status_code == 200:
+        logger.info(
+            "Recovered Fleet Manager Profile: "
+            "manager_id=%s keycloak_user_id=%s",
+            fleet_manager.manager_id,
+            keycloak_user_id,
+        )
+
+        return fleet_response.json()
+
+    # Σε server error δεν μπορούμε να γνωρίζουμε με βεβαιότητα
+    # αν το Fleet API πραγματοποίησε κάποια αλλαγή.
+    if fleet_response.status_code >= 500:
+        raise HTTPException( status_code=503, detail=( "Fleet API recovery outcome is uncertain" ), )
+
+    # Σε σαφές validation/conflict error επιστρέφουμε το
+    # πραγματικό σφάλμα του Fleet API.
+    #
+    # Δεν διαγράφουμε τον Keycloak user, επειδή στο Recovery
+    # χρησιμοποιούμε identity που προϋπήρχε.
+    raise HTTPException( status_code=fleet_response.status_code,
+                         detail=fleet_response.json().get( "detail", "Could not recover Fleet Manager Profile", ), )
+
 @app.patch("/api/v1/admin/fleet-managers/{manager_id}")
-async def admin_update_fleet_manager(
-    manager_id: str,
-    fleet_manager_update: AdminFleetManagerUpdate,
-    token_payload: dict = Depends(validate_access_token),
-):
+async def admin_update_fleet_manager( manager_id: str, fleet_manager_update: AdminFleetManagerUpdate, token_payload: dict = Depends(validate_access_token),):
     """
     Ενημερώνει το Fleet Manager Profile και, όταν χρειάζεται,
     τα αντίστοιχα προσωπικά στοιχεία στο Keycloak.
@@ -2886,131 +3050,6 @@ async def admin_update_fleet_manager(
         status_code=fleet_response.status_code,
         detail=error_detail,
     )
-@app.post("/api/v1/admin/fleet-managers/{keycloak_user_id}/recover")
-async def recover_admin_fleet_manager( keycloak_user_id: str, fleet_manager: AdminFleetManagerCreate, token_payload: dict = Depends(validate_access_token),):
-    """
-    Ολοκληρώνει τη δημιουργία Fleet Manager Profile μετά από
-    αβέβαιη αποτυχία, χωρίς να δημιουργεί δεύτερο χρήστη
-    στο Keycloak.
-    """
-
-    role_checker(token_payload, ADMIN_ROLES)
-
-    # Επιβεβαιώνουμε ότι το συγκεκριμένο Keycloak ID αντιστοιχεί
-    # στα στοιχεία του Fleet Manager που θέλει να ανακτήσει ο Admin.
-    try:
-        existing_user = ( await keycloak_admin_client.get_user_by_username( fleet_manager.username )
-        )
-
-    except (httpx.RequestError, httpx.HTTPStatusError):
-        logger.exception(
-            "Could not verify Fleet Manager recovery identity: "
-            "username=%s",
-            fleet_manager.username,
-        )
-
-        raise HTTPException( status_code=503, detail="Could not verify Keycloak identity", )
-
-    if existing_user is None:
-        raise HTTPException( status_code=404, detail="Keycloak user not found", )
-
-    # Δεν αρκεί να υπάρχει ένας χρήστης με το συγκεκριμένο username.
-    # Επιβεβαιώνουμε ότι το ID και τα βασικά identity στοιχεία
-    # αντιστοιχούν στην αίτηση Recovery.
-    if ( existing_user.get("id") != keycloak_user_id
-        or existing_user.get("username") != fleet_manager.username
-        or (existing_user.get("email")  or "").lower() != str(fleet_manager.email).lower()
-        or existing_user.get("firstName") != fleet_manager.first_name
-        or existing_user.get("lastName") != fleet_manager.last_name
-    ):
-        raise HTTPException( status_code=409, detail=( "Keycloak identity does not match recovery request" ), )
-
-    # Το username ανήκει αποκλειστικά στο Keycloak.
-    # Το Fleet API λαμβάνει τα business δεδομένα μαζί με
-    # το ήδη υπάρχον Keycloak user ID.
-    fleet_manager_data = fleet_manager.model_dump( mode="json", exclude={"username"}, )
-
-    fleet_manager_data["keycloak_user_id"] = keycloak_user_id
-
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        # Πριν επιχειρήσουμε νέα δημιουργία, ελέγχουμε αν
-        # το Fleet Manager Profile υπάρχει ήδη.
-        try:
-            profile_response = await client.get( f"{FLEET_API_URL}/fleet-managers/by-keycloak-user/{keycloak_user_id}" )
-
-        except httpx.RequestError:
-            logger.exception(
-                "Could not check Fleet Manager recovery profile: "
-                "keycloak_user_id=%s",
-                keycloak_user_id,
-            )
-
-            raise HTTPException(status_code=503, detail=( "Could not check existing Fleet Manager Profile" ), )
-
-        if profile_response.status_code == 200:
-            existing_profile = profile_response.json()
-
-            # Αν το Profile υπάρχει ήδη, το Recovery είναι
-            # idempotent μόνο όταν τα αποθηκευμένα δεδομένα
-            # αντιστοιχούν στην ίδια αίτηση.
-            if any(
-                existing_profile.get(field) != value
-                for field, value in fleet_manager_data.items()
-            ):
-                raise HTTPException( status_code=409, detail=( "Existing Fleet Manager Profile has different data" ), )
-
-            logger.info(
-                "Recovered existing Fleet Manager Profile: "
-                "keycloak_user_id=%s",
-                keycloak_user_id,
-            )
-
-            return existing_profile
-
-        if profile_response.status_code != 404:
-            raise HTTPException( status_code=503, detail=( "Could not verify Fleet Manager Profile state" ),)
-
-        # Αν δεν υπάρχει Profile, χρησιμοποιούμε το ήδη υπάρχον
-        # Keycloak identity και δημιουργούμε μόνο το business Profile.
-        #
-        # Δεν δημιουργούμε δεύτερο Keycloak user.
-        try:
-            fleet_response = await client.post( f"{FLEET_API_URL}/fleet-managers", json=fleet_manager_data, )
-
-        except httpx.RequestError:
-            # Δεν γνωρίζουμε αν το Fleet API πρόλαβε να ολοκληρώσει
-            # το POST πριν παρουσιαστεί το πρόβλημα επικοινωνίας.
-            # Δεν επαναλαμβάνουμε αυτόματα τη δημιουργία.
-            logger.exception(
-                "Uncertain Fleet Manager recovery: "
-                "keycloak_user_id=%s",
-                keycloak_user_id,
-            )
-
-            raise HTTPException( status_code=503, detail=( "Recovery outcome is uncertain. " "Check the profile before retrying." ), )
-
-    if fleet_response.status_code == 200:
-        logger.info(
-            "Recovered Fleet Manager Profile: "
-            "manager_id=%s keycloak_user_id=%s",
-            fleet_manager.manager_id,
-            keycloak_user_id,
-        )
-
-        return fleet_response.json()
-
-    # Σε server error δεν μπορούμε να γνωρίζουμε με βεβαιότητα
-    # αν το Fleet API πραγματοποίησε κάποια αλλαγή.
-    if fleet_response.status_code >= 500:
-        raise HTTPException( status_code=503, detail=( "Fleet API recovery outcome is uncertain" ), )
-
-    # Σε σαφές validation/conflict error επιστρέφουμε το
-    # πραγματικό σφάλμα του Fleet API.
-    #
-    # Δεν διαγράφουμε τον Keycloak user, επειδή στο Recovery
-    # χρησιμοποιούμε identity που προϋπήρχε.
-    raise HTTPException( status_code=fleet_response.status_code,
-                         detail=fleet_response.json().get( "detail", "Could not recover Fleet Manager Profile", ), )
 
 @app.post("/api/v1/admin/fleet-managers/{manager_id}/activate")
 async def admin_activate_fleet_manager( manager_id: str, token_payload: dict = Depends(validate_access_token), ):
@@ -3541,40 +3580,360 @@ async def admin_delete_fleet_manager( manager_id: str, token_payload: dict = Dep
 
     return { "message": "Fleet Manager permanently deleted", "manager_id": manager_id, }
 
-@app.api_route( "/api/v1/vehicles", methods=["GET", "POST"],)
-async def vehicles_collection( request: Request, token_payload: dict = Depends(validate_access_token), ):
+
+@app.get("/api/v1/vehicles")
+async def list_vehicles( request: Request, token_payload: dict = Depends(validate_access_token),):
     """
-    Προωθεί requests συλλογής οχημάτων προς το Fleet API.
+    Επιστρέφει τη λίστα Vehicles.
 
-    GET:
-    - Επιστρέφει τη λίστα οχημάτων.
-
-    POST:
-    - Δημιουργεί νέο όχημα μέσω Fleet API.
-    - Το Fleet API παραμένει owner της MongoDB και των vehicle events.
+    Η διαχείριση Vehicles επιτρέπεται σε Admin και Fleet Manager.
     """
-    role_checker( token_payload, VEHICLE_MANAGEMENT_ROLES,)
 
-    logger.info("========= Decoded JWT payload %s ============\n", token_payload)
+    role_checker( token_payload, VEHICLE_MANAGEMENT_ROLES, )
 
     target_url = f"{FLEET_API_URL}/vehicles"
 
     return await proxy_request(request, target_url)
 
-@app.api_route( "/api/v1/vehicles/{vehicle_id}", methods=["GET", "PUT", "PATCH", "DELETE"], )
-async def vehicle_item(request: Request, vehicle_id: str, token_payload: dict = Depends(validate_access_token), ):
-    """
-    Προωθεί requests συγκεκριμένου οχήματος προς το Fleet API.
 
-    Το route μένει generic ώστε να μπορεί να υποστηρίξει και μελλοντικά
-    PUT/PATCH/DELETE όταν προστεθούν στο Fleet API.
+@app.post("/api/v1/vehicles")
+async def create_vehicle( request: Request,vehicle: VehicleCreateRequest, token_payload: dict = Depends(validate_access_token),):
+    """
+    Δημιουργεί νέο Vehicle.
+
+    Admin:
+    - μπορεί να δημιουργήσει Vehicle σε οποιοδήποτε Fleet.
+
+    Fleet Manager:
+    - μπορεί να δημιουργήσει Vehicle μόνο στο Fleet που διαχειρίζεται.
     """
 
-    role_checker( token_payload, VEHICLE_MANAGEMENT_ROLES,)
+    role_checker( token_payload, VEHICLE_MANAGEMENT_ROLES, )
+
+    # Μετατρέπουμε το validated Pydantic model σε dictionary.
+    # Το ίδιο dictionary χρησιμοποιείται τόσο για τους authorization
+    # ελέγχους όσο και για την αποστολή στο Fleet API.
+    vehicle_data = vehicle.model_dump()
+
+    user_roles = token_payload.get( "realm_access", {}, ).get("roles", [])
+
+    # Ο Admin δεν περιορίζεται σε συγκεκριμένο Fleet.
+    if "admin" in user_roles:
+        target_url = f"{FLEET_API_URL}/vehicles"
+        return await proxy_request(request, target_url)
+
+    # Από εδώ και κάτω ο χρήστης είναι Fleet Manager.
+    manager_fleet_id = ( await get_authenticated_fleet_manager_fleet_id( token_payload ) )
+
+
+    requested_fleet_id = vehicle_data.get("fleet_id")
+    requested_driver_id = vehicle_data.get("driver_id")
+
+    # Αν ο Fleet Manager δηλώσει συγκεκριμένο Fleet,
+    # πρέπει υποχρεωτικά να είναι το Fleet που διαχειρίζεται.
+    if ( requested_fleet_id is not None and requested_fleet_id != manager_fleet_id ):
+        raise HTTPException( status_code=403, detail=( "Fleet Manager can create vehicles only in their own fleet"), )
+
+    # Αν δεν υπάρχει Driver, συμπληρώνουμε εμείς το πραγματικό
+    # fleet_id του Fleet Manager. Δεν βασιζόμαστε στον client.
+    if requested_driver_id is None:
+        vehicle_data["fleet_id"] = manager_fleet_id
+
+    # Αν υπάρχει Driver, το Fleet API θα ελέγξει ότι ο Driver
+    # υπάρχει και θα ορίσει το fleet_id από το Driver Profile.
+    # Μετά όμως πρέπει να είναι πάλι το Fleet του συγκεκριμένου Manager.
+    else:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                drivers_response = await client.get(
+                    f"{FLEET_API_URL}/drivers"
+                )
+        except httpx.RequestError:
+            raise HTTPException(
+                status_code=503,
+                detail="Fleet API unavailable",
+            )
+
+        if drivers_response.status_code != 200:
+            raise HTTPException(
+                status_code=503,
+                detail="Could not retrieve Driver Profile",
+            )
+
+        driver = next(
+            (
+                item
+                for item in drivers_response.json()
+                if item.get("driver_id") == requested_driver_id
+            ),
+            None,
+        )
+
+        if driver is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Driver not found",
+            )
+
+        if driver.get("fleet_id") != manager_fleet_id:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Fleet Manager can assign only drivers "
+                    "from their own fleet"
+                ),
+            )
+
+        vehicle_data["fleet_id"] = manager_fleet_id
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                f"{FLEET_API_URL}/vehicles",
+                json=vehicle_data,
+            )
+    except httpx.RequestError:
+        raise HTTPException(
+            status_code=503,
+            detail="Fleet API unavailable",
+        )
+
+    return Response(
+        content=response.content,
+        status_code=response.status_code,
+        media_type=response.headers.get(
+            "content-type",
+            "application/json",
+        ),
+    )
+
+
+@app.get("/api/v1/vehicles/{vehicle_id}")
+async def get_vehicle( request: Request, vehicle_id: str, token_payload: dict = Depends(validate_access_token),):
+    """
+    Επιστρέφει συγκεκριμένο Vehicle.
+    """
+
+    role_checker( token_payload, VEHICLE_MANAGEMENT_ROLES, )
 
     target_url = f"{FLEET_API_URL}/vehicles/{vehicle_id}"
 
     return await proxy_request(request, target_url)
+
+
+@app.patch("/api/v1/vehicles/{vehicle_id}")
+async def update_vehicle( request: Request, vehicle_id: str,vehicle_update: VehicleUpdateRequest, token_payload: dict = Depends(validate_access_token),):
+    """
+    Ενημερώνει Vehicle.
+
+    Admin:
+    - μπορεί να ενημερώσει οποιοδήποτε Vehicle.
+
+    Fleet Manager:
+    - μπορεί να ενημερώσει μόνο Vehicle του δικού του Fleet,
+    - δεν μπορεί να μεταφέρει Vehicle σε διαφορετικό Fleet,
+    - δεν μπορεί να αναθέσει Driver άλλου Fleet.
+    """
+
+    role_checker( token_payload, VEHICLE_MANAGEMENT_ROLES, )
+    # Κρατάμε μόνο τα πεδία που έστειλε πραγματικά ο client.
+    # Αυτό είναι απαραίτητο για PATCH ώστε ένα πεδίο που δεν στάλθηκε
+    # να μην αντιμετωπιστεί σαν να ζητήθηκε να γίνει null.
+    update_data = vehicle_update.model_dump(exclude_unset=True)
+
+    user_roles = token_payload.get( "realm_access", {}, ).get("roles", [])
+
+    # Ο Admin προωθεί κανονικά το PATCH στο Fleet API.
+    if "admin" in user_roles:
+        target_url = f"{FLEET_API_URL}/vehicles/{vehicle_id}"
+        return await proxy_request(request, target_url)
+
+    manager_fleet_id = ( await get_authenticated_fleet_manager_fleet_id( token_payload ) )
+
+    # Πρώτα ελέγχουμε σε ποιο Fleet ανήκει πραγματικά
+    # το Vehicle που επιχειρεί να αλλάξει ο Fleet Manager.
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            vehicle_response = await client.get( f"{FLEET_API_URL}/vehicles/{vehicle_id}" )
+    except httpx.RequestError:
+        raise HTTPException( status_code=503, detail="Fleet API unavailable", )
+
+    if vehicle_response.status_code == 404:
+        raise HTTPException( status_code=404, detail="Vehicle not found", )
+
+    if vehicle_response.status_code != 200:
+        raise HTTPException( status_code=vehicle_response.status_code, detail="Could not retrieve Vehicle", )
+
+    existing_vehicle = vehicle_response.json()
+
+    if existing_vehicle.get("fleet_id") != manager_fleet_id:
+        raise HTTPException( status_code=403, detail=( "Fleet Manager can manage vehicles only in their own fleet" ), )
+
+    # Ο Fleet Manager δεν μπορεί να μεταφέρει το Vehicle
+    # έξω από το Fleet που διαχειρίζεται.
+    if ( "fleet_id" in update_data and update_data["fleet_id"] != manager_fleet_id ):
+        raise HTTPException( status_code=403, detail=( "Fleet Manager cannot move a vehicle to another fleet" ), )
+
+    requested_driver_id = update_data.get("driver_id")
+
+    # driver_id=None σημαίνει unassign και επιτρέπεται.
+    if ( "driver_id" in update_data and requested_driver_id is not None ):
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                drivers_response = await client.get( f"{FLEET_API_URL}/drivers" )
+        except httpx.RequestError:
+            raise HTTPException( status_code=503, detail="Fleet API unavailable", )
+
+        if drivers_response.status_code != 200:
+            raise HTTPException( status_code=503, detail="Could not retrieve Driver Profile", )
+
+        driver = next(
+            (
+                item
+                for item in drivers_response.json()
+                if item.get("driver_id") == requested_driver_id ),
+            None,
+        )
+
+        if driver is None:
+            raise HTTPException( status_code=404, detail="Driver not found", )
+
+        if driver.get("fleet_id") != manager_fleet_id:
+            raise HTTPException( status_code=403, detail=( "Fleet Manager can assign only drivers from their own fleet" ), )
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.patch( f"{FLEET_API_URL}/vehicles/{vehicle_id}", json=update_data, )
+    except httpx.RequestError:
+        raise HTTPException( status_code=503, detail="Fleet API unavailable", )
+
+    return Response( content=response.content, status_code=response.status_code, media_type=response.headers.get( "content-type", "application/json", ), )
+
+@app.post("/api/v1/vehicles/{vehicle_id}/activate")
+async def activate_vehicle( request: Request, vehicle_id: str, token_payload: dict = Depends(validate_access_token),):
+    """
+    Ενεργοποιεί Vehicle.
+
+    Admin:
+    - οποιοδήποτε Vehicle.
+
+    Fleet Manager:
+    - μόνο Vehicle του Fleet που διαχειρίζεται.
+    """
+
+    role_checker( token_payload, VEHICLE_MANAGEMENT_ROLES, )
+
+    user_roles = token_payload.get( "realm_access", {}, ).get("roles", [])
+
+    if "admin" not in user_roles:
+        manager_fleet_id = ( await get_authenticated_fleet_manager_fleet_id( token_payload ) )
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                vehicle_response = await client.get( f"{FLEET_API_URL}/vehicles/{vehicle_id}" )
+        except httpx.RequestError:
+            raise HTTPException( status_code=503, detail="Fleet API unavailable", )
+
+        if vehicle_response.status_code == 404:
+            raise HTTPException( status_code=404, detail="Vehicle not found", )
+
+        if vehicle_response.status_code != 200:
+            raise HTTPException( status_code=vehicle_response.status_code, detail="Could not retrieve Vehicle", )
+
+        if ( vehicle_response.json().get("fleet_id") != manager_fleet_id ):
+            raise HTTPException( status_code=403, detail=( "Fleet Manager can manage vehicles only in their own fleet" ), )
+
+    target_url = ( f"{FLEET_API_URL}/vehicles/{vehicle_id}/activate" )
+
+    return await proxy_request(request, target_url)
+
+@app.post("/api/v1/vehicles/{vehicle_id}/deactivate")
+async def deactivate_vehicle( request: Request, vehicle_id: str, token_payload: dict = Depends(validate_access_token),):
+    """
+    Απενεργοποιεί Vehicle.
+
+    Admin:
+    - οποιοδήποτε Vehicle.
+
+    Fleet Manager:
+    - μόνο Vehicle του Fleet που διαχειρίζεται.
+    """
+
+    role_checker( token_payload, VEHICLE_MANAGEMENT_ROLES, )
+
+    user_roles = token_payload.get( "realm_access", {}, ).get("roles", [])
+
+    if "admin" not in user_roles:
+        manager_fleet_id = ( await get_authenticated_fleet_manager_fleet_id( token_payload ) )
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                vehicle_response = await client.get( f"{FLEET_API_URL}/vehicles/{vehicle_id}" )
+        except httpx.RequestError:
+            raise HTTPException( status_code=503,detail="Fleet API unavailable", )
+
+        if vehicle_response.status_code == 404:
+            raise HTTPException( status_code=404, detail="Vehicle not found", )
+
+        if vehicle_response.status_code != 200:
+            raise HTTPException( status_code=vehicle_response.status_code, detail="Could not retrieve Vehicle", )
+
+        if ( vehicle_response.json().get("fleet_id") != manager_fleet_id ):
+            raise HTTPException( status_code=403, detail=( "Fleet Manager can manage vehicles only in their own fleet" ), )
+
+    target_url = ( f"{FLEET_API_URL}/vehicles/{vehicle_id}/deactivate" )
+
+    return await proxy_request(request, target_url)
+
+@app.delete("/api/v1/vehicles/{vehicle_id}")
+async def delete_vehicle( request: Request, vehicle_id: str, token_payload: dict = Depends(validate_access_token),):
+    """
+    Εκτελεί permanent Hard Delete ενός Vehicle.
+
+    Μόνο ο Admin επιτρέπεται να εκτελέσει αυτή την ενέργεια.
+    Το Fleet API ελέγχει επιπλέον ότι το Vehicle είναι INACTIVE.
+    """
+
+    role_checker( token_payload, ADMIN_ROLES, )
+
+    target_url = f"{FLEET_API_URL}/vehicles/{vehicle_id}"
+
+    return await proxy_request(request, target_url)
+
+# @app.api_route( "/api/v1/vehicles", methods=["GET", "POST"],)
+# async def vehicles_collection( request: Request, token_payload: dict = Depends(validate_access_token), ):
+#     """
+#     Προωθεί requests συλλογής οχημάτων προς το Fleet API.
+#
+#     GET:
+#     - Επιστρέφει τη λίστα οχημάτων.
+#
+#     POST:
+#     - Δημιουργεί νέο όχημα μέσω Fleet API.
+#     - Το Fleet API παραμένει owner της MongoDB και των vehicle events.
+#     """
+#     role_checker( token_payload, VEHICLE_MANAGEMENT_ROLES,)
+#
+#     logger.info("========= Decoded JWT payload %s ============\n", token_payload)
+#
+#     target_url = f"{FLEET_API_URL}/vehicles"
+#
+#     return await proxy_request(request, target_url)
+#
+# @app.api_route( "/api/v1/vehicles/{vehicle_id}", methods=["GET", "PUT", "PATCH", "DELETE"], )
+# async def vehicle_item(request: Request, vehicle_id: str, token_payload: dict = Depends(validate_access_token), ):
+#     """
+#     Προωθεί requests συγκεκριμένου οχήματος προς το Fleet API.
+#
+#     Το route μένει generic ώστε να μπορεί να υποστηρίξει και μελλοντικά
+#     PUT/PATCH/DELETE όταν προστεθούν στο Fleet API.
+#     """
+#
+#     role_checker( token_payload, VEHICLE_MANAGEMENT_ROLES,)
+#
+#     target_url = f"{FLEET_API_URL}/vehicles/{vehicle_id}"
+#
+#     return await proxy_request(request, target_url)
 
 @app.api_route( "/api/v1/vehicles/{imei}/latest-position", methods=["GET"], )
 async def get_vehicle_latest_position(request: Request, imei: str, token_payload: dict = Depends(validate_access_token), ):

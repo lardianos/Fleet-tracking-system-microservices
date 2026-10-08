@@ -21,7 +21,7 @@ import time
 
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from pymongo import MongoClient
 from bson import ObjectId
 from datetime import date
@@ -370,7 +370,7 @@ class FleetCreate(BaseModel):
 
     # Επιτρέπει να απενεργοποιούμε ένα fleet χωρίς να διαγράφουμε
     # το ιστορικό ή τις υπάρχουσες συσχετίσεις του.
-    status: str = "ACTIVE"
+    #status: str = "ACTIVE"
 
 class FleetUpdate(BaseModel):
     """
@@ -380,12 +380,13 @@ class FleetUpdate(BaseModel):
     το Fleet API πρέπει να ενημερώσει με ασφαλή τρόπο όλες τις
     σχετικές business οντότητες που χρησιμοποιούν το παλιό fleet_id.
     """
+    model_config = ConfigDict(extra="forbid")
 
     fleet_id: str | None = None
     name: str | None = None
     description: str | None = None
     base_location: BaseLocation | None = None
-    status: str | None = None
+    #status: str | None = None
 
 class FleetResponse(FleetCreate):
     """
@@ -542,7 +543,7 @@ def fleet_document_to_response(document: dict) -> FleetResponse:
         name=document["name"],
         description=document.get("description"),
         base_location=document["base_location"],
-        status=document["status"],
+        #status=document["status"],
         created_at=document["created_at"],
         updated_at=document["updated_at"],
     )
@@ -2826,173 +2827,66 @@ def get_fleet(fleet_id: str):
 @app.patch("/fleets/{fleet_id}", response_model=FleetResponse)
 def update_fleet(fleet_id: str, fleet_update: FleetUpdate):
     """
-    Ενημερώνει τα στοιχεία ενός υπάρχοντος fleet.
+    Ενημερώνει τα περιγραφικά στοιχεία ενός υπάρχοντος Fleet.
 
-    Αν αλλάξει το business identifier fleet_id, το Fleet API ενημερώνει
-    και όλες τις business οντότητες που ανήκουν στο συγκεκριμένο fleet.
-
-    Η συγκεκριμένη συσχέτιση βρίσκεται εξ ολοκλήρου μέσα στο Fleet API,
-    επειδή τα fleets, fleet managers, drivers και vehicles αποτελούν
-    business δεδομένα που ανήκουν στο ίδιο service.
+    Το fleet_id παραμένει αμετάβλητο και δεν ενημερώνουμε
+    τις συσχετίσεις με Fleet Managers, Drivers ή Vehicles.
     """
 
-    # Βρίσκουμε πρώτα το υπάρχον fleet ώστε να γνωρίζουμε
-    # ότι το fleet_id του URL αντιστοιχεί σε πραγματικό fleet.
-    existing_fleet = fleets_collection.find_one({
-        "fleet_id": fleet_id
-    })
+    # Επιβεβαιώνουμε ότι το Fleet υπάρχει.
+    existing_fleet = fleets_collection.find_one({ "fleet_id": fleet_id })
 
     if existing_fleet is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Fleet not found",
-        )
+        raise HTTPException( status_code=404, detail="Fleet not found", )
 
-    # Κρατάμε μόνο τα πεδία που έστειλε πραγματικά ο client.
-    # Έτσι το PATCH μπορεί να αλλάξει ένα μόνο πεδίο χωρίς
-    # να αντικαταστήσει τα υπόλοιπα με None.
+    # Κρατάμε μόνο τα πεδία που έστειλε ο client.
     update_data = fleet_update.model_dump( mode="json", exclude_unset=True, )
 
-    # Αν ο client δεν έστειλε κανένα πεδίο προς ενημέρωση,
-    # δεν υπάρχει πραγματική ενέργεια PATCH που μπορούμε να εκτελέσουμε.
     if not update_data:
-        raise HTTPException(
-            status_code=400,
-            detail="No update data provided",
-        )
+        raise HTTPException( status_code=400, detail="No update data provided", )
 
-    new_fleet_id = update_data.get("fleet_id")
-
-    # Αν ζητείται πραγματική αλλαγή του fleet_id,
-    # πρέπει πρώτα να βεβαιωθούμε ότι το νέο business ID
-    # δεν χρησιμοποιείται ήδη από άλλο fleet.
-    if new_fleet_id and new_fleet_id != fleet_id:
-        fleet_with_new_id = fleets_collection.find_one({
-            "fleet_id": new_fleet_id
-        })
-
-        if fleet_with_new_id is not None:
-            raise HTTPException(
-                status_code=409,
-                detail="Fleet with this fleet_id already exists",
-            )
-
-        # Ενημερώνουμε τα references στις υπόλοιπες business
-        # οντότητες που ανήκουν στο συγκεκριμένο fleet.
-        fleet_managers_result = fleet_managers_collection.update_many(
-            {"fleet_id": fleet_id},
-            {"$set": {"fleet_id": new_fleet_id}},
-        )
-
-        drivers_result = drivers_collection.update_many(
-            {"fleet_id": fleet_id},
-            {"$set": {"fleet_id": new_fleet_id}},
-        )
-
-        vehicles_result = vehicles_collection.update_many(
-            {"fleet_id": fleet_id},
-            {"$set": {"fleet_id": new_fleet_id}},
-        )
-
-        logger.info(
-            (
-                "Updated fleet references: old_fleet_id=%s "
-                "new_fleet_id=%s fleet_managers=%s drivers=%s vehicles=%s"
-            ),
-            fleet_id,
-            new_fleet_id,
-            fleet_managers_result.modified_count,
-            drivers_result.modified_count,
-            vehicles_result.modified_count,
-        )
-
-    # Κάθε αλλαγή στο fleet ενημερώνει το updated_at.
-    update_data["updated_at"] = datetime.now(timezone.utc)
-
-    fleets_collection.update_one(
-        {"_id": existing_fleet["_id"]},
-        {"$set": update_data},
-    )
-
-    # Χρησιμοποιούμε το νέο fleet_id αν άλλαξε.
-    # Διαφορετικά συνεχίζουμε με το υπάρχον.
-    effective_fleet_id = new_fleet_id or fleet_id
-
-    updated_fleet = fleets_collection.find_one({
-        "fleet_id": effective_fleet_id
-    })
-
-    if updated_fleet is None:
-        raise HTTPException(
-            status_code=500,
-            detail="Fleet was updated but could not be retrieved",
-        )
-
-    # Δημιουργούμε audit changes μόνο για τα business πεδία
-    # που άλλαξαν πραγματικά μετά το PATCH.
-    #
-    # Δεν χρησιμοποιούμε το updated_at για να αποφασίσουμε αν υπάρχει
-    # business αλλαγή, επειδή είναι τεχνικό timestamp που ενημερώνεται
-    # από το backend και όχι πεδίο που άλλαξε ο χρήστης.
+    # Εντοπίζουμε τις πραγματικές business αλλαγές.
+    # Δεν δημιουργούμε audit για τιμές που παραμένουν ίδιες.
     audit_changes = {}
 
-    for field_name in fleet_update.model_dump(
-            mode="json",
-            exclude_unset=True,
-    ):
+    for field_name, new_value in update_data.items():
         old_value = existing_fleet.get(field_name)
-        new_value = updated_fleet.get(field_name)
 
         if old_value != new_value:
-            audit_changes[field_name] = AuditChange(
-                from_value=old_value,
-                to_value=new_value,
-            )
+            audit_changes[field_name] = AuditChange( from_value=old_value, to_value=new_value, )
 
-    # Αν άλλαξε το business identifier του Fleet, χρησιμοποιούμε
-    # ξεχωριστό action ώστε το audit history να δείχνει καθαρά
-    # ότι πρόκειται για αλλαγή του fleet_id και όχι για απλό update.
-    #
-    # Τα references σε Fleet Managers, Drivers και Vehicles έχουν ήδη
-    # ενημερωθεί από το υπάρχον cascade παραπάνω.
-    if (
-            "fleet_id" in audit_changes
-            and existing_fleet["fleet_id"] != updated_fleet["fleet_id"]
-    ):
-        audit_action = "ID_CHANGED"
-        audit_description = (
-            f"Fleet ID changed from {existing_fleet['fleet_id']} "
-            f"to {updated_fleet['fleet_id']}"
-        )
+    # Αν δεν υπάρχουν πραγματικές αλλαγές, επιστρέφουμε
+    # το υπάρχον Fleet χωρίς εγγραφή στη βάση ή στο audit.
+    if not audit_changes:
+        return fleet_document_to_response(existing_fleet)
 
-    else:
-        audit_action = "UPDATED"
-        audit_description = (
-            f"Fleet {updated_fleet['fleet_id']} was updated"
-        )
+    # Ενημερώνουμε τα επιτρεπόμενα πεδία και το timestamp.
+    update_data["updated_at"] = datetime.now(timezone.utc)
 
-    # Όπως και στα Vehicle, Driver και Fleet Manager,
-    # audit δημιουργείται μόνο όταν υπάρχει πραγματική business αλλαγή.
-    #
-    # PATCH με την ίδια ακριβώς τιμή δεν δημιουργεί άχρηστη
-    # εγγραφή UPDATED στο ιστορικό.
-    if audit_changes:
-        create_audit_log(
-            AuditLogCreate(
-                entity_type="FLEET",
-                entity_id=updated_fleet["fleet_id"],
-                action=audit_action,
-                description=audit_description,
-                related_entities=AuditRelatedEntities(
-                    fleet_id=updated_fleet["fleet_id"],
-                ),
-                changes=audit_changes,
-            )
+    fleets_collection.update_one( {"_id": existing_fleet["_id"]}, {"$set": update_data}, )
+
+    updated_fleet = fleets_collection.find_one({ "_id": existing_fleet["_id"] })
+
+    if updated_fleet is None:
+        raise HTTPException( status_code=500, detail="Fleet was updated but could not be retrieved", )
+
+    # Καταγράφουμε μόνο την πραγματική τροποποίηση.
+    create_audit_log(
+        AuditLogCreate(
+            entity_type="FLEET",
+            entity_id=fleet_id,
+            action="UPDATED",
+            description=f"Fleet {fleet_id} was updated",
+            related_entities=AuditRelatedEntities(
+                fleet_id=fleet_id,
+            ),
+            changes=audit_changes,
         )
+    )
 
     logger.info(
         "Updated fleet: fleet_id=%s",
-        effective_fleet_id,
+        fleet_id,
     )
 
     return fleet_document_to_response(updated_fleet)

@@ -13,6 +13,7 @@ import MyVehicle from "./components/MyVehicle";
 import FleetManagerProfile from "./components/FleetManagerProfile";
 import FleetVehicles from "./components/FleetVehicles";
 import FleetDrivers from "./components/FleetDrivers";
+import AdminDashboard from "./components/AdminDashboard";
 
 function App() {
 
@@ -212,23 +213,23 @@ useEffect(() => {
 useEffect(() => {
   async function loadFleetData() {
     try {
-      const [vehiclesResponse, driversResponse] = await Promise.all([
-        fetch(
-          "http://localhost:8004/api/v1/fleet-managers/me/vehicles",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        ),
-        fetch(
-          "http://localhost:8004/api/v1/fleet-managers/me/drivers",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        ),
+        const [vehiclesResponse, driversResponse] = await Promise.all([
+            fetch(
+                "http://localhost:8004/api/v1/fleet-managers/me/vehicles",
+                {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+                }
+            ),
+            fetch(
+              "http://localhost:8004/api/v1/fleet-managers/me/drivers",
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            ),
       ]);
 
       if (!vehiclesResponse.ok) {
@@ -261,22 +262,22 @@ useEffect(() => {
 
   return (
     <div className="app">
-      <header className="app-header">
-          <div>
-              <h1>Smart Fleet Tracking</h1>
-              <p>Logged in as: {username}</p>
-          </div>
+        <header className="app-header">
+            <div>
+                <h1>Smart Fleet Tracking</h1>
+                <p>Logged in as: {username}</p>
+            </div>
 
-          <button onClick={logout}>
-              Logout
-          </button>
-      </header>
+            <button onClick={logout}>
+                Logout
+            </button>
+        </header>
 
-      <main className="app-content">
-          <section>
-              <h2>User access</h2>
-              <p>Roles: {roles.join(", ")}</p>
-          </section>
+        <main className="app-content">
+            <section>
+                <h2>User access</h2>
+                <p>Roles: {roles.join(", ")}</p>
+            </section>
 
           {hasRole("driver") && (
               <section>
@@ -300,27 +301,24 @@ useEffect(() => {
               </section>
           )}
          {hasRole("fleet_manager") && (
-  <section>
-    <h2>Fleet Manager Dashboard</h2>
+            <section>
+                <h2>Fleet Manager Dashboard</h2>
 
-    {error && <p>{error}</p>}
+                {error && <p>{error}</p>}
 
-    {fleetManagerProfile && (
-      <FleetManagerProfile profile={fleetManagerProfile} />
-    )}
+                {fleetManagerProfile && (
+                  <FleetManagerProfile profile={fleetManagerProfile} />
+                )}
 
-    <FleetVehicles vehicles={fleetVehicles} />
+                <FleetVehicles vehicles={fleetVehicles} />
 
-    <FleetDrivers drivers={fleetDrivers} />
-  </section>
-)}
-          {hasRole("admin") && (
-              <section>
-                <h2>Admin Dashboard</h2>
-                <p>Administration functionality will be displayed here.</p>
-              </section>
-          )}
-      </main>
+                <FleetDrivers drivers={fleetDrivers} />
+            </section>
+        )}
+        {hasRole("admin") && (
+            <AdminDashboard />
+        )}
+        </main>
     </div>
   );
 }

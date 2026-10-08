@@ -2397,6 +2397,24 @@ async def admin_delete_driver( driver_id: str, token_payload: dict = Depends(val
         "driver_id": driver_id,
     }
 
+@app.get("/api/v1/admin/fleet-managers")
+async def admin_get_all_fleet_managers( request: Request, token_payload: dict = Depends(validate_access_token),):
+    """
+    Επιστρέφει όλα τα Fleet Manager Profiles στον Admin.
+
+    Το API Gateway ελέγχει τα δικαιώματα και προωθεί
+    το αίτημα στο Fleet API, το οποίο διαχειρίζεται
+    τα business δεδομένα στη MongoDB.
+    """
+
+    # Μόνο χρήστες με ρόλο Admin έχουν πρόσβαση.
+    role_checker(token_payload, ADMIN_ROLES)
+
+    # Χρησιμοποιούμε τον υπάρχοντα μηχανισμό proxy.
+    target_url = f"{FLEET_API_URL}/fleet-managers"
+
+    return await proxy_request(request, target_url)
+
 @app.post("/api/v1/admin/fleet-managers", status_code=201)
 async def admin_create_fleet_manager( fleet_manager: AdminFleetManagerCreate, token_payload: dict = Depends(validate_access_token),):
     """
@@ -2578,7 +2596,6 @@ async def admin_create_fleet_manager( fleet_manager: AdminFleetManagerCreate, to
     # error που επέστρεψε το Fleet API.
     raise HTTPException( status_code=fleet_response.status_code,
                          detail=(fleet_response.json().get( "detail", "Could not create Fleet Manager Profile", ) ),)
-
 
 @app.post("/api/v1/admin/fleet-managers/{keycloak_user_id}/recover")
 async def recover_admin_fleet_manager( keycloak_user_id: str, fleet_manager: AdminFleetManagerCreate, token_payload: dict = Depends(validate_access_token),):
@@ -3995,6 +4012,7 @@ async def get_driver_profile(request: Request,token_payload: dict = Depends(vali
     )
 
     return await proxy_request(request, target_url)
+
 
 @app.get("/api/v1/fleet-managers/me")
 async def get_fleet_manager_profile( request: Request, token_payload: dict = Depends(validate_access_token), ):

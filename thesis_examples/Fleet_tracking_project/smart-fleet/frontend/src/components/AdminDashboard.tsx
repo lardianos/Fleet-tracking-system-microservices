@@ -351,6 +351,9 @@ function AdminDashboard() {
     const [deleteVehicleSuccess, setDeleteVehicleSuccess] = useState("");
     const [vehiclesRefreshNumber, setVehiclesRefreshNumber] = useState(0);
 
+        // Αποτρέπουμε παράλληλες αλλαγές στα Vehicles από το Dashboard.
+    const isVehicleActionRunning = isUpdatingVehicle || deactivatingVehicleId !== null || activatingVehicleId !== null || deletingVehicleId !== null;
+
     useEffect(() => {
         // Δεν ζητάμε δεδομένα αν ο χρήστης δεν είναι Admin
         // ή αν δεν υπάρχει διαθέσιμο access token.
@@ -801,7 +804,7 @@ function AdminDashboard() {
                         <td>
                             <button type="button" onClick={()=>fleetDetails(fleet)} disabled={deletingFleetId !== null}>view</button>
                             <button type="button" onClick={() => startEditingFleet(fleet)} disabled={deletingFleetId !== null}> Edit </button>
-                            <button type="button" onClick={() => deleteFleet(fleet)} disabled={deletingFleetId !== null}>
+                            <button style={{background:"red"}} type="button" onClick={() => deleteFleet(fleet)} disabled={deletingFleetId !== null}>
                                 {deletingFleetId === fleet.fleet_id ? "Deleting..." : "Delete"} </button>
 
                         </td>
@@ -1102,7 +1105,7 @@ function AdminDashboard() {
                 last_name: fleetManagerForm.last_name.trim(),
                 email: fleetManagerForm.email.trim(),
                 fleet_id: fleetManagerForm.fleet_id,
-                department_id: fleetManagerForm.department_id.trim() || null,
+                // department_id: fleetManagerForm.department_id.trim() || null,
                 date_of_birth: fleetManagerForm.date_of_birth || null,
                 identity_card_number:
                     fleetManagerForm.identity_card_number.trim() || null,
@@ -1437,7 +1440,7 @@ function AdminDashboard() {
                                         <th>Email</th>
                                         <th>Fleet</th>
                                         <th>Status</th>
-                                        <th>Actions</th>
+                                        <th colSpan={4}>Actions</th>
                                     </tr>
                                 </thead>
 
@@ -1458,15 +1461,15 @@ function AdminDashboard() {
                                             </td>
                                             <td>
                                                 {manager.status === "ACTIVE" &&
-                                                    (<button type="button" onClick={() => deactivateFleetManager(manager)} disabled={deactivatingManagerId !== null}>
+                                                    (<button style={{background:"white",color:"red"}}type="button" onClick={() => deactivateFleetManager(manager)} disabled={deactivatingManagerId !== null}>
                                                         {deactivatingManagerId === manager.manager_id ? "Deactivating..." : "Deactivate"} </button>)}
                                                 {manager.status === "INACTIVE" &&
-                                                    (<button type="button" onClick={() => activateFleetManager(manager)} disabled={activatingManagerId !== null}>
+                                                    (<button style={{background:"green"}}type="button" onClick={() => activateFleetManager(manager)} disabled={activatingManagerId !== null}>
                                                         {activatingManagerId === manager.manager_id ? "Activating..." : "Activate"} </button>)}
                                             </td>
                                             <td>
                                                 {manager.status === "INACTIVE" && (
-                                                    <button type="button" onClick={() => deleteFleetManager(manager)} disabled={deletingManagerId !== null}>
+                                                    <button style={{background:"red"}}type="button" onClick={() => deleteFleetManager(manager)} disabled={deletingManagerId !== null}>
                                                         {deletingManagerId === manager.manager_id ? "Deleting..." : "Delete"} </button>
                                                 )}
                                             </td>
@@ -1572,7 +1575,7 @@ function AdminDashboard() {
         if (activateManagerError) return <p role="alert">{activateManagerError}</p>;
         if (deactivateManagerSuccess) return <p role="status">{deactivateManagerSuccess}</p>;
         if (deactivateManagerError) return <p role="alert">{deactivateManagerError}</p>;
-        if (deleteManagerSuccess) return <p role="alert">{deleteManagerSuccess}</p>;
+        if (deleteManagerSuccess) return <p role="status">{deleteManagerSuccess}</p>;
         if (deleteManagerError) return <p role="alert">{deleteManagerError}</p>;
         return null;
     }
@@ -1584,7 +1587,7 @@ function AdminDashboard() {
         if (deactivateDriverSuccess) return <p role="status">{deactivateDriverSuccess}</p>;
         if (deactivateDriverError) return <p role="alert">{deactivateDriverError}</p>;
         if (deleteDriverError) return <p role="alert">{deleteDriverError}</p>;
-        if (deleteDriverSuccess) return <p role="alert">{deleteDriverSuccess}</p>;
+        if (deleteDriverSuccess) return <p role="status">{deleteDriverSuccess}</p>;
         return null;
     }
     async function createDriver(event: React.FormEvent<HTMLFormElement>) {
@@ -1617,7 +1620,7 @@ function AdminDashboard() {
                     driverForm.license_expiry_date || null,
                 hire_date: driverForm.hire_date || null,
                 fleet_id: driverForm.fleet_id.trim() || null,
-                department_id: driverForm.department_id.trim() || null,
+                // department_id: driverForm.department_id.trim() || null,
             };
 
             // Το API Gateway αναλαμβάνει τη δημιουργία της
@@ -1713,7 +1716,7 @@ function AdminDashboard() {
                         {/*<th>Email</th>*/}
                         <th>Fleet</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th colSpan={5}>Actions</th>
                     </tr>
                 </thead>
 
@@ -1732,24 +1735,21 @@ function AdminDashboard() {
                                 <button type="button" onClick={() => startEditingDriver(driver)} disabled={isUpdatingDriver}> Edit </button>
                             </td>
                             <td>
+                                <button type="button" onClick={() => setSelectedDriverId(driver.driver_id)} disabled={isLoadingDriverVehicles}> Vehicles </button>
+                            </td>
+                            <td>
 
                                 {driver.status === "ACTIVE" &&
-                                    (<button type="button" onClick={() => deactivateDriver(driver)} disabled={deactivatingDriverId !== null}>
+                                    (<button style={{background:"white", color:"red"}}type="button" onClick={() => deactivateDriver(driver)} disabled={deactivatingDriverId !== null}>
                                         {deactivatingDriverId === driver.driver_id ? "Deactivating..." : "Deactivate"} </button>)}
                                 {driver.status === "INACTIVE" &&
-                                    (<button type="button" onClick={() => activateDriver(driver)} disabled={activatingDriverId !== null}>
+                                    (<button style={{background:"green"}} type="button" onClick={() => activateDriver(driver)} disabled={activatingDriverId !== null}>
                                         {activatingDriverId === driver.driver_id ? "Activating..." : "Activate"} </button>)}
                             </td>
                             <td>
                                 {driver.status === "INACTIVE" &&
-                                    (<button type="button" onClick={() => deleteDriver(driver)} disabled={deletingDriverId !== null}>
+                                    (<button style={{background:"red"}} type="button" onClick={() => deleteDriver(driver)} disabled={deletingDriverId !== null}>
                                         {deletingDriverId === driver.driver_id ? "Deleting..." : "Delete"} </button>)}
-                            </td>
-                            <td>
-                                {/*<button type="button" onClick={() => loadDriverVehicles(driver)} disabled={isLoadingDriverVehicles}>*/}
-                                {/*    Vehicles*/}
-                                {/*</button>*/}
-                                <button type="button" onClick={() => setSelectedDriverId(driver.driver_id)} disabled={isLoadingDriverVehicles}> Vehicles </button>
                             </td>
                         </tr>
                     ))}
@@ -1832,7 +1832,7 @@ function AdminDashboard() {
                         <p>License Expiry Date: {driver.license_expiry_date ?? "—"}</p>
                         <p>Hire Date: {driver.hire_date ?? "—"}</p>
                         <p>Fleet ID: {driver.fleet_id ?? "Unassigned"}</p>
-                        <p>Department ID: {driver.department_id ?? "—"}</p>
+                        {/*<p>Department ID: {driver.department_id ?? "—"}</p>*/}
                         <p>Keycloak User ID: {driver.keycloak_user_id}</p>
                         <p>Status: {driver.status}</p>
 
@@ -1893,7 +1893,7 @@ function AdminDashboard() {
                 license_expiry_date: editDriverForm.license_expiry_date || null,
                 hire_date: editDriverForm.hire_date || null,
                 fleet_id: editDriverForm.fleet_id.trim() || null,
-                department_id: editDriverForm.department_id.trim() || null,
+                // department_id: editDriverForm.department_id.trim() || null,
             };
 
             const response = await fetch(
@@ -2007,12 +2007,12 @@ function AdminDashboard() {
                                 </select>
                             </div>
 
-                            <div>
-                                <label htmlFor="edit-driver-department">Department ID</label>
-                                <input id="edit-driver-department" type="text" value={editDriverForm.department_id}
-                                       onChange={(event) =>
-                                           setEditDriverForm({...editDriverForm, department_id: event.target.value,}) } />
-                            </div>
+                            {/*<div>*/}
+                            {/*    <label htmlFor="edit-driver-department">Department ID</label>*/}
+                            {/*    <input id="edit-driver-department" type="text" value={editDriverForm.department_id}*/}
+                            {/*           onChange={(event) =>*/}
+                            {/*               setEditDriverForm({...editDriverForm, department_id: event.target.value,}) } />*/}
+                            {/*</div>*/}
 
                             { editDriverError && ( <p role="alert">{editDriverError}</p> ) }
 
@@ -2346,6 +2346,11 @@ function AdminDashboard() {
 
             // Ενημερώνουμε τη λίστα με το όχημα που επέστρεψε το backend.
             setVehicles((previous) => [...previous, createdVehicle]);
+            // Αν το νέο όχημα ανατέθηκε στον Driver της ανοιχτής λίστας,
+            // ζητάμε ξανά τις αναθέσεις του από το backend.
+            if (selectedDriverId !== null && createdVehicle.driver_id === selectedDriverId) {
+                setVehiclesRefreshNumber((previous) => previous + 1);
+            }
             setVehicleForm({ ...emptyVehicleForm });
             setCreateVehicleSuccess("Vehicle created successfully.");
         } catch (error) {
@@ -2363,6 +2368,7 @@ function AdminDashboard() {
 
         // Συμπληρώνουμε τη φόρμα Edit με τα υπάρχοντα στοιχεία του οχήματος.
     function startEditingVehicle(vehicle: Vehicle) {
+        if (isVehicleActionRunning) return;
         const form: VehicleCreateForm = {
             plate_number: vehicle.plate_number,
             brand: "",
@@ -2403,7 +2409,7 @@ function AdminDashboard() {
     async function updateVehicle(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        if (!token || !isAdmin || editingVehicleId === null || isUpdatingVehicle) {
+        if (!token || !isAdmin || editingVehicleId === null  || isVehicleActionRunning) {
             return;
         }
 
@@ -2553,6 +2559,17 @@ function AdminDashboard() {
         // Απενεργοποιούμε το όχημα μέσω του API Gateway.
     // Το backend αποδεσμεύει τον Driver και διατηρεί το Fleet.
     async function deactivateVehicle(vehicle: Vehicle) {
+                // Ελέγχουμε γιατί σταματά η ενέργεια, χωρίς να εμφανίζουμε το token.
+        console.log("Deactivate Vehicle clicked", {
+            hasToken: Boolean(token),
+            isAdmin,
+            isVehicleActionRunning,
+            isUpdatingVehicle,
+            deactivatingVehicleId,
+            activatingVehicleId,
+            deletingVehicleId,
+            status: vehicle.status,
+        });
         setDeleteVehicleError("");
         setDeleteVehicleSuccess("");
         setActivateVehicleError("");
@@ -2561,7 +2578,7 @@ function AdminDashboard() {
         setDeactivateVehicleSuccess("");
 
 
-        if (!token || !isAdmin || deactivatingVehicleId !== null) {
+        if (!token || !isAdmin || isVehicleActionRunning) {
             return;
         }
 
@@ -2659,11 +2676,15 @@ function AdminDashboard() {
         setDeactivateVehicleSuccess("");
 
 
-        if (!token || !isAdmin || activatingVehicleId !== null) return;
-        if (vehicle.status !== "INACTIVE") return;
+        if (!token || !isAdmin || isVehicleActionRunning)
+            return;
+
+        if (vehicle.status !== "INACTIVE")
+            return;
 
         const confirmed = window.confirm(`Activate vehicle ${vehicle.plate_number}?`);
-        if (!confirmed) return;
+        if (!confirmed)
+            return;
 
         setActivatingVehicleId(vehicle.id);
         setActivateVehicleError("");
@@ -2724,7 +2745,7 @@ function AdminDashboard() {
         setDeactivateVehicleSuccess("");
 
 
-        if (!token || !isAdmin || deletingVehicleId !== null) return;
+        if (!token || !isAdmin || isVehicleActionRunning !== null) return;
         if (vehicle.status !== "INACTIVE") return;
 
         const confirmed = window.confirm(`Permanently delete vehicle ${vehicle.plate_number}? This action cannot be undone.`);
@@ -2820,7 +2841,7 @@ function AdminDashboard() {
                         <th>Fleet</th>
                         <th>Driver</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th colSpan={5}>Actions</th>
                     </tr>
                 </thead>
 
@@ -2852,17 +2873,19 @@ function AdminDashboard() {
                                     <button type="button" onClick={() => setViewVehicleId(vehicle.id)}> View </button>
                                 </td>
                                 <td>
-                                    <button type="button" onClick={() => startEditingVehicle(vehicle)} disabled={isUpdatingVehicle}> Edit </button>
+                                     <button type="button" onClick={() => startEditingVehicle(vehicle)} disabled={isVehicleActionRunning}> Edit </button>
                                 </td>
-                                <td>
-                                    {vehicle.status === "ACTIVE" && ( <button type="button" onClick={() => deactivateVehicle(vehicle)} disabled={deactivatingVehicleId !== null}> Deactivate </button> )}
-                                    {vehicle.status === "INACTIVE" && (<button type="button" onClick={() => activateVehicle(vehicle)} disabled={activatingVehicleId !== null}> Activate </button>)}
-                                </td>
-                                <td>
-                                    {vehicle.status === "INACTIVE" && (<button type="button" onClick={() => deleteVehicle(vehicle)} disabled={deletingVehicleId !== null}> Delete </button>)}
-                                </td>
+
                                 <td>
                                     <button type="button" onClick={() => setSelectedTrackingVehicle(vehicle)}> Track </button>
+                                </td>
+                                <td>
+                                    {vehicle.status === "ACTIVE" &&(<button style={{ background: "white", color:"red"}}type="button" onClick={() => deactivateVehicle(vehicle)} disabled={isVehicleActionRunning}> Deactivate </button>)}
+                                    {vehicle.status === "INACTIVE" &&(<button style={{ background: "green" }} type="button" onClick={() => activateVehicle(vehicle)} disabled={isVehicleActionRunning}> Activate </button>)}
+                                </td>
+                                <td>
+                                    {vehicle.status === "INACTIVE" &&
+                                        (<button style={{ background: "red" }} type="button" onClick={() => deleteVehicle(vehicle)} disabled={isVehicleActionRunning}> Delete </button>)}
                                 </td>
                             </tr>
                         );
@@ -3017,9 +3040,8 @@ function AdminDashboard() {
                     <p role="alert">{editVehicleError}</p>
                 )}
 
-                <button type="submit" disabled={isUpdatingVehicle}> Save Changes </button>
-                <button type="button" disabled={isUpdatingVehicle}
-                        onClick={() => setEditingVehicleId(null)}> Cancel </button>
+                <button type="submit" disabled={isVehicleActionRunning}> Save Changes </button>
+                <button type="button" onClick={() => setEditingVehicleId(null)} disabled={isVehicleActionRunning}> Cancel </button>
             </form>
         );
     }
@@ -3211,12 +3233,12 @@ function AdminDashboard() {
                             </select>
                         </div>
 
-                        <div>
-                            <label htmlFor="manager-department">Department ID</label>
-                            <input id="manager-department" type="text" value={fleetManagerForm.department_id}
-                                   onChange={(event) =>
-                                       setFleetManagerForm({...fleetManagerForm, department_id: event.target.value,}) } />
-                        </div>
+                        {/*<div>*/}
+                        {/*    <label htmlFor="manager-department">Department ID</label>*/}
+                        {/*    <input id="manager-department" type="text" value={fleetManagerForm.department_id}*/}
+                        {/*           onChange={(event) =>*/}
+                        {/*               setFleetManagerForm({...fleetManagerForm, department_id: event.target.value,}) } />*/}
+                        {/*</div>*/}
 
                         <div>
                             <label htmlFor="manager-birth-date">Date of Birth</label>

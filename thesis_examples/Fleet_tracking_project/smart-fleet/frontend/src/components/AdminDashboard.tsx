@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 
+
+
 // Περιγράφουμε μόνο τα πεδία του Fleet που χρειαζόμαστε
 // για την εμφάνιση της λίστας στο Admin Dashboard.
 interface Fleet {
@@ -36,10 +38,14 @@ interface FleetManager {
     keycloak_user_id: string;
     first_name: string;
     last_name: string;
-    email: string | null;
+    date_of_birth: string | null;
+    identity_card_number: string | null;
+    tax_id: string | null;
     phone_number: string | null;
+    email: string | null;
     fleet_id: string | null;
     department_id: string | null;
+    hire_date: string | null;
     status: string;
 }
 interface FleetManagerCreateForm {
@@ -56,7 +62,58 @@ interface FleetManagerCreateForm {
     phone_number: string;
     hire_date: string;
 }
+// Περιγράφουμε όλα τα πεδία που επιστρέφει το DriverResponse
+// του Fleet API, ώστε να τα χρησιμοποιήσουμε σε GET, VIEW και EDIT.
+interface Driver {
+    id: string;
+    driver_id: string;
+    keycloak_user_id: string;
 
+    // Προσωπικά στοιχεία οδηγού.
+    first_name: string;
+    last_name: string;
+    date_of_birth: string | null;
+    identity_card_number: string | null;
+    tax_id: string | null;
+
+    // Στοιχεία επικοινωνίας.
+    phone_number: string | null;
+    email: string | null;
+
+    // Στοιχεία άδειας οδήγησης.
+    license_number: string | null;
+    license_category: string | null;
+    license_expiry_date: string | null;
+
+    // Στοιχεία απασχόλησης και συσχετίσεις.
+    hire_date: string | null;
+    fleet_id: string | null;
+    department_id: string | null;
+
+    // Κατάσταση του Driver Profile.
+    status: string;
+}
+
+// Περιγράφουμε τα πεδία της φόρμας δημιουργίας Driver.
+// Το Keycloak user id δημιουργείται από το Backend
+// και δεν συμπληρώνεται από τον Admin.
+interface DriverCreateForm {
+    username: string;
+    driver_id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    date_of_birth: string;
+    identity_card_number: string;
+    tax_id: string;
+    phone_number: string;
+    license_number: string;
+    license_category: string;
+    license_expiry_date: string;
+    hire_date: string;
+    fleet_id: string;
+    department_id: string;
+}
 const emptyFleetForm: FleetCreateForm = {
     fleet_id: "",
     name: "",
@@ -89,6 +146,26 @@ const emptyFleetManagerForm: FleetManagerCreateForm = {
     hire_date: "",
 };
 
+// Αρχικές τιμές για τη φόρμα δημιουργίας Driver.
+// Τα πεδία ξεκινούν κενά και συμπληρώνονται από τον Admin.
+const emptyDriverForm: DriverCreateForm = {
+    username: "",
+    driver_id: "",
+    first_name: "",
+    last_name: "",
+    email: "",
+    date_of_birth: "",
+    identity_card_number: "",
+    tax_id: "",
+    phone_number: "",
+    license_number: "",
+    license_category: "",
+    license_expiry_date: "",
+    hire_date: "",
+    fleet_id: "",
+    department_id: "",
+};
+
 function AdminDashboard() {
      // Χρησιμοποιούμε το υπάρχον Keycloak authentication.
     const { token, hasRole } = useAuth();
@@ -113,6 +190,7 @@ function AdminDashboard() {
         // Κρατάμε το Fleet που επεξεργαζόμαστε και τις νέες τιμές του.
     const [editingFleetId, setEditingFleetId] = useState<string | null>(null);
     const [editFleetForm, setEditFleetForm] = useState<FleetCreateForm>( emptyFleetForm );
+    const [viewFleetId, setViewFleetId] = useState<string | null>(null);
 
     const [isUpdating, setIsUpdating] = useState(false);
     const [editError, setEditError] = useState("");
@@ -138,6 +216,117 @@ function AdminDashboard() {
     // Κρατούν το αποτέλεσμα της προσπάθειας δημιουργίας.
     const [createManagerError, setCreateManagerError] = useState("");
     const [createManagerSuccess, setCreateManagerSuccess] = useState("");
+
+    // Κρατάμε τον Fleet Manager που έχει επιλεγεί για επεξεργασία
+    // και τις τιμές που θα εμφανίζονται στη φόρμα Edit.
+    const [editingManagerId, setEditingManagerId] = useState<string | null>(null);
+    const [editFleetManagerForm, setEditFleetManagerForm] = useState<FleetManagerCreateForm>(emptyFleetManagerForm);
+
+
+    // Ξεχωριστή κατάσταση για την ενημέρωση του Fleet Manager.
+    const [isUpdatingManager, setIsUpdatingManager] = useState(false);
+    const [editManagerError, setEditManagerError] = useState("");
+
+    // Κρατάμε το ID του Fleet Manager που επιλέχθηκε για προβολή.
+    const [viewManagerId, setViewManagerId] = useState<string | null>(null);
+
+
+    // Κρατάμε το ID του Fleet Manager που απενεργοποιείται,
+    // ώστε να αποτρέπουμε επαναλαμβανόμενα αιτήματα.
+    const [deactivatingManagerId, setDeactivatingManagerId] = useState<string | null>(null);
+
+    // Κρατάμε τα μηνύματα επιτυχίας και αποτυχίας της απενεργοποίησης.
+    const [deactivateManagerError, setDeactivateManagerError] = useState("");
+    const [deactivateManagerSuccess, setDeactivateManagerSuccess] = useState("");
+
+    // Κρατάμε το ID του Fleet Manager που ενεργοποιείται,
+    // ώστε να αποτρέπουμε επαναλαμβανόμενα αιτήματα.
+    const [activatingManagerId, setActivatingManagerId] = useState<string | null>(null);
+
+    // Κρατάμε τα μηνύματα επιτυχίας και αποτυχίας της ενεργοποίησης.
+    const [activateManagerError, setActivateManagerError] = useState("");
+    const [activateManagerSuccess, setActivateManagerSuccess] = useState("");
+
+    // Κρατάμε το ID του Fleet Manager που διαγράφεται,
+    // ώστε να αποτρέπουμε επαναλαμβανόμενα αιτήματα.
+    const [deletingManagerId, setDeletingManagerId] = useState<string | null>(null);
+
+    // Κρατάμε τα μηνύματα επιτυχίας και αποτυχίας της διαγραφής.
+    const [deleteManagerError, setDeleteManagerError] = useState("");
+    const [deleteManagerSuccess, setDeleteManagerSuccess] = useState("");
+
+    // Αποθηκεύουμε τη λίστα των Drivers που επιστρέφει το Fleet API.
+    const [drivers, setDrivers] = useState<Driver[]>([]);
+    // Παρακολουθούμε αν βρίσκεται σε εξέλιξη η ανάκτηση των Drivers.
+    const [isLoadingDrivers, setIsLoadingDrivers] = useState(true);
+    // Αποθηκεύουμε τυχόν σφάλμα κατά την ανάκτηση των Drivers.
+    const [driversError, setDriversError] = useState("");
+    // Αποθηκεύουμε τις τιμές που συμπληρώνει ο Admin
+    // στη φόρμα δημιουργίας νέου Driver.
+    const [driverForm, setDriverForm] = useState<DriverCreateForm>(emptyDriverForm);
+
+    // Παρακολουθούμε αν βρίσκεται σε εξέλιξη η δημιουργία Driver,
+    // ώστε να αποτρέπουμε πολλαπλές υποβολές της φόρμας.
+    const [isCreatingDriver, setIsCreatingDriver] = useState(false);
+
+    // Αποθηκεύουμε το μήνυμα σφάλματος αν αποτύχει η δημιουργία.
+    const [createDriverError, setCreateDriverError] = useState("");
+
+    // Εμφανίζουμε μήνυμα επιτυχίας όταν δημιουργηθεί ο Driver.
+    const [createDriverSuccess, setCreateDriverSuccess] = useState("");
+    // Κρατάμε το ID του Driver που έχει επιλέξει ο Admin
+    // για να εμφανίσουμε αναλυτικά τα στοιχεία του.
+    const [viewDriverId, setViewDriverId] = useState<string | null>(null);
+
+    // Κρατάμε τον Driver που έχει επιλεγεί για επεξεργασία
+    // και τις τιμές που θα εμφανίζονται στη φόρμα Edit.
+    const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
+    const [editDriverForm, setEditDriverForm] = useState<DriverCreateForm>(emptyDriverForm);
+
+    // Ξεχωριστή κατάσταση για την ενημέρωση του Driver.
+    const [isUpdatingDriver, setIsUpdatingDriver] = useState(false);
+    const [editDriverError, setEditDriverError] = useState("");
+
+        // Κρατάμε το ID του Driver που απενεργοποιείται,
+    // ώστε να αποτρέπουμε επαναλαμβανόμενα αιτήματα.
+    const [deactivatingDriverId, setDeactivatingDriverId] = useState<string | null>(null);
+
+    // Κρατάμε τα μηνύματα επιτυχίας και αποτυχίας της απενεργοποίησης.
+    const [deactivateDriverError, setDeactivateDriverError] = useState("");
+    const [deactivateDriverSuccess, setDeactivateDriverSuccess] = useState("");
+
+    // Κρατάμε το ID του Driver που ενεργοποιείται,
+    // ώστε να αποτρέπουμε επαναλαμβανόμενα αιτήματα.
+    const [activatingDriverId, setActivatingDriverId] = useState<string | null>(null);
+
+    // Κρατάμε ξεχωριστά τα μηνύματα επιτυχίας
+    // και αποτυχίας της ενεργοποίησης.
+    const [activateDriverError, setActivateDriverError] = useState("");
+    const [activateDriverSuccess, setActivateDriverSuccess] = useState("");
+
+    // Κρατάμε το ID του Driver που διαγράφεται,
+    // ώστε να αποτρέπουμε επαναλαμβανόμενα αιτήματα διαγραφής.
+    const [deletingDriverId, setDeletingDriverId] = useState<string | null>(null);
+
+    // Κρατάμε ξεχωριστά τα μηνύματα επιτυχίας
+    // και αποτυχίας της διαγραφής.
+    const [deleteDriverError, setDeleteDriverError] = useState("");
+    const [deleteDriverSuccess, setDeleteDriverSuccess] = useState("");
+
+    // Κρατάμε τον Driver του οποίου θέλουμε να δούμε τα ανατεθειμένα οχήματα.
+    const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+
+        // Κρατάμε τα οχήματα που είναι ανατεθειμένα στον επιλεγμένο Driver.
+    const [driverVehicles, setDriverVehicles] = useState<Vehicle[]>([]);
+
+    // Παρακολουθούμε τη φόρτωση των οχημάτων του Driver.
+    const [isLoadingDriverVehicles, setIsLoadingDriverVehicles] = useState(false);
+
+    // Κρατάμε το μήνυμα σφάλματος αν αποτύχει η ανάκτηση των οχημάτων.
+    const [driverVehiclesError, setDriverVehiclesError] = useState("");
+
+        // Κρατάμε το όχημα που επέλεξε ο Admin για παρακολούθηση GPS.
+    const [selectedTrackingVehicle, setSelectedTrackingVehicle] = useState<Vehicle | null>(null);
 
     useEffect(() => {
         // Δεν ζητάμε δεδομένα αν ο χρήστης δεν είναι Admin
@@ -219,20 +408,13 @@ function AdminDashboard() {
 
             try {
                 // Όλα τα requests περνούν από το API Gateway.
-                const response = await fetch(
-                    "http://localhost:8004/api/v1/admin/fleet-managers",
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
-                        signal: controller.signal,
+                const response = await fetch( "http://localhost:8004/api/v1/admin/fleet-managers", {
+                        headers: { Authorization: `Bearer ${token}`, }, signal: controller.signal,
                     }
                 );
 
                 if (!response.ok) {
-                    throw new Error(
-                        `Failed to load fleet managers: ${response.status}`
-                    );
+                    throw new Error( `Failed to load fleet managers: ${response.status}` );
                 }
 
                 const managerData: FleetManager[] = await response.json();
@@ -242,10 +424,7 @@ function AdminDashboard() {
                 }
             } catch (requestError) {
                 if (!controller.signal.aborted) {
-                    console.error(
-                        "Failed to load fleet managers:",
-                        requestError
-                    );
+                    console.error( "Failed to load fleet managers:", requestError );
 
                     setManagersError("Could not load fleet managers.");
                 }
@@ -260,6 +439,73 @@ function AdminDashboard() {
 
         return () => controller.abort();
     }, [token, isAdmin]);
+
+    useEffect(() => {
+        // Δεν ανακτούμε Drivers αν ο χρήστης δεν είναι Admin
+        // ή αν δεν υπάρχει διαθέσιμο access token.
+        if (!isAdmin || !token) {
+            setIsLoadingDrivers(false);
+            return;
+        }
+
+        // Χρησιμοποιούμε AbortController για να ακυρώνουμε
+        // το προηγούμενο request όταν αλλάζει το token
+        // ή όταν αποσυνδέεται το component.
+        const controller = new AbortController();
+
+        async function loadDrivers() {
+            setIsLoadingDrivers(true);
+            setDriversError("");
+
+            try {
+                // Το Frontend επικοινωνεί μόνο με το API Gateway.
+                // Το Gateway ελέγχει τον Admin και προωθεί
+                // το αίτημα στο Fleet API.
+                const response = await fetch(
+                    "http://localhost:8004/api/v1/admin/drivers",
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                        signal: controller.signal,
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        `Failed to load drivers: ${response.status}`
+                    );
+                }
+
+                const data: Driver[] = await response.json();
+
+                // Αποθηκεύουμε τα Driver Profiles μόνο εφόσον
+                // το request δεν έχει ακυρωθεί.
+                if (!controller.signal.aborted) {
+                    setDrivers(data);
+                }
+            } catch (error) {
+                // Η ακύρωση request δεν αποτελεί πραγματικό σφάλμα.
+                if (controller.signal.aborted) return;
+
+                setDriversError(
+                    error instanceof Error
+                        ? error.message
+                        : "Could not load drivers."
+                );
+            } finally {
+                if (!controller.signal.aborted) {
+                    setIsLoadingDrivers(false);
+                }
+            }
+        }
+
+        loadDrivers();
+
+        return () => controller.abort();
+    }, [isAdmin, token]);
+
+
 
     async function createFleet(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -362,7 +608,6 @@ function AdminDashboard() {
         setIsCreating(false);
     }
 }
-
     function startEditingFleet(fleet: Fleet) {
         // Συμπληρώνουμε τη φόρμα με τις υπάρχουσες τιμές.
         setEditingFleetId(fleet.fleet_id);
@@ -383,6 +628,130 @@ function AdminDashboard() {
 
         setEditError("");
     }
+    function show_fleets(){
+        if (isLoading) return <p>Loading fleets...</p>;
+        if (error) return <p role="alert">{error}</p>;
+        if (fleets.length === 0) return <p>No fleets available.</p>;
+        return (
+            <table align={"center"}>
+                <thead align={"left"}>
+                <tr>
+                    <th>Fleet ID</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+
+                <tbody align={"left"}>
+                {fleets.map((fleet) => (
+                    <tr   key={fleet.fleet_id}>
+                        <td>| {fleet.fleet_id} </td>
+                        <td>| {fleet.name} </td>
+                        <td>| {fleet.description ?? "—"} </td>
+                        <td>
+                            <button type="button" onClick={()=>fleetDetails(fleet)} disabled={deletingFleetId !== null}>view</button>
+                            <button type="button" onClick={() => startEditingFleet(fleet)} disabled={deletingFleetId !== null}> Edit </button>
+                            <button type="button" onClick={() => deleteFleet(fleet)} disabled={deletingFleetId !== null}>
+                                {deletingFleetId === fleet.fleet_id ? "Deleting..." : "Delete"} </button>
+
+                        </td>
+                    </tr>
+                ))}
+                </tbody>
+            </table>
+        );
+
+    }
+    function edit_fleet_details(){
+        if(editingFleetId)
+            return (
+                <form onSubmit={updateFleet}>
+                    <h3>Edit Fleet: {editingFleetId}</h3>
+
+                    <div>
+                        <label htmlFor="edit-fleet-name">Fleet Name *</label>
+                        <input
+                            id="edit-fleet-name"
+                            required
+                            value={editFleetForm.name}
+                            onChange={(event) =>
+                                setEditFleetForm({...editFleetForm, name: event.target.value, })
+                            }
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="edit-fleet-description">Description</label>
+                        <textarea
+                            id="edit-fleet-description"
+                            value={editFleetForm.description}
+                            onChange={(event) =>
+                                setEditFleetForm({...editFleetForm, description: event.target.value, })
+                            }
+                        />
+                    </div>
+
+                    <h4>Base Location</h4>
+
+                    {(
+                        [
+                            ["name", "Location Name", true],
+                            ["address", "Address", false],
+                            ["city", "City", false],
+                            ["postal_code", "Postal Code", false],
+                            ["latitude", "Latitude", true],
+                            ["longitude", "Longitude", true],
+                        ] as const
+                    ).map(([field, label, required]) => (
+                        <div key={field}>
+                            <label htmlFor={`edit-fleet-${field}`}>
+                                {label}{required ? " *" : ""}
+                            </label>
+
+                            <input
+                                id={`edit-fleet-${field}`}
+                                required={required}
+                                type={ field === "latitude" || field === "longitude" ? "number" : "text" }
+                                step={ field === "latitude" || field === "longitude" ? "any" : undefined }
+                                value={editFleetForm.base_location[field]}
+                                onChange={(event) =>
+                                    setEditFleetForm({...editFleetForm,base_location: {...editFleetForm.base_location,[field]: event.target.value,},})
+                                }
+                            />
+                        </div>
+                    ))}
+
+                    {editError && <p role="alert">{editError}</p>}
+
+                    <button type="submit" disabled={isUpdating}> {isUpdating ? "Saving..." : "Save Changes"} </button>
+                    <button type="button" disabled={isUpdating} onClick={() => setEditingFleetId(null)}> Cancel </button>
+                </form> )
+        return (null)
+    }
+    function show_fleet_details() {
+        const fleet = fleets.find((f) => f.fleet_id === viewFleetId);
+        if (!fleet) return null;
+
+        return (
+            <div>
+                <h3>Details: {fleet.fleet_id}</h3>
+                <p>Name: {fleet.name}</p>
+                <p>Description: {fleet.description ?? "—"}</p>
+                <p>Base: {fleet.base_location.name}</p>
+                <p>Address: {fleet.base_location.address ?? "—"}</p>
+                <p>City: {fleet.base_location.city ?? "—"}</p>
+                <p>Postcode: {fleet.base_location.postal_code ?? "—"}</p>
+                <p>Lat/Lng: {fleet.base_location.latitude}, {fleet.base_location.longitude}</p>
+                <button type="button" onClick={() => setViewFleetId(null)}>Close</button>
+            </div>
+        );
+    }
+    function  fleetDetails(fleet: Fleet){
+        setViewFleetId(fleet.fleet_id);
+    }
+    // Επιλέγουμε τον Fleet Manager που θέλουμε να επεξεργαστούμε
+    // και συμπληρώνουμε τη φόρμα με τα διαθέσιμα στοιχεία του.
 
     async function updateFleet(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -484,7 +853,6 @@ function AdminDashboard() {
             setIsUpdating(false);
         }
     }
-
     async function deleteFleet(fleet: Fleet) {
         if (!token || !isAdmin || deletingFleetId !== null) {
             return;
@@ -550,6 +918,7 @@ function AdminDashboard() {
             if (editingFleetId === fleet.fleet_id) {
                 setEditingFleetId(null);
             }
+            if (viewFleetId === fleet.fleet_id) setViewFleetId(null);
 
             setDeleteSuccess(
                 `Fleet "${fleet.name}" deleted successfully.`
@@ -564,7 +933,6 @@ function AdminDashboard() {
             setDeletingFleetId(null);
         }
     }
-
     // Δημιουργεί νέο Fleet Manager μέσω του API Gateway.
     // Το Backend αναλαμβάνει τη δημιουργία Keycloak user και business profile.
     async function createFleetManager( event: React.FormEvent<HTMLFormElement>) {
@@ -651,445 +1019,1379 @@ function AdminDashboard() {
             setIsCreatingManager(false);
         }
     }
+    // Ενημερώνει τα στοιχεία του Fleet Manager μέσω του API Gateway.
+    function startEditingFleetManager(manager: FleetManager) {
+        setEditingManagerId(manager.manager_id);
 
-    if (isAdmin) {
-        return (
-            <section>
-            <h2>Admin Dashboard</h2>
+        setEditFleetManagerForm({
+            ...emptyFleetManagerForm,
+            manager_id: manager.manager_id,
+            first_name: manager.first_name,
+            last_name: manager.last_name,
+            date_of_birth: manager.date_of_birth ?? "",
+            identity_card_number: manager.identity_card_number ?? "",
+            tax_id: manager.tax_id ?? "",
+            phone_number: manager.phone_number ?? "",
+            email: manager.email ?? "",
+            fleet_id: manager.fleet_id ?? "",
+            department_id: manager.department_id ?? "",
+            hire_date: manager.hire_date ?? "",
+        });
 
-            <h3>Create Fleet</h3>
+        setEditManagerError("");
+    }
+    async function updateFleetManager(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
 
-            <form onSubmit={createFleet}>
-                <div align={"center"}>
-                    <label htmlFor="fleet-id">Fleet ID *</label>
-                    <input
-                        id="fleet-id"
-                        required
-                        value={fleetForm.fleet_id}
-                        onChange={(event) => setFleetForm({ ...fleetForm, fleet_id: event.target.value, })}
-                    />
-                </div>
+        if (!token || !editingManagerId || isUpdatingManager) return;
 
-                <div>
-                    <label htmlFor="fleet-name">Fleet Name *</label>
-                    <input
-                        id="fleet-name"
-                        required
-                        value={fleetForm.name}
-                        onChange={(event) => setFleetForm({ ...fleetForm, name: event.target.value, })}
-                    />
-                </div>
+        setIsUpdatingManager(true);
+        setEditManagerError("");
 
-                <div>
-                    <label htmlFor="fleet-description">Description</label>
-                    <textarea
-                        id="fleet-description"
-                        value={fleetForm.description}
-                        onChange={(event) =>
-                            setFleetForm({
-                                ...fleetForm,
-                                description: event.target.value,
-                            })
-                        }
-                    />
-                </div>
+        try {
+            // Στέλνουμε μόνο τα πεδία που επιτρέπεται να επεξεργαστεί ο Admin.
+            const payload = {
+                first_name: editFleetManagerForm.first_name.trim(),
+                last_name: editFleetManagerForm.last_name.trim(),
+                date_of_birth: editFleetManagerForm.date_of_birth || null,
+                identity_card_number: editFleetManagerForm.identity_card_number.trim() || null,
+                tax_id: editFleetManagerForm.tax_id.trim() || null,
+                phone_number: editFleetManagerForm.phone_number.trim() || null,
+                email: editFleetManagerForm.email.trim(),
+                fleet_id: editFleetManagerForm.fleet_id,
+                hire_date: editFleetManagerForm.hire_date || null,
+            };
 
-                <h4>Base Location</h4>
+            const response = await fetch(
+                `http://localhost:8004/api/v1/admin/fleet-managers/${encodeURIComponent(editingManagerId)}`,
                 {
-                    (
-                        [
-                            ["name", "Location Name", true],
-                            ["address", "Address", false],
-                            ["city", "City", false],
-                            ["postal_code", "Postal Code", false],
-                            ["latitude", "Latitude", true],
-                            ["longitude", "Longitude", true],
-                        ] as const
-                    ).map( ([field, label, required]) =>
-                        (
-                            <div key={field}>
-                                <label htmlFor={`fleet-${field}`}>
-                                    {label}{required ? " *" : ""}
-                                </label>
-
-                                <input
-                                    id={`fleet-${field}`}
-                                    required={required}
-                                    type={ field === "latitude" || field === "longitude" ? "number" : "text"}
-                                    step={ field === "latitude" || field === "longitude" ? "any" : undefined }
-                                    value={fleetForm.base_location[field]}
-                                    onChange={(event) =>
-                                        setFleetForm({ ...fleetForm, base_location: { ...fleetForm.base_location, [field]: event.target.value, },})
-                                    }
-                                />
-                            </div>
-                        )
-                    )
+                    method: "PATCH",
+                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", },
+                    body: JSON.stringify(payload),
                 }
-                {
-                    createError && ( <p role="alert">{createError}</p> )
-                }
+            );
 
-                {
-                    createSuccess && ( <p role="status">{createSuccess}</p> )
-                }
+            const result = await response.json();
 
-                <button type="submit" disabled={isCreating}>
-                    {isCreating ? "Creating..." : "Create Fleet"}
-                </button>
-            </form>
+            if (!response.ok) {
+                throw new Error(
+                    typeof result.detail === "string" ? result.detail : `Failed to update fleet manager: ${response.status}`
+                );
+            }
 
-            <hr />
-
-            <h3>Fleets</h3>
-            {
-                isLoading ? (
-                    <p>Loading fleets...</p>
-                ) : error ? (
-                    <p role="alert">{error}</p>
-                ) : fleets.length === 0 ? (
-                    <p>No fleets available.</p>
-                ) : (
-                    <table align={"center"}>
-                        <thead align={"left"}>
-                            <tr>
-                                <th>Fleet ID</th>
-                                <th>Name</th>
-                                <th>Description</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-
-                        <tbody align={"left"}>
-                            {fleets.map((fleet) => (
-                                <tr   key={fleet.fleet_id}>
-                                    <td>| {fleet.fleet_id} </td>
-                                    <td>| {fleet.name} </td>
-                                    <td>| {fleet.description ?? "—"} </td>
-                                    <td>
-                                        <button type="button" onClick={() => startEditingFleet(fleet)} disabled={deletingFleetId !== null}> Edit </button>
-                                        <button type="button" onClick={() => deleteFleet(fleet)} disabled={deletingFleetId !== null}>
-                                            {deletingFleetId === fleet.fleet_id ? "Deleting..." : "Delete"} </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+            // Ανανεώνουμε τα στοιχεία του Manager στη λίστα.
+            setFleetManagers((previous) =>
+                previous.map((manager) =>
+                    manager.manager_id === editingManagerId ? result : manager
                 )
-            }
-            {
-                editingFleetId && ( <form onSubmit={updateFleet}>
-                <h3>Edit Fleet: {editingFleetId}</h3>
+            );
 
-                <div>
-                <label htmlFor="edit-fleet-name">Fleet Name *</label>
-                <input
-                    id="edit-fleet-name"
-                    required
-                    value={editFleetForm.name}
-                    onChange={(event) =>
-                        setEditFleetForm({...editFleetForm, name: event.target.value, })
-                    }
-                />
-                </div>
+            setEditingManagerId(null);
 
-                <div>
-                <label htmlFor="edit-fleet-description">Description</label>
-                <textarea
-                    id="edit-fleet-description"
-                    value={editFleetForm.description}
-                    onChange={(event) =>
-                        setEditFleetForm({...editFleetForm, description: event.target.value, })
-                    }
-                />
-                </div>
+        } catch (error) {
+            setEditManagerError(
+                error instanceof Error ? error.message : "Could not update fleet manager."
+            );
+        } finally {
+            setIsUpdatingManager(false);
+        }
+    }
+    // Απενεργοποιεί τον Fleet Manager μέσω του API Gateway.
+    // Το Backend αναλαμβάνει την ενημέρωση του Fleet API και του Keycloak.
+    async function deactivateFleetManager(manager: FleetManager) {
+        setDeactivateManagerError("");
+        setDeactivateManagerSuccess("");
+        setActivateManagerError("");
+        setActivateManagerSuccess("");
+        setDeleteManagerError("")
+        setDeleteManagerSuccess("")
+        if (!token || deactivatingManagerId) return;
 
-                <h4>Base Location</h4>
+        if (!window.confirm(`Deactivate Fleet Manager ${manager.manager_id}?`)) return;
 
-                {(
-                [
-                    ["name", "Location Name", true],
-                    ["address", "Address", false],
-                    ["city", "City", false],
-                    ["postal_code", "Postal Code", false],
-                    ["latitude", "Latitude", true],
-                    ["longitude", "Longitude", true],
-                ] as const
-                ).map(([field, label, required]) => (
-                <div key={field}>
-                    <label htmlFor={`edit-fleet-${field}`}>
-                        {label}{required ? " *" : ""}
-                    </label>
+        setDeactivatingManagerId(manager.manager_id);
+        setDeactivateManagerError("");
+        setDeactivateManagerSuccess("");
 
-                    <input
-                        id={`edit-fleet-${field}`}
-                        required={required}
-                        type={ field === "latitude" || field === "longitude" ? "number" : "text" }
-                        step={ field === "latitude" || field === "longitude" ? "any" : undefined }
-                        value={editFleetForm.base_location[field]}
-                        onChange={(event) =>
-                            setEditFleetForm({...editFleetForm,base_location: {...editFleetForm.base_location,[field]: event.target.value,},})
-                        }
-                    />
-                </div>
-                ))}
-
-                {editError && <p role="alert">{editError}</p>}
-
-                <button type="submit" disabled={isUpdating}> {isUpdating ? "Saving..." : "Save Changes"} </button>
-                <button type="button" disabled={isUpdating} onClick={() => setEditingFleetId(null)}> Cancel </button>
-                </form> )
-            }
-
-            <hr />
-            <section>
-                <h3>Fleet Managers</h3>
-                {/* Φόρμα δημιουργίας νέου Fleet Manager από τον Admin. */}
-                <h4>Create Fleet Manager</h4>
-
-                <form onSubmit={createFleetManager}>
-                    <div>
-                        <label htmlFor="manager-username">Username</label>
-                        <input
-                            id="manager-username"
-                            type="text"
-                            value={fleetManagerForm.username}
-                            onChange={(event) =>
-                                setFleetManagerForm({
-                                    ...fleetManagerForm,
-                                    username: event.target.value,
-                                })
-                            }
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="manager-id">Manager ID</label>
-                        <input
-                            id="manager-id"
-                            type="text"
-                            value={fleetManagerForm.manager_id}
-                            onChange={(event) =>
-                                setFleetManagerForm({
-                                    ...fleetManagerForm,
-                                    manager_id: event.target.value,
-                                })
-                            }
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="manager-first-name">First Name</label>
-                        <input
-                            id="manager-first-name"
-                            type="text"
-                            value={fleetManagerForm.first_name}
-                            onChange={(event) =>
-                                setFleetManagerForm({
-                                    ...fleetManagerForm,
-                                    first_name: event.target.value,
-                                })
-                            }
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="manager-last-name">Last Name</label>
-                        <input
-                            id="manager-last-name"
-                            type="text"
-                            value={fleetManagerForm.last_name}
-                            onChange={(event) =>
-                                setFleetManagerForm({
-                                    ...fleetManagerForm,
-                                    last_name: event.target.value,
-                                })
-                            }
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="manager-email">Email</label>
-                        <input
-                            id="manager-email"
-                            type="email"
-                            value={fleetManagerForm.email}
-                            onChange={(event) =>
-                                setFleetManagerForm({
-                                    ...fleetManagerForm,
-                                    email: event.target.value,
-                                })
-                            }
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="manager-fleet">Fleet</label>
-                        <select
-                            id="manager-fleet"
-                            value={fleetManagerForm.fleet_id}
-                            onChange={(event) =>
-                                setFleetManagerForm({
-                                    ...fleetManagerForm,
-                                    fleet_id: event.target.value,
-                                })
-                            }
-                            required
-                        >
-                            <option value="">Select Fleet</option>
-
-                            {fleets.map((fleet) => (
-                                <option key={fleet.fleet_id} value={fleet.fleet_id}>
-                                    {fleet.name} ({fleet.fleet_id})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label htmlFor="manager-department">Department ID</label>
-                        <input
-                            id="manager-department"
-                            type="text"
-                            value={fleetManagerForm.department_id}
-                            onChange={(event) =>
-                                setFleetManagerForm({
-                                    ...fleetManagerForm,
-                                    department_id: event.target.value,
-                                })
-                            }
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="manager-birth-date">Date of Birth</label>
-                        <input
-                            id="manager-birth-date"
-                            type="date"
-                            value={fleetManagerForm.date_of_birth}
-                            onChange={(event) =>
-                                setFleetManagerForm({
-                                    ...fleetManagerForm,
-                                    date_of_birth: event.target.value,
-                                })
-                            }
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="manager-identity">Identity Card Number</label>
-                        <input
-                            id="manager-identity"
-                            type="text"
-                            value={fleetManagerForm.identity_card_number}
-                            onChange={(event) =>
-                                setFleetManagerForm({
-                                    ...fleetManagerForm,
-                                    identity_card_number: event.target.value,
-                                })
-                            }
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="manager-tax-id">Tax ID</label>
-                        <input
-                            id="manager-tax-id"
-                            type="text"
-                            value={fleetManagerForm.tax_id}
-                            onChange={(event) =>
-                                setFleetManagerForm({
-                                    ...fleetManagerForm,
-                                    tax_id: event.target.value,
-                                })
-                            }
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="manager-phone">Phone Number</label>
-                        <input
-                            id="manager-phone"
-                            type="tel"
-                            value={fleetManagerForm.phone_number}
-                            onChange={(event) =>
-                                setFleetManagerForm({
-                                    ...fleetManagerForm,
-                                    phone_number: event.target.value,
-                                })
-                            }
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="manager-hire-date">Hire Date</label>
-                        <input
-                            id="manager-hire-date"
-                            type="date"
-                            value={fleetManagerForm.hire_date}
-                            onChange={(event) =>
-                                setFleetManagerForm({
-                                    ...fleetManagerForm,
-                                    hire_date: event.target.value,
-                                })
-                            }
-                        />
-                    </div>
-
-                    <button type="submit" disabled={isCreatingManager}>
-                        {isCreatingManager ? "Creating..." : "Create Fleet Manager"}
-                    </button>
-
-                    {createManagerError && (
-                        <p role="alert">{createManagerError}</p>
-                    )}
-
-                    {createManagerSuccess && (
-                        <p>{createManagerSuccess}</p>
-                    )}
-                </form>
+        try {
+            const response = await fetch(
+                `http://localhost:8004/api/v1/admin/fleet-managers/${encodeURIComponent(manager.manager_id)}/deactivate`,
                 {
-                    isLoadingManagers ? (
-                        <p>Loading fleet managers...</p>
-                    ) : managersError ? (
-                        <p role="alert">{managersError}</p>
-                    ) : fleetManagers.length === 0 ? (
-                        <p>No fleet managers available.</p>
-                    ) : (
-                            <table>
-                                <thead>
+                    method: "POST", headers: { Authorization: `Bearer ${token}`, },
+                }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    typeof result.detail === "string" ? result.detail : `Failed to deactivate Fleet Manager: ${response.status}` );
+            }
+
+            // Ενημερώνουμε τη λίστα μόνο μετά από επιτυχημένη απάντηση.
+            setFleetManagers((previous) =>
+                previous.map((item) =>
+                    item.manager_id === manager.manager_id ? result : item
+                )
+            );
+
+            setDeactivateManagerSuccess("Fleet Manager deactivated successfully.");
+
+        } catch (error) {
+            setDeactivateManagerError(
+                error instanceof Error ? error.message : "Could not deactivate Fleet Manager.");
+        } finally {
+            setDeactivatingManagerId(null);
+        }
+    }
+    // Ενεργοποιεί ξανά τον Fleet Manager μέσω του API Gateway.
+    // Το Backend αναλαμβάνει την ενημέρωση του Fleet API και του Keycloak.
+    async function activateFleetManager(manager: FleetManager) {
+        setDeactivateManagerError("");
+        setDeactivateManagerSuccess("");
+        setActivateManagerError("");
+        setActivateManagerSuccess("");
+        setDeleteManagerError("")
+        setDeleteManagerSuccess("")
+        if (!token || activatingManagerId) return;
+
+        if (!window.confirm(`Activate Fleet Manager ${manager.manager_id}?`)) return;
+
+        setActivatingManagerId(manager.manager_id);
+        setActivateManagerError("");
+        setActivateManagerSuccess("");
+
+        try {
+            const response = await fetch(
+                `http://localhost:8004/api/v1/admin/fleet-managers/${encodeURIComponent(manager.manager_id)}/activate`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    typeof result.detail === "string"
+                        ? result.detail
+                        : `Failed to activate Fleet Manager: ${response.status}`
+                );
+            }
+
+            // Ενημερώνουμε τη λίστα με τα νέα δεδομένα του Fleet Manager.
+            setFleetManagers((previous) =>
+                previous.map((item) =>
+                    item.manager_id === manager.manager_id ? result : item
+                )
+            );
+
+            setActivateManagerSuccess("Fleet Manager activated successfully.");
+
+        } catch (error) {
+            setActivateManagerError(
+                error instanceof Error
+                    ? error.message
+                    : "Could not activate Fleet Manager."
+            );
+        } finally {
+            setActivatingManagerId(null);
+        }
+    }
+    // Διαγράφει οριστικά τον Fleet Manager μέσω του API Gateway.
+    // Το Backend αναλαμβάνει τη διαγραφή από το Fleet API και το Keycloak.
+    async function deleteFleetManager(manager: FleetManager) {
+        setDeactivateManagerError("");
+        setDeactivateManagerSuccess("");
+        setActivateManagerError("");
+        setActivateManagerSuccess("");
+        setDeleteManagerError("")
+        setDeleteManagerSuccess("")
+        if (!token || deletingManagerId) return;
+
+        // Το Backend επιτρέπει Hard Delete μόνο για INACTIVE Fleet Managers.
+        if (manager.status !== "INACTIVE") return;
+
+        if (!window.confirm(`Permanently delete Fleet Manager ${manager.manager_id}? This action cannot be undone.`)) return;
+
+        setDeletingManagerId(manager.manager_id);
+        setDeleteManagerError("");
+        setDeleteManagerSuccess("");
+
+        try {
+            const response = await fetch(
+                `http://localhost:8004/api/v1/admin/fleet-managers/${encodeURIComponent(manager.manager_id)}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            // Διαβάζουμε την απάντηση χωρίς να υποθέτουμε ότι περιέχει πάντα JSON.
+            const result = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    typeof result?.detail === "string"
+                        ? result.detail
+                        : `Failed to delete Fleet Manager: ${response.status}`
+                );
+            }
+
+            // Αφαιρούμε τον Fleet Manager μόνο μετά από επιτυχημένη διαγραφή.
+            setFleetManagers((previous) =>
+                previous.filter((item) => item.manager_id !== manager.manager_id)
+            );
+
+            // Κλείνουμε τυχόν ανοιχτά στοιχεία του διαγραμμένου Fleet Manager.
+            setViewManagerId((previous) =>
+                previous === manager.manager_id ? null : previous
+            );
+
+            setEditingManagerId((previous) =>
+                previous === manager.manager_id ? null : previous
+            );
+
+            setDeleteManagerSuccess("Fleet Manager deleted successfully.");
+
+        } catch (error) {
+            setDeleteManagerError(
+                error instanceof Error
+                    ? error.message
+                    : "Could not delete Fleet Manager."
+            );
+        } finally {
+            setDeletingManagerId(null);
+        }
+    }
+    function show_fleet_managers(){
+        if (isLoadingManagers) return <p>Loading fleet managers...</p>;
+        if (managersError) return <p role="alert">{managersError}</p>;
+        if (fleetManagers.length === 0) return <p>No fleet managers available.</p>;
+        return (
+            <table align={"center"}>
+                                <thead align={"left"}>
                                     <tr>
                                         <th>Manager ID</th>
                                         <th>Name</th>
                                         <th>Email</th>
                                         <th>Fleet</th>
                                         <th>Status</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
 
-                                <tbody>
+                                <tbody align={"left"}>
                                     {fleetManagers.map((manager) => (
                                         <tr key={manager.manager_id}>
                                             <td>{manager.manager_id}</td>
-                                            <td>
-                                                {manager.first_name} {manager.last_name}
-                                            </td>
+                                            <td>{manager.first_name} {manager.last_name}</td>
                                             <td>{manager.email ?? "—"}</td>
                                             <td>{manager.fleet_id ?? "Unassigned"}</td>
-                                            <td>{manager.status}</td>
+                                            <td>{manager.status === "INACTIVE" ? <p style={{ color: "red" }}>{manager.status}</p> : <p style={{ color: "green" }}>{manager.status}</p> }</td>
+                                            <td>
+                                                <button type="button" onClick={() => setViewManagerId(viewManagerId === manager.manager_id ? null : manager.manager_id)}> View </button>
+
+                                            </td>
+                                            <td>
+                                                <button type="button" onClick={() => startEditingFleetManager(manager)} disabled={isUpdatingManager}> Edit </button>
+                                            </td>
+                                            <td>
+                                                {manager.status === "ACTIVE" &&
+                                                    (<button type="button" onClick={() => deactivateFleetManager(manager)} disabled={deactivatingManagerId !== null}>
+                                                        {deactivatingManagerId === manager.manager_id ? "Deactivating..." : "Deactivate"} </button>)}
+                                                {manager.status === "INACTIVE" &&
+                                                    (<button type="button" onClick={() => activateFleetManager(manager)} disabled={activatingManagerId !== null}>
+                                                        {activatingManagerId === manager.manager_id ? "Activating..." : "Activate"} </button>)}
+                                            </td>
+                                            <td>
+                                                {manager.status === "INACTIVE" && (
+                                                    <button type="button" onClick={() => deleteFleetManager(manager)} disabled={deletingManagerId !== null}>
+                                                        {deletingManagerId === manager.manager_id ? "Deleting..." : "Delete"} </button>
+                                                )}
+                                            </td>
+
                                         </tr>
                                     ))}
+                                    <tr>
+
+                                    </tr>
                                 </tbody>
                             </table>
-                        )
+        );
+
+    }
+    // Εμφανίζουμε τη φόρμα επεξεργασίας μόνο όταν
+    // ο Admin έχει επιλέξει έναν Fleet Manager.
+    function edit_fleet_manager_details(){
+        if(editingManagerId)
+            return (
+                        <form onSubmit={updateFleetManager}>
+                            <h3>Edit Fleet Manager: {editingManagerId}</h3>
+
+                            {
+                                (
+                                    [
+                                        ["first_name", "First Name"],
+                                        ["last_name", "Last Name"],
+                                        ["email", "Email"],
+                                        ["phone_number", "Phone Number"],
+                                        ["date_of_birth", "Date of Birth"],
+                                        ["identity_card_number", "Identity Card Number"],
+                                        ["tax_id", "Tax ID"],
+                                        ["hire_date", "Hire Date"],
+                                    ] as const
+                                ).map(([field, label]) => (
+                                    <div key={field}>
+                                        <label htmlFor={`edit-manager-${field}`}>{label}</label>
+                                        <input
+                                            id={`edit-manager-${field}`}
+                                            type={field === "email" ? "email" : field === "date_of_birth" || field === "hire_date" ? "date" : "text"}
+                                            value={editFleetManagerForm[field]}
+                                            onChange={(event) =>
+                                                setEditFleetManagerForm({...editFleetManagerForm, [field]: event.target.value,})
+                                            }
+                                        />
+                                    </div>
+                                ))
+                            }
+
+                            <div>
+                                <label htmlFor="edit-manager-fleet">Fleet</label>
+                                <select id="edit-manager-fleet" value={editFleetManagerForm.fleet_id}
+                                        onChange={(event) =>
+                                            setEditFleetManagerForm({...editFleetManagerForm, fleet_id: event.target.value,}) }>
+                                    <option value="">Unassigned</option>
+                                    {
+                                        fleets.map((fleet) => (
+                                            <option key={fleet.fleet_id} value={fleet.fleet_id}>
+                                                {fleet.name} ({fleet.fleet_id})
+                                            </option>
+                                        ))
+                                    }
+                                </select>
+                            </div>
+                            { editManagerError && ( <p role="alert">{editManagerError}</p> ) }
+
+                            <button type="submit" disabled={isUpdatingManager}> Save Changes </button>
+                            <button type="button" disabled={isUpdatingManager} onClick={() => setEditingManagerId(null)}> Cancel </button>
+                        </form>
+                    )
+        return (null)
+    }
+    // Εμφανίζουμε τα στοιχεία του Fleet Manager που επέλεξε ο Admin.
+    function show_fleet_manager_details(){
+        if(viewManagerId){
+            const manager = fleetManagers.find((manager) => manager.manager_id === viewManagerId);
+            if(manager)
+                return (
+                    <div>
+                        <h3>Fleet Manager Details: {manager.manager_id}</h3>
+
+                        <p>First Name: {manager.first_name}</p>
+                        <p>Last Name: {manager.last_name}</p>
+                        <p>Date of Birth: {manager.date_of_birth ?? "—"}</p>
+                        <p>Identity Card Number: {manager.identity_card_number ?? "—"}</p>
+                        <p>Tax ID: {manager.tax_id ?? "—"}</p>
+                        <p>Phone Number: {manager.phone_number ?? "—"}</p>
+                        <p>Email: {manager.email ?? "—"}</p>
+                        <p>Fleet ID: {manager.fleet_id ?? "Unassigned"}</p>
+                        <p>Hire Date: {manager.hire_date ?? "—"}</p>
+                        <p>Status: {manager.status}</p>
+
+                        <button type="button" onClick={() => setViewManagerId(null)}> Close </button>
+                    </div>
+                )
+        }
+
+        return (null)
+    }
+
+    function manager_error_show() {
+        if (activateManagerSuccess) return <p role="status">{activateManagerSuccess}</p>;
+        if (activateManagerError) return <p role="alert">{activateManagerError}</p>;
+        if (deactivateManagerSuccess) return <p role="status">{deactivateManagerSuccess}</p>;
+        if (deactivateManagerError) return <p role="alert">{deactivateManagerError}</p>;
+        if (deleteManagerSuccess) return <p role="alert">{deleteManagerSuccess}</p>;
+        if (deleteManagerError) return <p role="alert">{deleteManagerError}</p>;
+        return null;
+    }
+
+
+    function driver_error_show() {
+        if (activateDriverSuccess) return <p role="status">{activateDriverSuccess}</p>;
+        if (activateDriverError) return <p role="alert">{activateDriverError}</p>;
+        if (deactivateDriverSuccess) return <p role="status">{deactivateDriverSuccess}</p>;
+        if (deactivateDriverError) return <p role="alert">{deactivateDriverError}</p>;
+        if (deleteDriverError) return <p role="alert">{deleteDriverError}</p>;
+        if (deleteDriverSuccess) return <p role="alert">{deleteDriverSuccess}</p>;
+        return null;
+    }
+    async function createDriver(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        // Αποτρέπουμε την υποβολή χωρίς έγκυρο access token.
+        if (!token || isCreatingDriver) return;
+
+        setIsCreatingDriver(true);
+        setCreateDriverError("");
+        setCreateDriverSuccess("");
+
+        try {
+            // Μετατρέπουμε τα προαιρετικά κενά πεδία σε null,
+            // σύμφωνα με το μοντέλο AdminDriverCreate του Backend.
+            const payload = {
+                username: driverForm.username.trim(),
+                driver_id: driverForm.driver_id.trim(),
+                first_name: driverForm.first_name.trim(),
+                last_name: driverForm.last_name.trim(),
+                email: driverForm.email.trim(),
+                date_of_birth: driverForm.date_of_birth || null,
+                identity_card_number:
+                    driverForm.identity_card_number.trim() || null,
+                tax_id: driverForm.tax_id.trim() || null,
+                phone_number: driverForm.phone_number.trim() || null,
+                license_number: driverForm.license_number.trim() || null,
+                license_category: driverForm.license_category.trim() || null,
+                license_expiry_date:
+                    driverForm.license_expiry_date || null,
+                hire_date: driverForm.hire_date || null,
+                fleet_id: driverForm.fleet_id.trim() || null,
+                department_id: driverForm.department_id.trim() || null,
+            };
+
+            // Το API Gateway αναλαμβάνει τη δημιουργία της
+            // Keycloak identity και του Driver Profile.
+            const response = await fetch(
+                "http://localhost:8004/api/v1/admin/drivers",
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(payload),
                 }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                const detail = result.detail;
+
+                // Εμφανίζουμε αναλυτικά τα σφάλματα επικύρωσης
+                // που επιστρέφει το FastAPI.
+                if (Array.isArray(detail)) {
+                    const validationErrors = detail.map((error) => {
+                        const field = Array.isArray(error.loc)
+                            ? error.loc.join(".")
+                            : "unknown";
+
+                        return `${field}: ${error.msg}`;
+                    });
+
+                    throw new Error(validationErrors.join(" | "));
+                }
+
+                throw new Error(
+                    typeof detail === "string"
+                        ? detail
+                        : `Failed to create driver: ${response.status}`
+                );
+            }
+
+            // Προσθέτουμε τον Driver στη λίστα όταν η απάντηση
+            // περιλαμβάνει το ολοκληρωμένο Driver Profile.
+            if (result.driver_id) {
+                setDrivers((previous) => [...previous, result]);
+            }
+
+            // Καθαρίζουμε τη φόρμα μόνο μετά την επιτυχία.
+            setDriverForm({ ...emptyDriverForm });
+            setCreateDriverSuccess("Driver created successfully.");
+
+        } catch (error) {
+            setCreateDriverError(
+                error instanceof Error
+                    ? error.message
+                    : "Could not create driver."
+            );
+        } finally {
+            setIsCreatingDriver(false);
+        }
+    }
+    function show_drivers() {
+        // Εμφανίζουμε μήνυμα όσο περιμένουμε τα Driver Profiles.
+        if (isLoadingDrivers) return <p>Loading drivers...</p>;
+
+        // Εμφανίζουμε τυχόν σφάλμα από το API Gateway.
+        if (driversError) return <p role="alert">{driversError}</p>;
+
+        // Ενημερώνουμε τον Admin όταν δεν υπάρχουν οδηγοί.
+        if (drivers.length === 0) return <p>No drivers available.</p>;
+
+        // Εμφανίζουμε τα βασικά στοιχεία όλων των Drivers.
+        return (
+            <div>
+            <table align={"center"}>
+                <thead align={"left"}>
+                    <tr>
+                        <th>Driver ID</th>
+                        <th>Name</th>
+                        {/*<th>Email</th>*/}
+                        <th>Fleet</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody align={"left"}>
+                    {drivers.map((driver) => (
+                        <tr key={driver.driver_id}>
+                            <td>{driver.driver_id}</td>
+                            <td>{driver.first_name} {driver.last_name}</td>
+                            {/*<td>{driver.email ?? "-"}</td>*/}
+                            <td>{driver.fleet_id ?? "-"}</td>
+                            <td>{driver.status === "INACTIVE" ? <p style={{ color: "red" }}>{driver.status}</p> : <p style={{ color: "green" }}>{driver.status}</p> }</td>
+                            <td>
+                                <button type="button" onClick={() => setViewDriverId(viewDriverId === driver.driver_id ? null : driver.driver_id)}> View </button>
+                            </td>
+                            <td>
+                                <button type="button" onClick={() => startEditingDriver(driver)} disabled={isUpdatingDriver}> Edit </button>
+                            </td>
+                            <td>
+
+                                {driver.status === "ACTIVE" &&
+                                    (<button type="button" onClick={() => deactivateDriver(driver)} disabled={deactivatingDriverId !== null}>
+                                        {deactivatingDriverId === driver.driver_id ? "Deactivating..." : "Deactivate"} </button>)}
+                                {driver.status === "INACTIVE" &&
+                                    (<button type="button" onClick={() => activateDriver(driver)} disabled={activatingDriverId !== null}>
+                                        {activatingDriverId === driver.driver_id ? "Activating..." : "Activate"} </button>)}
+                            </td>
+                            <td>
+                                {driver.status === "INACTIVE" &&
+                                    (<button type="button" onClick={() => deleteDriver(driver)} disabled={deletingDriverId !== null}>
+                                        {deletingDriverId === driver.driver_id ? "Deleting..." : "Delete"} </button>)}
+                            </td>
+                            <td>
+                                <button type="button" onClick={() => loadDriverVehicles(driver)} disabled={isLoadingDriverVehicles}>
+                                    Vehicles
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+            {
+                selectedDriverId && (
+                <div>
+                    <h3>Vehicles assigned to Driver: {selectedDriverId}</h3>
+                    <button type="button" onClick={() => { setSelectedDriverId(null); setDriverVehicles([]); setDriverVehiclesError(""); }}>Close</button>
+                            {isLoadingDriverVehicles && <p>Loading vehicles...</p>}
+
+                            {driverVehiclesError && <p role="alert">{driverVehiclesError}</p>}
+
+                            {!isLoadingDriverVehicles && !driverVehiclesError && ( driverVehicles.length === 0
+                                    ? <p>No vehicles assigned to this Driver.</p>
+                                    : <table align={"center"}>
+                                        <thead>
+                                            <tr>
+                                                <th>Plate Number</th>
+                                                <th>Brand</th>
+                                                <th>Model</th>
+                                                <th>Device IMEI</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {driverVehicles.map((vehicle) => (
+                                                <tr key={vehicle.id}>
+                                                    <td>{vehicle.plate_number}</td>
+                                                    <td>{vehicle.brand}</td>
+                                                    <td>{vehicle.model}</td>
+                                                    <td>{vehicle.device_imei}</td>
+                                                    <td>
+                                                        <button type="button" onClick={() => setSelectedTrackingVehicle(vehicle)}> Track </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                   )}
+                </div>
+            )}
+                {
+                selectedTrackingVehicle && (
+                        <div>
+                            <h3>GPS Tracking</h3>
+                            <p>Vehicle: {selectedTrackingVehicle.plate_number}</p>
+                            <p>Brand: {selectedTrackingVehicle.brand}</p>
+                            <p>Model: {selectedTrackingVehicle.model}</p>
+                            <p>Device IMEI: {selectedTrackingVehicle.device_imei}</p>
+
+                            <button type="button" onClick={() => setSelectedTrackingVehicle(null)}> Close Tracking </button>
+                        </div>
+            )}
+            </div>
+        );
+
+    }
+    // Εμφανίζουμε αναλυτικά τα στοιχεία του Driver που επέλεξε ο Admin.
+    function show_driver_details(){
+        if(viewDriverId){
+            const driver = drivers.find((driver) => driver.driver_id === viewDriverId);
+            if(driver)
+                return (
+                    <div>
+                        <h3>Driver Details: {driver.driver_id}</h3>
+
+                        <p>First Name: {driver.first_name}</p>
+                        <p>Last Name: {driver.last_name}</p>
+                        <p>Date of Birth: {driver.date_of_birth ?? "—"}</p>
+                        <p>Identity Card Number: {driver.identity_card_number ?? "—"}</p>
+                        <p>Tax ID: {driver.tax_id ?? "—"}</p>
+                        <p>Phone Number: {driver.phone_number ?? "—"}</p>
+                        <p>Email: {driver.email ?? "—"}</p>
+                        <p>License Number: {driver.license_number ?? "—"}</p>
+                        <p>License Category: {driver.license_category ?? "—"}</p>
+                        <p>License Expiry Date: {driver.license_expiry_date ?? "—"}</p>
+                        <p>Hire Date: {driver.hire_date ?? "—"}</p>
+                        <p>Fleet ID: {driver.fleet_id ?? "Unassigned"}</p>
+                        <p>Department ID: {driver.department_id ?? "—"}</p>
+                        <p>Keycloak User ID: {driver.keycloak_user_id}</p>
+                        <p>Status: {driver.status}</p>
+
+                        <button type="button" onClick={() => setViewDriverId(null)}> Close </button>
+                    </div>
+                )
+        }
+
+        return (null)
+    }
+    // Επιλέγουμε τον Driver που θέλουμε να επεξεργαστούμε
+    // και συμπληρώνουμε τη φόρμα με τα υπάρχοντα στοιχεία του.
+    function startEditingDriver(driver: Driver) {
+        setEditingDriverId(driver.driver_id);
+
+        setEditDriverForm({
+            ...emptyDriverForm,
+            driver_id: driver.driver_id,
+            first_name: driver.first_name,
+            last_name: driver.last_name,
+            email: driver.email ?? "",
+            date_of_birth: driver.date_of_birth ?? "",
+            identity_card_number: driver.identity_card_number ?? "",
+            tax_id: driver.tax_id ?? "",
+            phone_number: driver.phone_number ?? "",
+            license_number: driver.license_number ?? "",
+            license_category: driver.license_category ?? "",
+            license_expiry_date: driver.license_expiry_date ?? "",
+            hire_date: driver.hire_date ?? "",
+            fleet_id: driver.fleet_id ?? "",
+            department_id: driver.department_id ?? "",
+        });
+
+        setEditDriverError("");
+    }
+        // Ενημερώνουμε τα στοιχεία του Driver μέσω του API Gateway.
+    // Το Backend αναλαμβάνει την ενημέρωση του Driver Profile και του Keycloak.
+    async function updateDriver(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        if (!token || !editingDriverId || isUpdatingDriver) return;
+
+        setIsUpdatingDriver(true);
+        setEditDriverError("");
+
+        try {
+            // Στέλνουμε μόνο τα πεδία που επιτρέπεται να επεξεργαστεί ο Admin.
+            const payload = {
+                first_name: editDriverForm.first_name.trim(),
+                last_name: editDriverForm.last_name.trim(),
+                email: editDriverForm.email.trim() || null,
+                date_of_birth: editDriverForm.date_of_birth || null,
+                identity_card_number: editDriverForm.identity_card_number.trim() || null,
+                tax_id: editDriverForm.tax_id.trim() || null,
+                phone_number: editDriverForm.phone_number.trim() || null,
+                license_number: editDriverForm.license_number.trim() || null,
+                license_category: editDriverForm.license_category.trim() || null,
+                license_expiry_date: editDriverForm.license_expiry_date || null,
+                hire_date: editDriverForm.hire_date || null,
+                fleet_id: editDriverForm.fleet_id.trim() || null,
+                department_id: editDriverForm.department_id.trim() || null,
+            };
+
+            const response = await fetch(
+                `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(editingDriverId)}`,
+                {
+                    method: "PATCH",
+                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", },
+                    body: JSON.stringify(payload),
+                }
+            );
+
+            const result = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                // Εμφανίζουμε αναλυτικά τα σφάλματα επικύρωσης
+                // που επιστρέφει το FastAPI για το PATCH Driver.
+                console.error("Driver PATCH validation error:", result);
+
+                const detail = result?.detail;
+
+                if (Array.isArray(detail)) {
+                    const validationErrors = detail.map((error) => {
+                        const field = Array.isArray(error.loc)
+                            ? error.loc.join(".")
+                            : "unknown";
+
+                        return `${field}: ${error.msg}`;
+                    });
+
+                    throw new Error(validationErrors.join(" | "));
+                }
+
+                throw new Error(
+                    typeof detail === "string"
+                        ? detail
+                        : `Failed to update Driver: ${response.status}`
+                );
+            }
+
+            // Ανανεώνουμε τον Driver στη λίστα μετά την επιτυχημένη ενημέρωση.
+            setDrivers((previous) =>
+                previous.map((driver) =>
+                    driver.driver_id === editingDriverId ? result : driver
+                )
+            );
+
+            setEditingDriverId(null);
+
+        } catch (error) {
+            setEditDriverError(
+                error instanceof Error ? error.message : "Could not update Driver."
+            );
+        } finally {
+            setIsUpdatingDriver(false);
+        }
+    }
+
+    // Εμφανίζουμε τη φόρμα επεξεργασίας μόνο όταν
+    // ο Admin έχει επιλέξει έναν Driver.
+    function edit_driver_details(){
+        if(editingDriverId)
+            return (
+                        <form onSubmit={updateDriver}>
+                            <h3>Edit Driver: {editingDriverId}</h3>
+
+                            {
+                                (
+                                    [
+                                        ["first_name", "First Name"],
+                                        ["last_name", "Last Name"],
+                                        ["email", "Email"],
+                                        ["phone_number", "Phone Number"],
+                                        ["date_of_birth", "Date of Birth"],
+                                        ["identity_card_number", "Identity Card Number"],
+                                        ["tax_id", "Tax ID"],
+                                        ["license_number", "License Number"],
+                                        ["license_category", "License Category"],
+                                        ["license_expiry_date", "License Expiry Date"],
+                                        ["hire_date", "Hire Date"],
+                                    ] as const
+                                ).map(([field, label]) => (
+                                    <div key={field}>
+                                        <label htmlFor={`edit-driver-${field}`}>{label}</label>
+                                        <input
+                                            id={`edit-driver-${field}`}
+                                            type={field === "email" ? "email" : field === "date_of_birth" || field === "license_expiry_date" || field === "hire_date" ? "date" : "text"}
+                                            value={editDriverForm[field]}
+                                            onChange={(event) =>
+                                                setEditDriverForm({...editDriverForm, [field]: event.target.value,})
+                                            }
+                                        />
+                                    </div>
+                                ))
+                            }
+
+                            <div>
+                                <label htmlFor="edit-driver-fleet">Fleet</label>
+                                <select id="edit-driver-fleet" value={editDriverForm.fleet_id}
+                                        onChange={(event) =>
+                                            setEditDriverForm({...editDriverForm, fleet_id: event.target.value,}) }>
+                                    <option value="">Unassigned</option>
+                                    {
+                                        fleets.map((fleet) => (
+                                            <option key={fleet.fleet_id} value={fleet.fleet_id}>
+                                                {fleet.name} ({fleet.fleet_id})
+                                            </option>
+                                        ))
+                                    }
+                                </select>
+                            </div>
+
+                            <div>
+                                <label htmlFor="edit-driver-department">Department ID</label>
+                                <input id="edit-driver-department" type="text" value={editDriverForm.department_id}
+                                       onChange={(event) =>
+                                           setEditDriverForm({...editDriverForm, department_id: event.target.value,}) } />
+                            </div>
+
+                            { editDriverError && ( <p role="alert">{editDriverError}</p> ) }
+
+                            <button type="submit" disabled={isUpdatingDriver}> Save Changes </button>
+                            <button type="button" disabled={isUpdatingDriver} onClick={() => setEditingDriverId(null)}> Cancel </button>
+                        </form>
+                    )
+        return (null)
+    }
+        // Απενεργοποιεί τον Driver μέσω του API Gateway.
+    // Το Backend αναλαμβάνει την ενημέρωση του Fleet API και του Keycloak.
+    async function deactivateDriver(driver: Driver) {
+        setDeactivateDriverError("");
+        setDeactivateDriverSuccess("");
+        setActivateDriverError("");
+        setActivateDriverSuccess("");
+        setDeleteDriverError("")
+        setDeleteDriverSuccess("")
+        if (!token || deactivatingDriverId) return;
+
+        if (!window.confirm(`Deactivate Driver ${driver.driver_id}?`)) return;
+
+        setDeactivatingDriverId(driver.driver_id);
+        setDeactivateDriverError("");
+        setDeactivateDriverSuccess("");
+
+        try {
+            const response = await fetch(
+                `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(driver.driver_id)}/deactivate`,
+                {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}`, },
+                }
+            );
+
+            const result = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    typeof result?.detail === "string" ? result.detail : `Failed to deactivate Driver: ${response.status}`
+                );
+            }
+
+            // Ενημερώνουμε τη λίστα μόνο μετά από επιτυχημένη απάντηση.
+            setDrivers((previous) =>
+                previous.map((item) =>
+                    item.driver_id === driver.driver_id ? result : item
+                )
+            );
+
+            setDeactivateDriverSuccess("Driver deactivated successfully.");
+
+        } catch (error) {
+            setDeactivateDriverError(
+                error instanceof Error ? error.message : "Could not deactivate Driver."
+            );
+        } finally {
+            setDeactivatingDriverId(null);
+        }
+    }
+
+        // Ενεργοποιεί ξανά έναν ανενεργό Driver μέσω του API Gateway.
+    // Το Backend αναλαμβάνει την ενημέρωση του Fleet API και του Keycloak.
+    async function activateDriver(driver: Driver) {
+        setDeactivateDriverError("");
+        setDeactivateDriverSuccess("");
+        setActivateDriverError("");
+        setActivateDriverSuccess("");
+        setDeleteDriverError("")
+        setDeleteDriverSuccess("")
+        if (!token || activatingDriverId) return;
+
+        if (!window.confirm(`Activate Driver ${driver.driver_id}?`)) return;
+
+        setActivatingDriverId(driver.driver_id);
+        setActivateDriverError("");
+        setActivateDriverSuccess("");
+
+        try {
+            const response = await fetch(
+                `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(driver.driver_id)}/activate`,
+                {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}`, },
+                }
+            );
+
+            const result = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    typeof result?.detail === "string" ? result.detail : `Failed to activate Driver: ${response.status}`
+                );
+            }
+
+            // Ενημερώνουμε τον Driver στον πίνακα μόνο
+            // αφού το Backend επιβεβαιώσει την ενεργοποίηση.
+            setDrivers((previous) =>
+                previous.map((item) =>
+                    item.driver_id === driver.driver_id ? result : item
+                )
+            );
+
+            setActivateDriverSuccess("Driver activated successfully.");
+
+        } catch (error) {
+            setActivateDriverError(
+                error instanceof Error ? error.message : "Could not activate Driver."
+            );
+        } finally {
+            setActivatingDriverId(null);
+        }
+    }
+
+        // Διαγράφει οριστικά έναν Driver μόνο όταν είναι INACTIVE.
+    // Το Backend διαχειρίζεται το Fleet API και το Keycloak.
+    async function deleteDriver(driver: Driver) {
+        setDeactivateDriverError("");
+        setDeactivateDriverSuccess("");
+        setActivateDriverError("");
+        setActivateDriverSuccess("");
+        setDeleteDriverError("")
+        setDeleteDriverSuccess("")
+        if (!token || deletingDriverId || driver.status !== "INACTIVE") return;
+
+        if (!window.confirm(`Permanently delete Driver ${driver.driver_id}?`)) return;
+
+        setDeletingDriverId(driver.driver_id);
+        setDeleteDriverError("");
+        setDeleteDriverSuccess("");
+
+        try {
+            const response = await fetch(
+                `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(driver.driver_id)}`,
+                {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${token}`, },
+                }
+            );
+
+            const result = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    typeof result?.detail === "string" ? result.detail : `Failed to delete Driver: ${response.status}`
+                );
+            }
+
+            // Αφαιρούμε τον Driver από τον πίνακα μόνο μετά την επιτυχημένη διαγραφή.
+            setDrivers((previous) =>
+                previous.filter((item) => item.driver_id !== driver.driver_id)
+            );
+
+            setDeleteDriverSuccess("Driver deleted successfully.");
+
+        } catch (error) {
+            setDeleteDriverError(
+                error instanceof Error ? error.message : "Could not delete Driver."
+            );
+        } finally {
+            setDeletingDriverId(null);
+        }
+    }
+
+        // Ανακτά τα οχήματα που είναι ανατεθειμένα στον επιλεγμένο Driver.
+    async function loadDriverVehicles(driver: Driver) {
+        if (!token) return;
+
+        // Αποθηκεύουμε τον Driver και καθαρίζουμε τα προηγούμενα αποτελέσματα.
+        setSelectedDriverId(driver.driver_id);
+        setDriverVehicles([]);
+        setDriverVehiclesError("");
+        setIsLoadingDriverVehicles(true);
+
+        try {
+            const response = await fetch(
+                `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(driver.driver_id)}/vehicles`,
+                {
+                    method: "GET",
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+
+            const result = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    typeof result?.detail === "string"
+                        ? result.detail
+                        : `Failed to load Driver vehicles: ${response.status}`
+                );
+            }
+
+            // Ελέγχουμε ότι το API επέστρεψε πίνακα οχημάτων.
+            if (!Array.isArray(result)) {
+                throw new Error("Invalid Driver vehicles response.");
+            }
+
+            setDriverVehicles(result as Vehicle[]);
+
+        } catch (error) {
+            setDriverVehiclesError(
+                error instanceof Error ? error.message : "Could not load Driver vehicles."
+            );
+        } finally {
+            setIsLoadingDriverVehicles(false);
+        }
+    }
+
+    if (isAdmin) {
+        return (
+            <section>
+                <h2>Admin Dashboard</h2>
+
+                <h3>Create Fleet</h3>
+
+                <form onSubmit={createFleet}>
+                    <div align={"center"}>
+                        <label htmlFor="fleet-id">Fleet ID *</label>
+                        <input id="fleet-id" required value= { fleetForm.fleet_id }
+                            onChange={(event) => setFleetForm({ ...fleetForm, fleet_id: event.target.value, })}
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="fleet-name">Fleet Name *</label>
+                        <input
+                            id="fleet-name" required value= { fleetForm.name }
+                            onChange={(event) => setFleetForm({ ...fleetForm, name: event.target.value, })}
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="fleet-description">Description</label>
+                        <textarea id="fleet-description" value= { fleetForm.description }
+                                onChange={(event) => setFleetForm({...fleetForm, description: event.target.value,}) }
+                        />
+                    </div>
+
+                    <h4>Base Location</h4>
+                    {
+                        (
+                            [
+                                ["name", "Location Name", true],
+                                ["address", "Address", false],
+                                ["city", "City", false],
+                                ["postal_code", "Postal Code", false],
+                                ["latitude", "Latitude", true],
+                                ["longitude", "Longitude", true],
+                            ] as const
+                        ).map( ([field, label, required]) =>
+                            (
+                                <div key={field}>
+                                    <label htmlFor={`fleet-${field}`}>
+                                        {label}{required ? " *" : ""}
+                                    </label>
+
+                                    <input
+                                        id={`fleet-${field}`}
+                                        required={required}
+                                        type={ field === "latitude" || field === "longitude" ? "number" : "text"}
+                                        step={ field === "latitude" || field === "longitude" ? "any" : undefined }
+                                        value={fleetForm.base_location[field]}
+                                        onChange={(event) =>
+                                            setFleetForm({ ...fleetForm, base_location: { ...fleetForm.base_location, [field]: event.target.value, },})
+                                        }
+                                    />
+                                </div>
+                            )
+                        )
+                    }
+                    {
+                        createError && ( <p role="alert">{createError}</p> )
+                    }
+
+                    {
+                        createSuccess && ( <p role="status">{createSuccess}</p> )
+                    }
+
+                    <button type="submit" disabled={isCreating}>
+                        {isCreating ? "Creating..." : "Create Fleet"}
+                    </button>
+                </form>
+
+                <hr />
+
+                <h3>Fleets</h3>
+                {
+                    show_fleets()
+                }
+                {
+                    deleteError && <p role="alert">{deleteError}</p>
+                }
+                {
+                    deleteSuccess && <p role="status">{deleteSuccess}</p>
+                }
+                {
+                    show_fleet_details()
+                }
+                {
+                    edit_fleet_details()
+                }
+
+                <hr />
+                <section>
+                    {/* Φόρμα δημιουργίας νέου Fleet Manager από τον Admin. */}
+                    <h3>Create Fleet Manager</h3>
+
+                    <form onSubmit={createFleetManager}>
+                        <div>
+                            <label htmlFor="manager-username">Username</label>
+                            <input
+                                id="manager-username"
+                                type="text"
+                                value={fleetManagerForm.username}
+                                onChange={(event) =>
+                                    setFleetManagerForm({ ...fleetManagerForm, username: event.target.value, }) } required />
+                        </div>
+
+                        <div>
+                            <label htmlFor="manager-id">Manager ID</label>
+                            <input id="manager-id" type="text" value={fleetManagerForm.manager_id}
+                                   onChange={(event) =>
+                                       setFleetManagerForm({...fleetManagerForm, manager_id: event.target.value,}) } required />
+                        </div>
+
+                        <div>
+                            <label htmlFor="manager-first-name">First Name</label>
+                            <input id="manager-first-name" type="text" value={fleetManagerForm.first_name}
+                                   onChange={(event) =>
+                                       setFleetManagerForm({...fleetManagerForm, first_name: event.target.value,}) } required />
+                        </div>
+
+                        <div>
+                            <label htmlFor="manager-last-name">Last Name</label>
+                            <input id="manager-last-name" type="text" value={fleetManagerForm.last_name}
+                                   onChange={(event) =>
+                                       setFleetManagerForm({...fleetManagerForm, last_name: event.target.value,}) } required />
+                        </div>
+
+                        <div>
+                            <label htmlFor="manager-email">Email</label>
+                            <input id="manager-email" type="email" value={fleetManagerForm.email}
+                                onChange={(event) =>
+                                    setFleetManagerForm({...fleetManagerForm, email: event.target.value,}) } required />
+                        </div>
+
+                        <div>
+                            <label htmlFor="manager-fleet">Fleet</label>
+                            <select id="manager-fleet" value={fleetManagerForm.fleet_id}
+                                    onChange={(event) =>
+                                        setFleetManagerForm({...fleetManagerForm, fleet_id: event.target.value,}) } required >
+                                <option value="">Select Fleet</option>
+
+                                {
+                                    fleets.map((fleet) => (
+                                            <option key={fleet.fleet_id} value={fleet.fleet_id}>
+                                                {fleet.name} ({fleet.fleet_id})
+                                            </option>
+                                        )
+                                    )
+                                }
+                            </select>
+                        </div>
+
+                        <div>
+                            <label htmlFor="manager-department">Department ID</label>
+                            <input id="manager-department" type="text" value={fleetManagerForm.department_id}
+                                   onChange={(event) =>
+                                       setFleetManagerForm({...fleetManagerForm, department_id: event.target.value,}) } />
+                        </div>
+
+                        <div>
+                            <label htmlFor="manager-birth-date">Date of Birth</label>
+                            <input id="manager-birth-date" type="date" value={fleetManagerForm.date_of_birth}
+                                onChange={(event) =>
+                                    setFleetManagerForm({...fleetManagerForm, date_of_birth: event.target.value,}) } />
+                        </div>
+
+                        <div>
+                            <label htmlFor="manager-identity">Identity Card Number</label>
+                            <input id="manager-identity" type="text" value={fleetManagerForm.identity_card_number}
+                                onChange={(event) =>
+                                    setFleetManagerForm({...fleetManagerForm, identity_card_number: event.target.value,}) }/>
+                        </div>
+
+                        <div>
+                            <label htmlFor="manager-tax-id">Tax ID</label>
+                            <input id="manager-tax-id" type="text" value={fleetManagerForm.tax_id}
+                                onChange={(event) =>
+                                    setFleetManagerForm({...fleetManagerForm,tax_id: event.target.value,}) } />
+                        </div>
+
+                        <div>
+                            <label htmlFor="manager-phone">Phone Number</label>
+                            <input id="manager-phone" type="tel" value={fleetManagerForm.phone_number}
+                                onChange={(event) =>
+                                    setFleetManagerForm({ ...fleetManagerForm, phone_number: event.target.value, }) } />
+                        </div>
+
+                        <div>
+                            <label htmlFor="manager-hire-date">Hire Date</label>
+                            <input id="manager-hire-date" type="date" value={fleetManagerForm.hire_date}
+                                onChange={(event) =>
+                                    setFleetManagerForm({ ...fleetManagerForm, hire_date: event.target.value, }) } />
+                        </div>
+
+                        <button type="submit" disabled={isCreatingManager}>
+                            {isCreatingManager ? "Creating..." : "Create Fleet Manager"}
+                        </button>
+
+                        {
+                            createManagerError && ( <p role="alert">{createManagerError}</p>)
+                        }
+
+                        {
+                            createManagerSuccess && (<p>{createManagerSuccess}</p>)
+                        }
+
+                    </form>
+
+                    <hr />
+                    <h3>Fleet Managers</h3>
+                    {
+                        show_fleet_managers()
+                    }
+                    {
+                        show_fleet_manager_details()
+                    }
+                    {
+                        edit_fleet_manager_details()
+                    }
+                    {
+                        manager_error_show()
+                    }
+                                    {/* Φόρμα δημιουργίας νέου Driver από τον Admin. */}
+                    <h3>Create Driver</h3>
+
+                    <form onSubmit={createDriver}>
+                        {(
+                            [
+                                ["username", "Username", true],
+                                ["driver_id", "Driver ID", true],
+                                ["first_name", "First Name", true],
+                                ["last_name", "Last Name", true],
+                                ["email", "Email", true],
+                                ["date_of_birth", "Date of Birth", false],
+                                ["identity_card_number", "Identity Card Number", false],
+                                ["tax_id", "Tax ID", false],
+                                ["phone_number", "Phone Number", false],
+                                ["license_number", "License Number", false],
+                                ["license_category", "License Category", false],
+                                ["license_expiry_date", "License Expiry Date", false],
+                                ["hire_date", "Hire Date", false],
+                            ] as const
+                        ).map(([field, label, required]) => (
+                            <div key={field}>
+                                <label htmlFor={`driver-${field}`}>
+                                    {label}{required ? " *" : ""}
+                                </label>
+
+                                <input
+                                    id={`driver-${field}`}
+                                    required={required}
+                                    type={
+                                        field === "email"
+                                            ? "email"
+                                            : field === "date_of_birth" ||
+                                              field === "license_expiry_date" ||
+                                              field === "hire_date"
+                                            ? "date"
+                                            : "text"
+                                    }
+                                    value={driverForm[field]}
+                                    onChange={(event) =>
+                                        setDriverForm({
+                                            ...driverForm,
+                                            [field]: event.target.value,
+                                        })
+                                    }
+                                />
+                            </div>
+                        ))}
+
+                        {/* Επιλέγουμε Fleet από τα ήδη διαθέσιμα Fleets. */}
+                        <div>
+                            <label htmlFor="driver-fleet">Fleet</label>
+                            <select
+                                id="driver-fleet"
+                                value={driverForm.fleet_id}
+                                onChange={(event) =>
+                                    setDriverForm({
+                                        ...driverForm,
+                                        fleet_id: event.target.value,
+                                    })
+                                }
+                            >
+                                <option value="">No Fleet</option>
+                                {fleets.map((fleet) => (
+                                    <option key={fleet.fleet_id} value={fleet.fleet_id}>
+                                        {fleet.name} ({fleet.fleet_id})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Το Department παραμένει προαιρετικό. */}
+                        {/*<div>*/}
+                        {/*    <label htmlFor="driver-department">Department ID</label>*/}
+                        {/*    <input*/}
+                        {/*        id="driver-department"*/}
+                        {/*        value={driverForm.department_id}*/}
+                        {/*        onChange={(event) =>*/}
+                        {/*            setDriverForm({*/}
+                        {/*                ...driverForm,*/}
+                        {/*                department_id: event.target.value,*/}
+                        {/*            })*/}
+                        {/*        }*/}
+                        {/*    />*/}
+                        {/*</div>*/}
+
+                        {createDriverError && (
+                            <p role="alert">{createDriverError}</p>
+                        )}
+
+                        {createDriverSuccess && (
+                            <p role="status">{createDriverSuccess}</p>
+                        )}
+
+                        <button type="submit" disabled={isCreatingDriver}>
+                            {isCreatingDriver ? "Creating..." : "Create Driver"}
+                        </button>
+                    </form>
+
+                    <hr />
+                    <h3>Drivers</h3>
+                    {
+                        show_drivers()
+                    }
+                    {
+                        show_driver_details()
+                    }
+                    {
+                        edit_driver_details()
+                    }
+                    {
+                        driver_error_show()
+                    }
+
+                </section>
             </section>
-        </section>
         );
     }
     else {

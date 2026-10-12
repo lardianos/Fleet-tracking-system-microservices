@@ -2116,6 +2116,24 @@ async def admin_deactivate_driver( driver_id: str, token_payload: dict = Depends
 
     return updated_driver
 
+@app.get("/api/v1/admin/drivers/{driver_id}/vehicles")
+async def admin_get_driver_vehicles( driver_id: str, request: Request, token_payload: dict = Depends(validate_access_token),):
+    """
+    Επιστρέφει τα οχήματα που είναι ανατεθειμένα
+    σε συγκεκριμένο Driver.
+
+    Μόνο ο Admin μπορεί να χρησιμοποιήσει αυτό το endpoint.
+    Το Fleet API παραμένει υπεύθυνο για τα δεδομένα των οχημάτων.
+    """
+
+    # Ελέγχουμε ότι ο συνδεδεμένος χρήστης έχει δικαιώματα Admin.
+    role_checker(token_payload, ADMIN_ROLES)
+
+    # Προωθούμε το αίτημα στο υπάρχον endpoint του Fleet API.
+    target_url = ( f"{FLEET_API_URL}/drivers/{driver_id}/vehicles")
+
+    return await proxy_request(request, target_url)
+
 @app.delete("/api/v1/admin/drivers/{driver_id}")
 async def admin_delete_driver( driver_id: str, token_payload: dict = Depends(validate_access_token), ):
     """
@@ -4012,7 +4030,6 @@ async def get_driver_profile(request: Request,token_payload: dict = Depends(vali
     )
 
     return await proxy_request(request, target_url)
-
 
 @app.get("/api/v1/fleet-managers/me")
 async def get_fleet_manager_profile( request: Request, token_payload: dict = Depends(validate_access_token), ):

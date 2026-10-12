@@ -39,15 +39,81 @@ button {
     gap: 16px;
 }
 
-/* Τα ψηφία κρατούν σταθερό πλάτος όσο αλλάζουν τα δευτερόλεπτα. */
+
+/* Μικρό κυκλικό ρολόι δίπλα στο Logout. */
 .token-timer {
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-    /*color:lightskyblue;*/
-    /*background: #6b6375;*/
-}
-.timer-css{
-    color: #aa3bff;
+    position: relative;
+    width: 88px;
+    height: 88px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    /*background: #fdf5f3;*/
+    color: #f3f4f6;
+    box-shadow: 3px 3px 10px rgba(125, 93, 104, 0.15);
 }
 
+.token-timer-ring {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.token-timer-track,
+.token-timer-progress {
+    fill: none;
+    stroke-width: 8;
+}
+
+.token-timer-track {
+    stroke:#1f2028;
+}
+
+.token-timer-progress {
+    stroke: lawngreen;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.3s linear;
+}
+
+/* Κεντράρουμε την ένδειξη μέσα στον δακτύλιο. */
+.token-timer-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+}
+
+.token-timer-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: lawngreen;
+}
+
+.token-timer-clock {
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.my-button {
+
+        text-align: center;
+        width: 80px;
+        height: 80px;
+        border: none;
+        border-radius: 80px;
+        outline: none;
+        background: forestgreen;
+        color: white;
+        cursor: pointer;
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15);
+
+      }
+.my-button:hover {
+    background: lawngreen;
+    color: #1f2028;
+}
 

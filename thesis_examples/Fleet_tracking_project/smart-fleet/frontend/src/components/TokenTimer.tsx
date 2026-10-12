@@ -3,25 +3,38 @@ import keycloak from "../keycloak";
 
 function TokenTimer() {
     const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+    const [remainingPercentage, setRemainingPercentage] = useState(0);
 
     useEffect(() => {
-        // Υπολογίζουμε τον χρόνο από την πραγματική ώρα λήξης.
-        // Δεν αφαιρούμε απλώς ένα δευτερόλεπτο από έναν μετρητή.
+        // Διαβάζουμε το τρέχον token, ώστε να ακολουθούμε και την ανανέωσή του.
         function updateRemainingTime() {
             const tokenData = keycloak.tokenParsed;
 
             if (tokenData === undefined || typeof tokenData.exp !== "number") {
                 setRemainingSeconds(null);
+                setRemainingPercentage(0);
                 return;
             }
 
             const expirationTime = tokenData.exp * 1000;
-            const seconds = Math.ceil((expirationTime - Date.now()) / 1000);
+            const remainingTime = Math.max(0, expirationTime - Date.now());
 
-            setRemainingSeconds(Math.max(0, seconds));
+            setRemainingSeconds(Math.ceil(remainingTime / 1000));
+
+            // Το iat είναι η ώρα έκδοσης και το exp η ώρα λήξης του token.
+            let percentage = 0;
+
+            if (typeof tokenData.iat === "number") {
+                const totalTime = (tokenData.exp - tokenData.iat) * 1000;
+
+                if (totalTime > 0) {
+                    percentage = Math.min(100, remainingTime / totalTime * 100);
+                }
+            }
+
+            setRemainingPercentage(percentage);
         }
 
-        // Εμφανίζουμε αμέσως τον χρόνο και τον ενημερώνουμε κάθε δευτερόλεπτο.
         updateRemainingTime();
         const timer = window.setInterval(updateRemainingTime, 1000);
 
@@ -30,21 +43,38 @@ function TokenTimer() {
         };
     }, []);
 
-    if (remainingSeconds === null) {
-        return <span className="token-timer">Token expiry unavailable</span>;
+    let clockText = "--:--";
+    let labelText = "TOKEN";
+
+    if (remainingSeconds !== null) {
+        const minutes = Math.floor(remainingSeconds / 60);
+        const seconds = remainingSeconds % 60;
+
+        clockText = String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+
+        if (remainingSeconds === 0) {
+            labelText = "EXPIRED";
+        }
     }
 
-    if (remainingSeconds === 0) {
-        return <span className="token-timer">Token expired</span>;
-    }
-
-    // Μορφοποιούμε τον χρόνο ως λεπτά και δευτερόλεπτα.
-    const minutes = Math.floor(remainingSeconds / 60);
-    const seconds = remainingSeconds % 60;
-    const minutesText = String(minutes).padStart(2, "0");
-    const secondsText = String(seconds).padStart(2, "0");
-
-    return <span className="token-timer">Token expires in: <p className="timer-css" aria-hidden="true">{minutesText}:{secondsText}</p></span>;
+    return (
+        <div className="token-timer" role="timer" aria-label={`Access token remaining time: ${clockText}`}>
+            {/* Ο πρώτος κύκλος είναι το φόντο και ο δεύτερος ο χρόνος που απομένει. */}
+            <svg className="token-timer-ring" viewBox="0 0 120 120" aria-hidden="true">
+                <circle className="token-timer-track" cx="60" cy="60" r="51" />
+                <circle className="token-timer-progress" cx="60" cy="60" r="51" pathLength="100"
+                        strokeDasharray="100" strokeDashoffset={100 - remainingPercentage} />
+            </svg>
+            {labelText === "EXPIRED"?(
+                <div className="token-timer-center">
+                    <button className="my-button" onClick={() =>window.location.reload()}>  Reload</button> </div>):(
+            <div className="token-timer-center">
+                <span className="token-timer-label">{labelText}</span>
+                <span className="token-timer-clock">{clockText}</span>
+            </div>)
+                }
+        </div>
+    );
 }
 
 export default TokenTimer;

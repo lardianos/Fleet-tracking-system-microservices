@@ -1,24 +1,16 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-
-
-
+import type { Vehicle } from "../types/Vehicle";
+import type { DriverProfile as Driver } from "../types/DriverProfile";
+import type { FleetManagerProfile as FleetManager } from "../types/FleetManagerProfile";
+import type { Fleet } from "../types/Fleet";
+import { useVehicleTracking } from "../hooks/useVehicleTracking";
+import LatestPosition from "./LatestPosition";
+import LiveMap from "./LiveMap";
 // Περιγράφουμε μόνο τα πεδία του Fleet που χρειαζόμαστε
 // για την εμφάνιση της λίστας στο Admin Dashboard.
-interface Fleet {
-    fleet_id: string;
-    name: string;
-    description: string | null;
-    base_location: {
-        name: string;
-        address: string | null;
-        city: string | null;
-        postal_code: string | null;
-        latitude: number;
-        longitude: number;
-    };
-}
+
 interface FleetCreateForm {
     fleet_id: string;
     name: string;
@@ -31,22 +23,6 @@ interface FleetCreateForm {
         latitude: string;
         longitude: string;
     };
-}
-interface FleetManager {
-    id: string;
-    manager_id: string;
-    keycloak_user_id: string;
-    first_name: string;
-    last_name: string;
-    date_of_birth: string | null;
-    identity_card_number: string | null;
-    tax_id: string | null;
-    phone_number: string | null;
-    email: string | null;
-    fleet_id: string | null;
-    department_id: string | null;
-    hire_date: string | null;
-    status: string;
 }
 interface FleetManagerCreateForm {
     username: string;
@@ -62,36 +38,16 @@ interface FleetManagerCreateForm {
     phone_number: string;
     hire_date: string;
 }
-// Περιγράφουμε όλα τα πεδία που επιστρέφει το DriverResponse
-// του Fleet API, ώστε να τα χρησιμοποιήσουμε σε GET, VIEW και EDIT.
-interface Driver {
-    id: string;
+// Κρατάμε τις τιμές της φόρμας ως κείμενο.
+// Κατά την υποβολή μετατρέπουμε το year σε αριθμό.
+interface VehicleCreateForm {
+    plate_number: string;
+    brand: string;
+    model: string;
+    year: string;
+    device_imei: string;
     driver_id: string;
-    keycloak_user_id: string;
-
-    // Προσωπικά στοιχεία οδηγού.
-    first_name: string;
-    last_name: string;
-    date_of_birth: string | null;
-    identity_card_number: string | null;
-    tax_id: string | null;
-
-    // Στοιχεία επικοινωνίας.
-    phone_number: string | null;
-    email: string | null;
-
-    // Στοιχεία άδειας οδήγησης.
-    license_number: string | null;
-    license_category: string | null;
-    license_expiry_date: string | null;
-
-    // Στοιχεία απασχόλησης και συσχετίσεις.
-    hire_date: string | null;
-    fleet_id: string | null;
-    department_id: string | null;
-
-    // Κατάσταση του Driver Profile.
-    status: string;
+    fleet_id: string;
 }
 
 // Περιγράφουμε τα πεδία της φόρμας δημιουργίας Driver.
@@ -164,6 +120,17 @@ const emptyDriverForm: DriverCreateForm = {
     hire_date: "",
     fleet_id: "",
     department_id: "",
+};
+
+// Η φόρμα ξεκινά χωρίς προκαθορισμένα στοιχεία ή αναθέσεις.
+const emptyVehicleForm: VehicleCreateForm = {
+    plate_number: "",
+    brand: "",
+    model: "",
+    year: "",
+    device_imei: "",
+    driver_id: "",
+    fleet_id: "",
 };
 
 function AdminDashboard() {
@@ -327,6 +294,62 @@ function AdminDashboard() {
 
         // Κρατάμε το όχημα που επέλεξε ο Admin για παρακολούθηση GPS.
     const [selectedTrackingVehicle, setSelectedTrackingVehicle] = useState<Vehicle | null>(null);
+        // Παρακολουθούμε το IMEI του επιλεγμένου οχήματος.
+    // Χωρίς επιλογή οχήματος, το hook κλείνει τη σύνδεση.
+    // Βρίσκουμε το IMEI του οχήματος που επέλεξε ο Admin.
+    let trackingImei: string | null = null;
+
+    if (selectedTrackingVehicle !== null) { trackingImei = selectedTrackingVehicle.device_imei; }
+    // Το κοινό hook αναλαμβάνει τη σύνδεση και τις ενημερώσεις θέσης.
+    const latestPosition = useVehicleTracking(trackingImei);
+
+        // Κρατάμε όλα τα οχήματα που επιστρέφει το API για τον Admin.
+    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+
+    // Παρακολουθούμε τη φόρτωση της συνολικής λίστας οχημάτων.
+    const [isLoadingVehicles, setIsLoadingVehicles] = useState(true);
+
+    // Εμφανίζουμε τυχόν σφάλμα κατά την ανάκτηση των οχημάτων.
+    const [vehiclesError, setVehiclesError] = useState("");
+
+        // Κρατάμε το ID του οχήματος που επέλεξε ο Admin για προβολή.
+    const [viewVehicleId, setViewVehicleId] = useState<string | null>(null);
+
+        // Κρατάμε τα στοιχεία που συμπληρώνει ο Admin.
+    const [vehicleForm, setVehicleForm] = useState<VehicleCreateForm>(emptyVehicleForm);
+
+    // Παρακολουθούμε την υποβολή και τα μηνύματα αποτελέσματος.
+    const [isCreatingVehicle, setIsCreatingVehicle] = useState(false);
+    const [createVehicleError, setCreateVehicleError] = useState("");
+    const [createVehicleSuccess, setCreateVehicleSuccess] = useState("");
+
+        // Κρατάμε το όχημα που επεξεργάζεται ο Admin.
+    const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
+
+    // Χρησιμοποιούμε τα ίδια πεδία φόρμας για τη δημιουργία και το Edit.
+    const [editVehicleForm, setEditVehicleForm] = useState<VehicleCreateForm>(emptyVehicleForm);
+
+    // Παρακολουθούμε την ενημέρωση και τυχόν σφάλμα.
+    const [isUpdatingVehicle, setIsUpdatingVehicle] = useState(false);
+    const [editVehicleError, setEditVehicleError] = useState("");
+
+        // Κρατάμε το ID του οχήματος που απενεργοποιείται.
+    const [deactivatingVehicleId, setDeactivatingVehicleId] = useState<string | null>(null);
+
+    // Κρατάμε το αποτέλεσμα της απενεργοποίησης.
+    const [deactivateVehicleError, setDeactivateVehicleError] = useState("");
+    const [deactivateVehicleSuccess, setDeactivateVehicleSuccess] = useState("");
+
+        // Κρατάμε το όχημα που ενεργοποιείται και το αποτέλεσμα του αιτήματος.
+    const [activatingVehicleId, setActivatingVehicleId] = useState<string | null>(null);
+    const [activateVehicleError, setActivateVehicleError] = useState("");
+    const [activateVehicleSuccess, setActivateVehicleSuccess] = useState("");
+
+        // Κρατάμε το όχημα που διαγράφεται και το αποτέλεσμα του αιτήματος.
+    const [deletingVehicleId, setDeletingVehicleId] = useState<string | null>(null);
+    const [deleteVehicleError, setDeleteVehicleError] = useState("");
+    const [deleteVehicleSuccess, setDeleteVehicleSuccess] = useState("");
+    const [vehiclesRefreshNumber, setVehiclesRefreshNumber] = useState(0);
 
     useEffect(() => {
         // Δεν ζητάμε δεδομένα αν ο χρήστης δεν είναι Admin
@@ -505,7 +528,133 @@ function AdminDashboard() {
         return () => controller.abort();
     }, [isAdmin, token]);
 
+    useEffect(() => {
+        // Ζητάμε τη λίστα μόνο όταν υπάρχει συνδεδεμένος Admin.
+        if (!isAdmin || !token) {
+            setIsLoadingVehicles(false);
+            return;
+        }
 
+        // Ακυρώνουμε το request όταν αλλάξει το token
+        // ή όταν αποσυνδεθεί το Dashboard.
+        const controller = new AbortController();
+
+        async function loadVehicles() {
+            setIsLoadingVehicles(true);
+            setVehiclesError("");
+
+            try {
+                const response = await fetch(
+                    "http://localhost:8004/api/v1/vehicles",
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                        signal: controller.signal,
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        `Failed to load vehicles: ${response.status}`
+                    );
+                }
+
+                const data: Vehicle[] = await response.json();
+
+                // Δεν ενημερώνουμε τη λίστα αν το request ακυρώθηκε.
+                if (!controller.signal.aborted) {
+                    setVehicles(data);
+                }
+            } catch (error) {
+                if (!controller.signal.aborted) {
+                    console.error("Failed to load vehicles:", error);
+                    setVehiclesError("Could not load vehicles.");
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setIsLoadingVehicles(false);
+                }
+            }
+        }
+
+        loadVehicles();
+
+        return () => {
+            controller.abort();
+        };
+    }, [isAdmin, token, vehiclesRefreshNumber]);
+
+    useEffect(() => {
+        // Χωρίς επιλεγμένο Driver καθαρίζουμε τη λίστα.
+        if (!token || !isAdmin || selectedDriverId === null) {
+            setDriverVehicles([]);
+            setDriverVehiclesError("");
+            setIsLoadingDriverVehicles(false);
+            return;
+        }
+
+        const controller = new AbortController();
+
+        // Ανακτούμε τα οχήματα του επιλεγμένου Driver από το API Gateway.
+        async function loadSelectedDriverVehicles() {
+            setDriverVehicles([]);
+            setDriverVehiclesError("");
+            setIsLoadingDriverVehicles(true);
+
+            try {
+                const response = await fetch(
+                    `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(selectedDriverId)}/vehicles`,
+                    { headers: { Authorization: `Bearer ${token}`, }, signal: controller.signal, }
+                );
+
+                if (controller.signal.aborted) return;
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    let errorMessage = `Failed to load Driver vehicles: ${response.status}`;
+
+                    if (result !== null && typeof result.detail === "string") {
+                        errorMessage = result.detail;
+                    }
+
+                    throw new Error(errorMessage);
+                }
+
+                if (!Array.isArray(result)) {
+                    throw new Error("Invalid Driver vehicles response.");
+                }
+
+                // Δεν χρησιμοποιούμε δεδομένα από request που ακυρώθηκε.
+                if (!controller.signal.aborted) {
+                    setDriverVehicles(result);
+                }
+            } catch (error) {
+                if (controller.signal.aborted) return;
+
+                let errorMessage = "Could not load Driver vehicles.";
+
+                if (error instanceof Error) {
+                    errorMessage = error.message;
+                }
+
+                setDriverVehiclesError(errorMessage);
+            } finally {
+                if (!controller.signal.aborted) {
+                    setIsLoadingDriverVehicles(false);
+                }
+            }
+        }
+
+        loadSelectedDriverVehicles();
+
+        // Ακυρώνουμε το request όταν κλείνει η λίστα,
+        // αλλάζει ο Driver ή χρειάζεται νέα φόρτωση.
+        return () => {
+            controller.abort();
+        };
+    }, [isAdmin, token, selectedDriverId, vehiclesRefreshNumber]);
 
     async function createFleet(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1049,6 +1198,12 @@ function AdminDashboard() {
         setEditManagerError("");
 
         try {
+                        // Το Unassigned αποστέλλεται ως null, ώστε να αφαιρεθεί η συσχέτιση.
+            let fleetId: string | null = null;
+
+            if (editFleetManagerForm.fleet_id.trim() !== "") {
+                fleetId = editFleetManagerForm.fleet_id.trim();
+            }
             // Στέλνουμε μόνο τα πεδία που επιτρέπεται να επεξεργαστεί ο Admin.
             const payload = {
                 first_name: editFleetManagerForm.first_name.trim(),
@@ -1058,7 +1213,7 @@ function AdminDashboard() {
                 tax_id: editFleetManagerForm.tax_id.trim() || null,
                 phone_number: editFleetManagerForm.phone_number.trim() || null,
                 email: editFleetManagerForm.email.trim(),
-                fleet_id: editFleetManagerForm.fleet_id,
+                fleet_id: fleetId,
                 hire_date: editFleetManagerForm.hire_date || null,
             };
 
@@ -1535,6 +1690,18 @@ function AdminDashboard() {
         // Ενημερώνουμε τον Admin όταν δεν υπάρχουν οδηγοί.
         if (drivers.length === 0) return <p>No drivers available.</p>;
 
+                // Αρχικά εμφανίζουμε μήνυμα μέχρι να φτάσει θέση από το Gateway.
+        // let trackingContent = <p>No position received yet.</p>;
+
+        // if (latestPosition !== null) {
+        //     trackingContent = (
+        //         <>
+        //             <LatestPosition position={latestPosition} />
+        //             <LiveMap position={latestPosition} />
+        //         </>
+        //     );
+        // }
+
         // Εμφανίζουμε τα βασικά στοιχεία όλων των Drivers.
         return (
             <div>
@@ -1557,7 +1724,7 @@ function AdminDashboard() {
                             <td>{driver.first_name} {driver.last_name}</td>
                             {/*<td>{driver.email ?? "-"}</td>*/}
                             <td>{driver.fleet_id ?? "-"}</td>
-                            <td>{driver.status === "INACTIVE" ? <p style={{ color: "red" }}>{driver.status}</p> : <p style={{ color: "green" }}>{driver.status}</p> }</td>
+                            <td >{driver.status === "INACTIVE" ? <p style={{ color: "red" }}>{driver.status}</p> : <p style={{ color: "green" }}>{driver.status}</p> }</td>
                             <td>
                                 <button type="button" onClick={() => setViewDriverId(viewDriverId === driver.driver_id ? null : driver.driver_id)}> View </button>
                             </td>
@@ -1579,9 +1746,10 @@ function AdminDashboard() {
                                         {deletingDriverId === driver.driver_id ? "Deleting..." : "Delete"} </button>)}
                             </td>
                             <td>
-                                <button type="button" onClick={() => loadDriverVehicles(driver)} disabled={isLoadingDriverVehicles}>
-                                    Vehicles
-                                </button>
+                                {/*<button type="button" onClick={() => loadDriverVehicles(driver)} disabled={isLoadingDriverVehicles}>*/}
+                                {/*    Vehicles*/}
+                                {/*</button>*/}
+                                <button type="button" onClick={() => setSelectedDriverId(driver.driver_id)} disabled={isLoadingDriverVehicles}> Vehicles </button>
                             </td>
                         </tr>
                     ))}
@@ -1625,18 +1793,20 @@ function AdminDashboard() {
                                    )}
                 </div>
             )}
-                {
-                selectedTrackingVehicle && (
-                        <div>
-                            <h3>GPS Tracking</h3>
-                            <p>Vehicle: {selectedTrackingVehicle.plate_number}</p>
-                            <p>Brand: {selectedTrackingVehicle.brand}</p>
-                            <p>Model: {selectedTrackingVehicle.model}</p>
-                            <p>Device IMEI: {selectedTrackingVehicle.device_imei}</p>
+            {/*    {*/}
+            {/*    selectedTrackingVehicle && (*/}
+            {/*            <div>*/}
+            {/*                <h3>GPS Tracking</h3>*/}
+            {/*                <p>Vehicle: {selectedTrackingVehicle.plate_number}</p>*/}
+            {/*                <p>Brand: {selectedTrackingVehicle.brand}</p>*/}
+            {/*                <p>Model: {selectedTrackingVehicle.model}</p>*/}
+            {/*                <p>Device IMEI: {selectedTrackingVehicle.device_imei}</p>*/}
+            {/*                /!* Εμφανίζουμε τη θέση και τον υπάρχοντα χάρτη. *!/*/}
+            {/*                {trackingContent}*/}
 
-                            <button type="button" onClick={() => setSelectedTrackingVehicle(null)}> Close Tracking </button>
-                        </div>
-            )}
+            {/*                <button type="button" onClick={() => setSelectedTrackingVehicle(null)}> Close Tracking </button>*/}
+            {/*            </div>*/}
+            {/*)}*/}
             </div>
         );
 
@@ -1769,6 +1939,8 @@ function AdminDashboard() {
                     driver.driver_id === editingDriverId ? result : driver
                 )
             );
+            // Η αλλαγή Fleet του Driver μπορεί να αποδεσμεύσει οχήματα.
+            setVehiclesRefreshNumber((previous) => previous + 1);
 
             setEditingDriverId(null);
 
@@ -1891,7 +2063,15 @@ function AdminDashboard() {
                 )
             );
 
+            // Η απενεργοποίηση αποδεσμεύει τα οχήματα του Driver.
+            setVehiclesRefreshNumber((previous) => previous + 1);
             setDeactivateDriverSuccess("Driver deactivated successfully.");
+               // Κλείνουμε τη λίστα αν αφορά τον Driver που απενεργοποιήθηκε.
+            if (selectedDriverId === driver.driver_id) {
+                setSelectedDriverId(null);
+                setDriverVehicles([]);
+                setDriverVehiclesError("");
+            }
 
         } catch (error) {
             setDeactivateDriverError(
@@ -2005,49 +2185,874 @@ function AdminDashboard() {
         }
     }
 
-        // Ανακτά τα οχήματα που είναι ανατεθειμένα στον επιλεγμένο Driver.
-    async function loadDriverVehicles(driver: Driver) {
-        if (!token) return;
+    //     // Ανακτά τα οχήματα που είναι ανατεθειμένα στον επιλεγμένο Driver.
+    // async function loadDriverVehicles(driver: Driver) {
+    //
+    //     if (!token) return;
+    //
+    //     // Αποθηκεύουμε τον Driver και καθαρίζουμε τα προηγούμενα αποτελέσματα.
+    //     setSelectedDriverId(driver.driver_id);
+    //     setDriverVehicles([]);
+    //     setDriverVehiclesError("");
+    //     setIsLoadingDriverVehicles(true);
+    //
+    //     try {
+    //         const response = await fetch(
+    //             `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(driver.driver_id)}/vehicles`,
+    //             {
+    //                 method: "GET",
+    //                 headers: { Authorization: `Bearer ${token}` },
+    //             }
+    //         );
+    //
+    //         const result = await response.json().catch(() => null);
+    //
+    //         if (!response.ok) {
+    //             throw new Error(
+    //                 typeof result?.detail === "string"
+    //                     ? result.detail
+    //                     : `Failed to load Driver vehicles: ${response.status}`
+    //             );
+    //         }
+    //
+    //         // Ελέγχουμε ότι το API επέστρεψε πίνακα οχημάτων.
+    //         if (!Array.isArray(result)) {
+    //             throw new Error("Invalid Driver vehicles response.");
+    //         }
+    //
+    //         setDriverVehicles(result as Vehicle[]);
+    //
+    //     } catch (error) {
+    //         setDriverVehiclesError(
+    //             error instanceof Error ? error.message : "Could not load Driver vehicles."
+    //         );
+    //     } finally {
+    //         setIsLoadingDriverVehicles(false);
+    //     }
+    // }
 
-        // Αποθηκεύουμε τον Driver και καθαρίζουμε τα προηγούμενα αποτελέσματα.
-        setSelectedDriverId(driver.driver_id);
-        setDriverVehicles([]);
-        setDriverVehiclesError("");
-        setIsLoadingDriverVehicles(true);
+        // Δημιουργούμε το όχημα μέσω του API Gateway.
+    async function createVehicle(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        if (!token || !isAdmin || isCreatingVehicle) {
+            return;
+        }
+
+        setCreateVehicleError("");
+        setCreateVehicleSuccess("");
+
+        const plateNumber = vehicleForm.plate_number.trim();
+        const deviceImei = vehicleForm.device_imei.trim();
+        const yearText = vehicleForm.year.trim();
+
+        if (plateNumber === "" || deviceImei === "") {
+            setCreateVehicleError("Please complete Plate Number and Device IMEI.");
+            return;
+        }
+
+        // Το κενό έτος παραμένει null.
+        // Αν συμπληρωθεί, πρέπει να είναι ακέραιος αριθμός.
+        let year: number | null = null;
+
+        if (yearText !== "") {
+            year = Number(yearText);
+
+            if (!Number.isInteger(year)) {
+                setCreateVehicleError("Year must be a whole number.");
+                return;
+            }
+        }
+
+        // Τα προαιρετικά πεδία ξεκινούν ως null
+        // και συμπληρώνονται μόνο αν έχουν τιμή.
+        const payload: {
+            plate_number: string;
+            device_imei: string;
+            brand: string | null;
+            model: string | null;
+            year: number | null;
+            driver_id: string | null;
+            fleet_id: string | null;
+        } = {
+            plate_number: plateNumber,
+            device_imei: deviceImei,
+            brand: null,
+            model: null,
+            year,
+            driver_id: null,
+            fleet_id: null,
+        };
+
+        if (vehicleForm.brand.trim() !== "") {
+            payload.brand = vehicleForm.brand.trim();
+        }
+
+        if (vehicleForm.model.trim() !== "") {
+            payload.model = vehicleForm.model.trim();
+        }
+
+        if (vehicleForm.driver_id.trim() !== "") {
+            payload.driver_id = vehicleForm.driver_id.trim();
+        }
+
+        if (vehicleForm.fleet_id.trim() !== "") {
+            payload.fleet_id = vehicleForm.fleet_id.trim();
+        }
+
+        setIsCreatingVehicle(true);
 
         try {
             const response = await fetch(
-                `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(driver.driver_id)}/vehicles`,
+                "http://localhost:8004/api/v1/vehicles",
                 {
-                    method: "GET",
-                    headers: { Authorization: `Bearer ${token}` },
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(payload),
                 }
             );
 
-            const result = await response.json().catch(() => null);
+            const result = await response.json();
 
             if (!response.ok) {
-                throw new Error(
-                    typeof result?.detail === "string"
-                        ? result.detail
-                        : `Failed to load Driver vehicles: ${response.status}`
-                );
+                let errorMessage = `Failed to create vehicle: ${response.status}`;
+
+                if (result !== null && typeof result.detail === "string") {
+                    errorMessage = result.detail;
+                } else if (result !== null && Array.isArray(result.detail)) {
+                    // Εμφανίζουμε το πεδίο και την αιτία κάθε validation error.
+                    const validationErrors = [];
+
+                    for (const validationError of result.detail) {
+                        let field = "unknown";
+
+                        if (Array.isArray(validationError.loc)) {
+                            field = validationError.loc.join(".");
+                        }
+
+                        validationErrors.push(`${field}: ${validationError.msg}`);
+                    }
+
+                    errorMessage = validationErrors.join(" | ");
+                }
+
+                throw new Error(errorMessage);
             }
 
-            // Ελέγχουμε ότι το API επέστρεψε πίνακα οχημάτων.
-            if (!Array.isArray(result)) {
-                throw new Error("Invalid Driver vehicles response.");
-            }
+            const createdVehicle: Vehicle = result;
 
-            setDriverVehicles(result as Vehicle[]);
-
+            // Ενημερώνουμε τη λίστα με το όχημα που επέστρεψε το backend.
+            setVehicles((previous) => [...previous, createdVehicle]);
+            setVehicleForm({ ...emptyVehicleForm });
+            setCreateVehicleSuccess("Vehicle created successfully.");
         } catch (error) {
-            setDriverVehiclesError(
-                error instanceof Error ? error.message : "Could not load Driver vehicles."
-            );
+            let errorMessage = "Could not create vehicle.";
+
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+
+            setCreateVehicleError(errorMessage);
         } finally {
-            setIsLoadingDriverVehicles(false);
+            setIsCreatingVehicle(false);
         }
+    }
+
+        // Συμπληρώνουμε τη φόρμα Edit με τα υπάρχοντα στοιχεία του οχήματος.
+    function startEditingVehicle(vehicle: Vehicle) {
+        const form: VehicleCreateForm = {
+            plate_number: vehicle.plate_number,
+            brand: "",
+            model: "",
+            year: "",
+            device_imei: vehicle.device_imei,
+            driver_id: "",
+            fleet_id: "",
+        };
+
+        // Τα προαιρετικά πεδία γίνονται κενό κείμενο όταν είναι null.
+        if (vehicle.brand !== null) {
+            form.brand = vehicle.brand;
+        }
+
+        if (vehicle.model !== null) {
+            form.model = vehicle.model;
+        }
+
+        if (vehicle.year !== null) {
+            form.year = String(vehicle.year);
+        }
+
+        if (vehicle.driver_id !== null) {
+            form.driver_id = vehicle.driver_id;
+        }
+
+        if (vehicle.fleet_id !== null) {
+            form.fleet_id = vehicle.fleet_id;
+        }
+
+        setEditingVehicleId(vehicle.id);
+        setEditVehicleForm(form);
+        setEditVehicleError("");
+    }
+
+        // Ενημερώνουμε το όχημα μέσω του API Gateway.
+    async function updateVehicle(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        if (!token || !isAdmin || editingVehicleId === null || isUpdatingVehicle) {
+            return;
+        }
+
+        setEditVehicleError("");
+
+        const plateNumber = editVehicleForm.plate_number.trim();
+        const deviceImei = editVehicleForm.device_imei.trim();
+        const yearText = editVehicleForm.year.trim();
+
+        if (plateNumber === "" || deviceImei === "") {
+            setEditVehicleError("Please complete Plate Number and Device IMEI.");
+            return;
+        }
+
+        // Το έτος είναι προαιρετικό, αλλά πρέπει να είναι ακέραιο αν συμπληρωθεί.
+        let year: number | null = null;
+
+        if (yearText !== "") {
+            year = Number(yearText);
+
+            if (!Number.isInteger(year)) {
+                setEditVehicleError("Year must be a whole number.");
+                return;
+            }
+        }
+
+        // Στέλνουμε μόνο τα επεξεργάσιμα πεδία.
+        // Το id και το status δεν αλλάζουν μέσω αυτής της φόρμας.
+        const payload: {
+            plate_number: string;
+            device_imei: string;
+            brand: string | null;
+            model: string | null;
+            year: number | null;
+            driver_id: string | null;
+            fleet_id: string | null;
+        } = {
+            plate_number: plateNumber,
+            device_imei: deviceImei,
+            brand: null,
+            model: null,
+            year,
+            driver_id: null,
+            fleet_id: null,
+        };
+
+        if (editVehicleForm.brand.trim() !== "") {
+            payload.brand = editVehicleForm.brand.trim();
+        }
+
+        if (editVehicleForm.model.trim() !== "") {
+            payload.model = editVehicleForm.model.trim();
+        }
+
+        if (editVehicleForm.driver_id.trim() !== "") {
+            payload.driver_id = editVehicleForm.driver_id.trim();
+        }
+
+        if (editVehicleForm.fleet_id.trim() !== "") {
+            payload.fleet_id = editVehicleForm.fleet_id.trim();
+        }
+
+        setIsUpdatingVehicle(true);
+
+        try {
+            const response = await fetch(
+                `http://localhost:8004/api/v1/vehicles/${encodeURIComponent(editingVehicleId)}`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(payload),
+                }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                let errorMessage = `Failed to update vehicle: ${response.status}`;
+
+                if (result !== null && typeof result.detail === "string") {
+                    errorMessage = result.detail;
+                } else if (result !== null && Array.isArray(result.detail)) {
+                    // Εμφανίζουμε αναλυτικά τα σφάλματα επικύρωσης του backend.
+                    const validationErrors = [];
+
+                    for (const validationError of result.detail) {
+                        let field = "unknown";
+
+                        if (Array.isArray(validationError.loc)) {
+                            field = validationError.loc.join(".");
+                        }
+
+                        validationErrors.push(`${field}: ${validationError.msg}`);
+                    }
+
+                    errorMessage = validationErrors.join(" | ");
+                }
+
+                throw new Error(errorMessage);
+            }
+
+            const updatedVehicle: Vehicle = result;
+
+            // Χρησιμοποιούμε τα τελικά δεδομένα που επέστρεψε το backend.
+            setVehicles((previous) =>
+                previous.map((vehicle) => {
+                    if (vehicle.id === updatedVehicle.id) {
+                        return updatedVehicle;
+                    }
+
+                    return vehicle;
+                })
+            );
+
+            // Η ενημέρωση μπορεί να αλλάξει τις αναθέσεις.
+            // Καθαρίζουμε την ανοιχτή λίστα Driver vehicles
+            // ώστε να ανακτηθεί ξανά με τα σωστά δεδομένα.
+            setSelectedDriverId(null);
+            setDriverVehicles([]);
+            setDriverVehiclesError("");
+
+            // Σταματάμε το tracking αν επεξεργαστήκαμε το επιλεγμένο όχημα,
+            // επειδή μπορεί να έχει αλλάξει το IMEI του.
+            if (selectedTrackingVehicle !== null) {
+                if (selectedTrackingVehicle.id === updatedVehicle.id) {
+                    setSelectedTrackingVehicle(null);
+                }
+            }
+
+            setEditingVehicleId(null);
+        } catch (error) {
+            let errorMessage = "Could not update vehicle.";
+
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+
+            setEditVehicleError(errorMessage);
+        } finally {
+            setIsUpdatingVehicle(false);
+        }
+    }
+
+        // Απενεργοποιούμε το όχημα μέσω του API Gateway.
+    // Το backend αποδεσμεύει τον Driver και διατηρεί το Fleet.
+    async function deactivateVehicle(vehicle: Vehicle) {
+        setDeleteVehicleError("");
+        setDeleteVehicleSuccess("");
+        setActivateVehicleError("");
+        setActivateVehicleSuccess("");
+        setDeactivateVehicleError("");
+        setDeactivateVehicleSuccess("");
+
+
+        if (!token || !isAdmin || deactivatingVehicleId !== null) {
+            return;
+        }
+
+        if (vehicle.status !== "ACTIVE") {
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `Deactivate vehicle ${vehicle.plate_number}?`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        setDeactivatingVehicleId(vehicle.id);
+        setDeactivateVehicleError("");
+        setDeactivateVehicleSuccess("");
+
+        try {
+            const response = await fetch(
+                `http://localhost:8004/api/v1/vehicles/${encodeURIComponent(vehicle.id)}/deactivate`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                let errorMessage = `Failed to deactivate vehicle: ${response.status}`;
+
+                if (result !== null && typeof result.detail === "string") {
+                    errorMessage = result.detail;
+                }
+
+                throw new Error(errorMessage);
+            }
+
+            const updatedVehicle: Vehicle = result;
+
+            // Ενημερώνουμε τη λίστα με τα τελικά δεδομένα του backend.
+            setVehicles((previous) =>
+                previous.map((item) => {
+                    if (item.id === updatedVehicle.id) {
+                        return updatedVehicle;
+                    }
+
+                    return item;
+                })
+            );
+
+            // Καθαρίζουμε την προηγούμενη λίστα Driver vehicles,
+            // επειδή η απενεργοποίηση λύνει την ανάθεση.
+            setSelectedDriverId(null);
+            setDriverVehicles([]);
+            setDriverVehiclesError("");
+
+            // Σταματάμε την παρακολούθηση του συγκεκριμένου οχήματος.
+            if (selectedTrackingVehicle !== null) {
+                if (selectedTrackingVehicle.id === updatedVehicle.id) {
+                    setSelectedTrackingVehicle(null);
+                }
+            }
+
+            // Κλείνουμε το Edit ώστε να μη μείνει η παλιά ανάθεση στη φόρμα.
+            if (editingVehicleId === updatedVehicle.id) {
+                setEditingVehicleId(null);
+            }
+
+            setDeactivateVehicleSuccess("Vehicle deactivated successfully.");
+        } catch (error) {
+            let errorMessage = "Could not deactivate vehicle.";
+
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+
+            setDeactivateVehicleError(errorMessage);
+        } finally {
+            setDeactivatingVehicleId(null);
+        }
+    }
+
+        // Ενεργοποιούμε το όχημα χωρίς να επαναφέρουμε την προηγούμενη ανάθεση Driver.
+    async function activateVehicle(vehicle: Vehicle) {
+        setDeleteVehicleError("");
+        setDeleteVehicleSuccess("");
+        setActivateVehicleError("");
+        setActivateVehicleSuccess("");
+        setDeactivateVehicleError("");
+        setDeactivateVehicleSuccess("");
+
+
+        if (!token || !isAdmin || activatingVehicleId !== null) return;
+        if (vehicle.status !== "INACTIVE") return;
+
+        const confirmed = window.confirm(`Activate vehicle ${vehicle.plate_number}?`);
+        if (!confirmed) return;
+
+        setActivatingVehicleId(vehicle.id);
+        setActivateVehicleError("");
+        setActivateVehicleSuccess("");
+        setDeactivateVehicleError("");
+        setDeactivateVehicleSuccess("");
+
+        try {
+            const response = await fetch(
+                `http://localhost:8004/api/v1/vehicles/${encodeURIComponent(vehicle.id)}/activate`,
+                { method: "POST", headers: { Authorization: `Bearer ${token}`, }, }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                let errorMessage = `Failed to activate vehicle: ${response.status}`;
+
+                if (result !== null && typeof result.detail === "string") {
+                    errorMessage = result.detail;
+                }
+
+                throw new Error(errorMessage);
+            }
+
+            const updatedVehicle: Vehicle = result;
+
+            // Ενημερώνουμε τη λίστα με την κατάσταση που επέστρεψε το backend.
+            setVehicles((previous) =>
+                previous.map((item) => {
+                    if (item.id === updatedVehicle.id) return updatedVehicle;
+                    return item;
+                })
+            );
+
+            setActivateVehicleSuccess("Vehicle activated successfully.");
+        } catch (error) {
+            let errorMessage = "Could not activate vehicle.";
+
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+
+            setActivateVehicleError(errorMessage);
+        } finally {
+            setActivatingVehicleId(null);
+        }
+    }
+
+        // Διαγράφουμε οριστικά μόνο INACTIVE όχημα.
+    // Το backend ελέγχει επίσης αν επιτρέπεται η διαγραφή.
+    async function deleteVehicle(vehicle: Vehicle) {
+        setDeleteVehicleError("");
+        setDeleteVehicleSuccess("");
+        setActivateVehicleError("");
+        setActivateVehicleSuccess("");
+        setDeactivateVehicleError("");
+        setDeactivateVehicleSuccess("");
+
+
+        if (!token || !isAdmin || deletingVehicleId !== null) return;
+        if (vehicle.status !== "INACTIVE") return;
+
+        const confirmed = window.confirm(`Permanently delete vehicle ${vehicle.plate_number}? This action cannot be undone.`);
+        if (!confirmed) return;
+
+        setDeletingVehicleId(vehicle.id);
+        setDeleteVehicleError("");
+        setDeleteVehicleSuccess("");
+        setActivateVehicleError("");
+        setActivateVehicleSuccess("");
+        setDeactivateVehicleError("");
+        setDeactivateVehicleSuccess("");
+
+        try {
+            const response = await fetch(
+                `http://localhost:8004/api/v1/vehicles/${encodeURIComponent(vehicle.id)}`,
+                { method: "DELETE", headers: { Authorization: `Bearer ${token}`, }, }
+            );
+
+            // Η επιτυχής διαγραφή μπορεί να επιστρέψει απάντηση χωρίς JSON.
+            if (!response.ok) {
+                let errorMessage = `Failed to delete vehicle: ${response.status}`;
+
+                try {
+                    const result = await response.json();
+
+                    if (result !== null && typeof result.detail === "string") {
+                        errorMessage = result.detail;
+                    }
+                } catch {
+                    // Κρατάμε το μήνυμα με τον HTTP κωδικό αν δεν υπάρχει JSON.
+                }
+
+                throw new Error(errorMessage);
+            }
+
+            // Αφαιρούμε το όχημα μόνο μετά την επιτυχημένη διαγραφή.
+            setVehicles((previous) => previous.filter((item) => item.id !== vehicle.id));
+
+            if (viewVehicleId === vehicle.id) {
+                setViewVehicleId(null);
+            }
+
+            if (editingVehicleId === vehicle.id) {
+                setEditingVehicleId(null);
+            }
+
+            // Αφαιρούμε το όχημα και από τυχόν ανοιχτή λίστα Driver vehicles.
+            setDriverVehicles((previous) => previous.filter((item) => item.id !== vehicle.id));
+
+            if (selectedTrackingVehicle !== null) {
+                if (selectedTrackingVehicle.id === vehicle.id) {
+                    setSelectedTrackingVehicle(null);
+                }
+            }
+
+            setDeleteVehicleSuccess("Vehicle deleted successfully.");
+        } catch (error) {
+            let errorMessage = "Could not delete vehicle.";
+
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+
+            setDeleteVehicleError(errorMessage);
+        } finally {
+            setDeletingVehicleId(null);
+        }
+    }
+        // Εμφανίζουμε όλα τα οχήματα που μπορεί να διαχειριστεί ο Admin.
+    function show_vehicles() {
+        if (isLoadingVehicles) {
+            return <p>Loading vehicles...</p>;
+        }
+
+        if (vehiclesError !== "") {
+            return <p role="alert">{vehiclesError}</p>;
+        }
+
+        if (vehicles.length === 0) {
+            return <p>No vehicles available.</p>;
+        }
+
+        return (
+            <table align={"center"}>
+                <thead align={"left"}>
+                    <tr>
+                        <th>Plate Number</th>
+                        <th>Brand</th>
+                        <th>Model</th>
+                        <th>Year</th>
+                        <th>Device IMEI</th>
+                        <th>Fleet</th>
+                        <th>Driver</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody align={"left"}>
+                    {vehicles.map((vehicle) => {
+                        // Δίνουμε κατανοητή ένδειξη όταν δεν υπάρχει ανάθεση.
+                        let fleetName = "Unassigned";
+                        let driverName = "Unassigned";
+
+                        if (vehicle.fleet_id !== null) {
+                            fleetName = vehicle.fleet_id;
+                        }
+
+                        if (vehicle.driver_id !== null) {
+                            driverName = vehicle.driver_id;
+                        }
+
+                        return (
+                            <tr key={vehicle.id}>
+                                <td>{vehicle.plate_number}</td>
+                                <td>{vehicle.brand}</td>
+                                <td>{vehicle.model}</td>
+                                <td>{vehicle.year}</td>
+                                <td>{vehicle.device_imei}</td>
+                                <td>{fleetName}</td>
+                                <td>{driverName}</td>
+                                <td>{vehicle.status === "INACTIVE" ? <p style={{ color: "red" }}>{vehicle.status}</p> : <p style={{ color: "green" }}>{vehicle.status}</p> }</td>
+                                <td>
+                                    <button type="button" onClick={() => setViewVehicleId(vehicle.id)}> View </button>
+                                </td>
+                                <td>
+                                    <button type="button" onClick={() => startEditingVehicle(vehicle)} disabled={isUpdatingVehicle}> Edit </button>
+                                </td>
+                                <td>
+                                    {vehicle.status === "ACTIVE" && ( <button type="button" onClick={() => deactivateVehicle(vehicle)} disabled={deactivatingVehicleId !== null}> Deactivate </button> )}
+                                    {vehicle.status === "INACTIVE" && (<button type="button" onClick={() => activateVehicle(vehicle)} disabled={activatingVehicleId !== null}> Activate </button>)}
+                                </td>
+                                <td>
+                                    {vehicle.status === "INACTIVE" && (<button type="button" onClick={() => deleteVehicle(vehicle)} disabled={deletingVehicleId !== null}> Delete </button>)}
+                                </td>
+                                <td>
+                                    <button type="button" onClick={() => setSelectedTrackingVehicle(vehicle)}> Track </button>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        );
+    }
+        // Εμφανίζουμε τα στοιχεία του επιλεγμένου οχήματος
+    // από τη λίστα που έχουμε ήδη ανακτήσει.
+    function show_vehicle_details() {
+        if (viewVehicleId === null) {
+            return null;
+        }
+
+        const vehicle = vehicles.find(
+            (item) => item.id === viewVehicleId
+        );
+
+        if (vehicle === undefined) {
+            return null;
+        }
+
+        // Εμφανίζουμε ξεκάθαρα τις συσχετίσεις που δεν έχουν οριστεί.
+        let fleetName = "Unassigned";
+        let driverName = "Unassigned";
+
+        if (vehicle.fleet_id !== null) {
+            fleetName = vehicle.fleet_id;
+        }
+
+        if (vehicle.driver_id !== null) {
+            driverName = vehicle.driver_id;
+        }
+
+        return (
+            <div>
+                <h3>Vehicle Details: {vehicle.plate_number}</h3>
+
+                <p>Vehicle ID: {vehicle.id}</p>
+                <p>Plate Number: {vehicle.plate_number}</p>
+                <p>Brand: {vehicle.brand}</p>
+                <p>Model: {vehicle.model}</p>
+                <p>Year: {vehicle.year}</p>
+                <p>Device IMEI: {vehicle.device_imei}</p>
+                <p>Fleet ID: {fleetName}</p>
+                <p>Driver ID: {driverName}</p>
+                <p>Status: {vehicle.status}</p>
+
+                <button type="button" onClick={() => setViewVehicleId(null)}> Close </button>
+            </div>
+        );
+    }
+
+        // Εμφανίζουμε τη φόρμα μόνο όταν έχει επιλεγεί όχημα για επεξεργασία.
+    function edit_vehicle_details() {
+        if (editingVehicleId === null) {
+            return null;
+        }
+
+        return (
+            <form onSubmit={updateVehicle}>
+                <h3>Edit Vehicle: {editingVehicleId}</h3>
+
+                <div>
+                    <label htmlFor="edit-vehicle-plate">Plate Number *</label>
+                    <input id="edit-vehicle-plate" required value={editVehicleForm.plate_number}
+                           onChange={(event) =>
+                               setEditVehicleForm({...editVehicleForm, plate_number: event.target.value,})} />
+                </div>
+
+                <div>
+                    <label htmlFor="edit-vehicle-brand">Brand</label>
+                    <input id="edit-vehicle-brand" value={editVehicleForm.brand}
+                           onChange={(event) =>
+                               setEditVehicleForm({...editVehicleForm, brand: event.target.value,})} />
+                </div>
+
+                <div>
+                    <label htmlFor="edit-vehicle-model">Model</label>
+                    <input id="edit-vehicle-model" value={editVehicleForm.model}
+                           onChange={(event) =>
+                               setEditVehicleForm({...editVehicleForm, model: event.target.value,})} />
+                </div>
+
+                <div>
+                    <label htmlFor="edit-vehicle-year">Year</label>
+                    <input id="edit-vehicle-year" type="number" step="1" value={editVehicleForm.year}
+                           onChange={(event) =>
+                               setEditVehicleForm({...editVehicleForm, year: event.target.value,})} />
+                </div>
+
+                <div>
+                    <label htmlFor="edit-vehicle-imei">Device IMEI *</label>
+                    <input id="edit-vehicle-imei" required value={editVehicleForm.device_imei}
+                           onChange={(event) =>
+                               setEditVehicleForm({...editVehicleForm, device_imei: event.target.value,})} />
+                </div>
+
+                {/* Η αλλαγή Fleet καθαρίζει την προηγούμενη επιλογή Driver. */}
+                <div>
+                    <label htmlFor="edit-vehicle-fleet">Fleet</label>
+                    <select id="edit-vehicle-fleet" value={editVehicleForm.fleet_id}
+                            onChange={(event) =>
+                                setEditVehicleForm({
+                                    ...editVehicleForm,
+                                    fleet_id: event.target.value,
+                                    driver_id: "",
+                                })}>
+                        <option value="">Unassigned</option>
+
+                        {fleets.map((fleet) => (
+                            <option key={fleet.fleet_id} value={fleet.fleet_id}>
+                                {fleet.name} ({fleet.fleet_id})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Επιτρέπουμε επιλογή ACTIVE Driver με Fleet. */}
+                <div>
+                    <label htmlFor="edit-vehicle-driver">Driver</label>
+                    <select id="edit-vehicle-driver" value={editVehicleForm.driver_id}
+                            onChange={(event) =>
+                                setEditVehicleForm({...editVehicleForm, driver_id: event.target.value,})}>
+                        <option value="">Unassigned</option>
+
+                        {drivers.map((driver) => {
+                            if (driver.status !== "ACTIVE") {
+                                return null;
+                            }
+
+                            if (driver.fleet_id === null || driver.fleet_id === "") {
+                                return null;
+                            }
+
+                            if (editVehicleForm.fleet_id !== "" &&
+                                driver.fleet_id !== editVehicleForm.fleet_id) {
+                                return null;
+                            }
+
+                            return (
+                                <option key={driver.driver_id} value={driver.driver_id}>
+                                    {driver.first_name} {driver.last_name} ({driver.driver_id})
+                                </option>
+                            );
+                        })}
+                    </select>
+                </div>
+
+                {editVehicleError && (
+                    <p role="alert">{editVehicleError}</p>
+                )}
+
+                <button type="submit" disabled={isUpdatingVehicle}> Save Changes </button>
+                <button type="button" disabled={isUpdatingVehicle}
+                        onClick={() => setEditingVehicleId(null)}> Cancel </button>
+            </form>
+        );
+    }
+
+        // Εμφανίζουμε κοινό tracking για όχημα από οποιαδήποτε λίστα.
+    function show_vehicle_tracking() {
+        if (selectedTrackingVehicle === null) return null;
+
+        let trackingContent = <p>No position received yet.</p>;
+
+        if (latestPosition !== null) {
+            trackingContent = (
+                <>
+                    <LatestPosition position={latestPosition} />
+                    <LiveMap position={latestPosition} />
+                </>
+            );
+        }
+
+        return (
+            <div>
+                <h3>GPS Tracking</h3>
+                <p>Vehicle: {selectedTrackingVehicle.plate_number}</p>
+                <p>Brand: {selectedTrackingVehicle.brand}</p>
+                <p>Model: {selectedTrackingVehicle.model}</p>
+                <p>Device IMEI: {selectedTrackingVehicle.device_imei}</p>
+
+                {/* Χρησιμοποιούμε την ίδια θέση και τον ίδιο χάρτη για όλες τις επιλογές. */}
+                {trackingContent}
+
+                <button type="button" onClick={() => setSelectedTrackingVehicle(null)}> Close Tracking </button>
+            </div>
+        );
     }
 
     if (isAdmin) {
@@ -2276,6 +3281,7 @@ function AdminDashboard() {
                     {
                         manager_error_show()
                     }
+                    <hr />
                                     {/* Φόρμα δημιουργίας νέου Driver από τον Admin. */}
                     <h3>Create Driver</h3>
 
@@ -2370,9 +3376,7 @@ function AdminDashboard() {
                             <p role="status">{createDriverSuccess}</p>
                         )}
 
-                        <button type="submit" disabled={isCreatingDriver}>
-                            {isCreatingDriver ? "Creating..." : "Create Driver"}
-                        </button>
+                        <button type="submit" disabled={isCreatingDriver}> {isCreatingDriver ? "Creating..." : "Create Driver"} </button>
                     </form>
 
                     <hr />
@@ -2389,6 +3393,143 @@ function AdminDashboard() {
                     {
                         driver_error_show()
                     }
+                    <hr />
+
+                    <h3>Create Vehicle</h3>
+
+                    <form onSubmit={createVehicle}>
+                        <div>
+                            <label htmlFor="vehicle-plate">Plate Number *</label>
+                            <input id="vehicle-plate" required value={vehicleForm.plate_number}
+                                   onChange={(event) =>
+                                       setVehicleForm({...vehicleForm, plate_number: event.target.value,})} />
+                        </div>
+
+                        <div>
+                            <label htmlFor="vehicle-brand">Brand</label>
+                            <input id="vehicle-brand" value={vehicleForm.brand}
+                                   onChange={(event) =>
+                                       setVehicleForm({...vehicleForm, brand: event.target.value,})} />
+                        </div>
+
+                        <div>
+                            <label htmlFor="vehicle-model">Model</label>
+                            <input id="vehicle-model" value={vehicleForm.model}
+                                   onChange={(event) =>
+                                       setVehicleForm({...vehicleForm, model: event.target.value,})} />
+                        </div>
+
+                        <div>
+                            <label htmlFor="vehicle-year">Year</label>
+                            <input id="vehicle-year" type="number" step="1" value={vehicleForm.year}
+                                   onChange={(event) =>
+                                       setVehicleForm({...vehicleForm, year: event.target.value,})} />
+                        </div>
+
+                        <div>
+                            <label htmlFor="vehicle-imei">Device IMEI *</label>
+                            <input id="vehicle-imei" required value={vehicleForm.device_imei}
+                                   onChange={(event) =>
+                                       setVehicleForm({...vehicleForm, device_imei: event.target.value,})} />
+                        </div>
+
+                        {/* Χρησιμοποιούμε τη λίστα Fleets που έχει ήδη φορτωθεί. */}
+                        <div>
+                            <label htmlFor="vehicle-fleet">Fleet</label>
+                            <select id="vehicle-fleet" value={vehicleForm.fleet_id}
+                                    onChange={(event) =>
+                                        setVehicleForm({...vehicleForm, fleet_id: event.target.value,driver_id: "",})}>
+                                <option value="">Unassigned</option>
+
+                                {fleets.map((fleet) => (
+                                    <option key={fleet.fleet_id} value={fleet.fleet_id}>
+                                        {fleet.name} ({fleet.fleet_id})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Προσφέρουμε για ανάθεση μόνο ACTIVE Drivers με Fleet. */}
+                        <div>
+                            <label htmlFor="vehicle-driver">Driver</label>
+                            <select id="vehicle-driver" value={vehicleForm.driver_id}
+                                    onChange={(event) =>
+                                        setVehicleForm({...vehicleForm, driver_id: event.target.value,})}>
+                                <option value="">Unassigned</option>
+
+                                {drivers.map((driver) => {
+                                    if (driver.status !== "ACTIVE") {
+                                        return null;
+                                    }
+
+                                    if (driver.fleet_id === null || driver.fleet_id === "") {
+                                        return null;
+                                    }
+
+                                    // Αν έχει επιλεγεί Fleet, δείχνουμε μόνο τους Drivers του.
+                                    if (vehicleForm.fleet_id !== "" &&
+                                        driver.fleet_id !== vehicleForm.fleet_id) {
+                                        return null;
+                                    }
+
+                                    return (
+                                        <option key={driver.driver_id} value={driver.driver_id}>
+                                            {driver.first_name} {driver.last_name} ({driver.driver_id})
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </div>
+
+                        <p>The backend checks Fleet and Driver assignments.</p>
+
+                        {createVehicleError && (
+                            <p role="alert">{createVehicleError}</p>
+                        )}
+
+                        {createVehicleSuccess && (
+                            <p role="status">{createVehicleSuccess}</p>
+                        )}
+
+                        <button type="submit" disabled={isCreatingVehicle}>
+                            Create Vehicle
+                        </button>
+                    </form>
+
+                    <hr />
+                    <h3>Vehicles</h3>
+                    {
+                        show_vehicles()
+                    }
+                    {
+                        show_vehicle_details()
+                    }
+                    {
+                        edit_vehicle_details()
+                    }
+                    {
+                        show_vehicle_tracking()
+                    }
+                    {
+                        deactivateVehicleError && (<p role="alert">{deactivateVehicleError}</p>)
+                    }
+
+                    {
+                        deactivateVehicleSuccess && (<p role="status">{deactivateVehicleSuccess}</p>)
+                    }
+                    {
+                        activateVehicleError && (<p role="alert">{activateVehicleError}</p>)
+                    }
+                    {
+                        activateVehicleSuccess && (<p role="status">{activateVehicleSuccess}</p>)
+                    }
+                    {
+                        deleteVehicleError && (<p role="alert">{deleteVehicleError}</p>)
+                    }
+                    {
+                        deleteVehicleSuccess && (<p role="status">{deleteVehicleSuccess}</p>)
+                    }
+
 
                 </section>
             </section>

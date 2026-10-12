@@ -9,7 +9,7 @@ export interface FleetManagerProfile {
     tax_id: string | null;
     phone_number: string | null;
     email: string | null;
-    fleet_id: string;
+    fleet_id: string | null;
     department_id: string | null;
     hire_date: string | null;
     status: string;

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "./auth/AuthContext";
 import "./App.css";
 
-import type { Position } from "./types/Position";
+import { useVehicleTracking } from "./hooks/useVehicleTracking";
+
 import type { Vehicle } from "./types/Vehicle";
 import type { DriverProfile as DriverProfileData } from "./types/DriverProfile";
 import type {  FleetManagerProfile as FleetManagerProfileData } from "./types/FleetManagerProfile";
@@ -20,12 +21,15 @@ function App() {
     const { username, roles, hasRole, logout, token } = useAuth();
     // Κρατάει την τελευταία γνωστή θέση του οχήματος.
     // Αρχικά είναι null μέχρι να ολοκληρωθεί το πρώτο REST request.
-    const [latestPosition, setLatestPosition] = useState<Position | null>(null);
+
+    // const [latestPosition, setLatestPosition] = useState<Position | null>(null);
 
     // Κρατάει πιθανό μήνυμα σφάλματος από το REST request.
     const [error, setError] = useState("");
 
     const [vehicleImei, setVehicleImei] = useState<string | null>(null);
+        // Χρησιμοποιούμε την κοινή λειτουργία tracking για το όχημα του Driver.
+    const latestPosition = useVehicleTracking(vehicleImei);
 
     // Κρατάει τα στοιχεία του authenticated driver.
     const [driverProfile, setDriverProfile] = useState<DriverProfileData | null>(null);
@@ -123,57 +127,6 @@ useEffect(() => {
     }
 }, [token, hasRole]);
 
-useEffect(() => {
-    if (!vehicleImei) {
-        return;
-    }
-    // Δημιουργούμε μία WebSocket σύνδεση με το WebSocket Gateway.
-    const socket = new WebSocket("ws://localhost:8003/ws");
-    // Μόλις ανοίξει η σύνδεση, κάνουμε subscribe στο συγκεκριμένο όχημα.
-    socket.onopen = () => {
-    console.log("WebSocket connected");
-
-    socket.send(
-    JSON.stringify({
-        action: "subscribe",
-        imei: vehicleImei,
-      })
-    );
-  };
-    // Κάθε φορά που το WebSocket Gateway στέλνει νέο μήνυμα,
-    // ελέγχουμε αν πρόκειται για live ενημέρωση θέσης.
-    socket.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-
-  console.log("WebSocket message:", message);
-
-  // Η αρχική τελευταία γνωστή θέση έρχεται μαζί
-  // με την επιβεβαίωση του subscription.
-  if (message.type === "subscribed" && message.latest_position) {
-    const position: Position = message.latest_position;
-    setLatestPosition(position);
-  }
-
-  // Οι επόμενες θέσεις έρχονται live από το Kafka
-  // μέσω του WebSocket Gateway.
-  if (message.type === "position.updated") {
-    const position: Position = message.data;
-    setLatestPosition(position);
-  }
-};
-    socket.onerror = (event) => {
-    console.error("WebSocket error:", event);
-  };
-    socket.onclose = () => {
-    console.log("WebSocket disconnected");
-  };
-
-    // Όταν το component καταστραφεί, κλείνουμε σωστά τη σύνδεση
-    // ώστε να μη μείνει ανοιχτό WebSocket χωρίς λόγο.
-    return () => {
-        socket.close();
-    };
-}, [vehicleImei]);
 
 useEffect(() => {
   async function loadFleetManagerProfile() {

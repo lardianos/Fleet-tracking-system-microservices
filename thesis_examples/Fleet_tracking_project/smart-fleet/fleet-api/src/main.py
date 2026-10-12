@@ -301,7 +301,8 @@ class FleetManagerCreate(BaseModel):
 class FleetManagerResponse(FleetManagerCreate):
     # Το MongoDB ObjectId επιστρέφεται ως string στο API.
     id: str
-
+    # Ο Manager μπορεί να παραμένει χωρίς ανατεθειμένο Fleet.
+    fleet_id: str | None
 class FleetManagerUpdate(BaseModel):
     """
     Μοντέλο για μερική ενημέρωση ενός Fleet Manager Profile.

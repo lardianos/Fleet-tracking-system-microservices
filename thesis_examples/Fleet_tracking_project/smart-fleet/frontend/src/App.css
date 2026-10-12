@@ -117,3 +117,57 @@ button {
     color: #1f2028;
 }
 
+/* Αριστερό μενού και διαθέσιμος χώρος περιεχομένου. */
+.admin-layout {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.admin-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px 12px;
+    background: #ffffff;
+    border: 1px solid #dce0e5;
+    border-radius: 4px;
+}
+
+.admin-sidebar h2 {
+    margin: 0 8px 14px;
+    font-size: 15px;
+    color: #59636e;
+}
+
+.admin-sidebar button {
+    padding: 12px;
+    text-align: left;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: #263238;
+    cursor: pointer;
+}
+
+.admin-sidebar button:hover {
+    background: #f0f2f5;
+}
+
+/* Ξεχωρίζουμε την επιλεγμένη ενότητα χωρίς έντονα εφέ. */
+.admin-sidebar button[aria-pressed="true"] {
+    background: #e7eef6;
+    color: #174b7a;
+    font-weight: 600;
+}
+
+.admin-content {
+    min-width: 0;
+}
+
+@media (max-width: 700px) {
+    .admin-layout {
+        grid-template-columns: 1fr;
+    }
+}

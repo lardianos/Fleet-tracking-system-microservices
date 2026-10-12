@@ -138,7 +138,16 @@ function AdminDashboard() {
     const { token, hasRole } = useAuth();
     const isAdmin = hasRole("admin");
 
-
+        // Κρατάμε την ενότητα που έχει επιλέξει ο Admin από το μενού.
+    const [activeAdminSection, setActiveAdminSection] = useState("fleets");
+        // Εμφανίζουμε τη φόρμα δημιουργίας Fleet μόνο όταν τη ζητήσει ο Admin.
+    const [showCreateFleet, setShowCreateFleet] = useState(false);
+        // Ανοίγουμε και κλείνουμε τη φόρμα Fleet Manager από το ίδιο κουμπί.
+    const [showCreateManager, setShowCreateManager] = useState(false);
+        // Ανοίγουμε και κλείνουμε τη φόρμα Driver από το ίδιο κουμπί.
+    const [showCreateDriver, setShowCreateDriver] = useState(false);
+        // Ανοίγουμε και κλείνουμε τη φόρμα Vehicle από το ίδιο κουμπί.
+    const [showCreateVehicle, setShowCreateVehicle] = useState(false);
     // Κρατάμε τη λίστα Fleets και την κατάσταση του request.
     const [fleets, setFleets] = useState<Fleet[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -749,6 +758,7 @@ function AdminDashboard() {
         ]);
 
         setFleetForm(emptyFleetForm);
+        setShowCreateFleet(false);
         setCreateSuccess("Fleet created successfully.");
     } catch (requestError) {
         setCreateError(
@@ -1160,6 +1170,7 @@ function AdminDashboard() {
 
             // Καθαρίζουμε τη φόρμα μόνο μετά από επιτυχημένη δημιουργία.
             setFleetManagerForm({ ...emptyFleetManagerForm });
+            setShowCreateManager(false);
             setCreateManagerSuccess("Fleet Manager created successfully.");
         } catch (error) {
             setCreateManagerError(
@@ -1671,6 +1682,7 @@ function AdminDashboard() {
 
             // Καθαρίζουμε τη φόρμα μόνο μετά την επιτυχία.
             setDriverForm({ ...emptyDriverForm });
+            setShowCreateDriver(false);
             setCreateDriverSuccess("Driver created successfully.");
 
         } catch (error) {
@@ -2352,6 +2364,7 @@ function AdminDashboard() {
                 setVehiclesRefreshNumber((previous) => previous + 1);
             }
             setVehicleForm({ ...emptyVehicleForm });
+            setShowCreateVehicle(false);
             setCreateVehicleSuccess("Vehicle created successfully.");
         } catch (error) {
             let errorMessage = "Could not create vehicle.";
@@ -3079,482 +3092,558 @@ function AdminDashboard() {
 
     if (isAdmin) {
         return (
-            <section>
-                <h2>Admin Dashboard</h2>
+            <div className="admin-layout">
+                {/* Αριστερό μενού επιλογής ενότητας. */}
+                <nav className="admin-sidebar" aria-label="Admin navigation">
+                    <h2>Administration</h2>
 
-                <h3>Create Fleet</h3>
+                    <button type="button" aria-pressed={activeAdminSection === "fleets"} onClick={() => setActiveAdminSection("fleets")}> Fleets </button>
+                    <button type="button" aria-pressed={activeAdminSection === "managers"} onClick={() => setActiveAdminSection("managers")}> Fleet Managers </button>
+                    <button type="button" aria-pressed={activeAdminSection === "drivers"} onClick={() => setActiveAdminSection("drivers")}> Drivers </button>
+                    <button type="button" aria-pressed={activeAdminSection === "vehicles"} onClick={() => setActiveAdminSection("vehicles")}> Vehicles </button>
+                </nav>
 
-                <form onSubmit={createFleet}>
-                    <div align={"center"}>
-                        <label htmlFor="fleet-id">Fleet ID *</label>
-                        <input id="fleet-id" required value= { fleetForm.fleet_id }
-                            onChange={(event) => setFleetForm({ ...fleetForm, fleet_id: event.target.value, })}
-                        />
-                    </div>
+                <div className="admin-content">
+                    <h2>Admin Dashboard</h2>
+                {
+                    activeAdminSection === "fleets" && (
+                        <section>
+                        <hr />
+                        <button type="button" onClick={() => setShowCreateFleet((previous) => !previous)} disabled={isCreating}>  {!showCreateFleet ? "Create Fleet" : "close"}</button>
 
-                    <div>
-                        <label htmlFor="fleet-name">Fleet Name *</label>
-                        <input
-                            id="fleet-name" required value= { fleetForm.name }
-                            onChange={(event) => setFleetForm({ ...fleetForm, name: event.target.value, })}
-                        />
-                    </div>
+                            {showCreateFleet && (
+                                <div>
+                                    <h3>Create Fleet</h3>
 
-                    <div>
-                        <label htmlFor="fleet-description">Description</label>
-                        <textarea id="fleet-description" value= { fleetForm.description }
-                                onChange={(event) => setFleetForm({...fleetForm, description: event.target.value,}) }
-                        />
-                    </div>
+                                    <form onSubmit={createFleet}>
+                                        <div align={"center"}>
+                                            <label htmlFor="fleet-id">Fleet ID *</label>
+                                            <input id="fleet-id" required value= { fleetForm.fleet_id }
+                                                onChange={(event) => setFleetForm({ ...fleetForm, fleet_id: event.target.value, })}
+                                            />
+                                        </div>
 
-                    <h4>Base Location</h4>
-                    {
-                        (
-                            [
-                                ["name", "Location Name", true],
-                                ["address", "Address", false],
-                                ["city", "City", false],
-                                ["postal_code", "Postal Code", false],
-                                ["latitude", "Latitude", true],
-                                ["longitude", "Longitude", true],
-                            ] as const
-                        ).map( ([field, label, required]) =>
-                            (
-                                <div key={field}>
-                                    <label htmlFor={`fleet-${field}`}>
-                                        {label}{required ? " *" : ""}
-                                    </label>
+                                        <div>
+                                            <label htmlFor="fleet-name">Fleet Name *</label>
+                                            <input
+                                                id="fleet-name" required value= { fleetForm.name }
+                                                onChange={(event) => setFleetForm({ ...fleetForm, name: event.target.value, })}
+                                            />
+                                        </div>
 
-                                    <input
-                                        id={`fleet-${field}`}
-                                        required={required}
-                                        type={ field === "latitude" || field === "longitude" ? "number" : "text"}
-                                        step={ field === "latitude" || field === "longitude" ? "any" : undefined }
-                                        value={fleetForm.base_location[field]}
-                                        onChange={(event) =>
-                                            setFleetForm({ ...fleetForm, base_location: { ...fleetForm.base_location, [field]: event.target.value, },})
+                                        <div>
+                                            <label htmlFor="fleet-description">Description</label>
+                                            <textarea id="fleet-description" value= { fleetForm.description }
+                                                    onChange={(event) => setFleetForm({...fleetForm, description: event.target.value,}) }
+                                            />
+                                        </div>
+
+                                        <h4>Base Location</h4>
+                                        {
+                                            (
+                                                [
+                                                    ["name", "Location Name", true],
+                                                    ["address", "Address", false],
+                                                    ["city", "City", false],
+                                                    ["postal_code", "Postal Code", false],
+                                                    ["latitude", "Latitude", true],
+                                                    ["longitude", "Longitude", true],
+                                                ] as const
+                                            ).map( ([field, label, required]) =>
+                                                (
+                                                    <div key={field}>
+                                                        <label htmlFor={`fleet-${field}`}>
+                                                            {label}{required ? " *" : ""}
+                                                        </label>
+
+                                                        <input
+                                                            id={`fleet-${field}`}
+                                                            required={required}
+                                                            type={ field === "latitude" || field === "longitude" ? "number" : "text"}
+                                                            step={ field === "latitude" || field === "longitude" ? "any" : undefined }
+                                                            value={fleetForm.base_location[field]}
+                                                            onChange={(event) =>
+                                                                setFleetForm({ ...fleetForm, base_location: { ...fleetForm.base_location, [field]: event.target.value, },})
+                                                            }
+                                                        />
+                                                    </div>
+                                                )
+                                            )
                                         }
-                                    />
+
+
+                                        <button type="submit" disabled={isCreating}>
+                                            {isCreating ? "Creating..." : "Create Fleet"}
+                                        </button>
+
+                                    </form>
+                                    <hr />
                                 </div>
-                            )
-                        )
-                    }
-                    {
-                        createError && ( <p role="alert">{createError}</p> )
-                    }
 
-                    {
-                        createSuccess && ( <p role="status">{createSuccess}</p> )
-                    }
+                            )}
 
-                    <button type="submit" disabled={isCreating}>
-                        {isCreating ? "Creating..." : "Create Fleet"}
-                    </button>
-                </form>
-
-                <hr />
-
-                <h3>Fleets</h3>
-                {
-                    show_fleets()
-                }
-                {
-                    deleteError && <p role="alert">{deleteError}</p>
-                }
-                {
-                    deleteSuccess && <p role="status">{deleteSuccess}</p>
-                }
-                {
-                    show_fleet_details()
-                }
-                {
-                    edit_fleet_details()
-                }
-
-                <hr />
-                <section>
-                    {/* Φόρμα δημιουργίας νέου Fleet Manager από τον Admin. */}
-                    <h3>Create Fleet Manager</h3>
-
-                    <form onSubmit={createFleetManager}>
-                        <div>
-                            <label htmlFor="manager-username">Username</label>
-                            <input
-                                id="manager-username"
-                                type="text"
-                                value={fleetManagerForm.username}
-                                onChange={(event) =>
-                                    setFleetManagerForm({ ...fleetManagerForm, username: event.target.value, }) } required />
-                        </div>
-
-                        <div>
-                            <label htmlFor="manager-id">Manager ID</label>
-                            <input id="manager-id" type="text" value={fleetManagerForm.manager_id}
-                                   onChange={(event) =>
-                                       setFleetManagerForm({...fleetManagerForm, manager_id: event.target.value,}) } required />
-                        </div>
-
-                        <div>
-                            <label htmlFor="manager-first-name">First Name</label>
-                            <input id="manager-first-name" type="text" value={fleetManagerForm.first_name}
-                                   onChange={(event) =>
-                                       setFleetManagerForm({...fleetManagerForm, first_name: event.target.value,}) } required />
-                        </div>
-
-                        <div>
-                            <label htmlFor="manager-last-name">Last Name</label>
-                            <input id="manager-last-name" type="text" value={fleetManagerForm.last_name}
-                                   onChange={(event) =>
-                                       setFleetManagerForm({...fleetManagerForm, last_name: event.target.value,}) } required />
-                        </div>
-
-                        <div>
-                            <label htmlFor="manager-email">Email</label>
-                            <input id="manager-email" type="email" value={fleetManagerForm.email}
-                                onChange={(event) =>
-                                    setFleetManagerForm({...fleetManagerForm, email: event.target.value,}) } required />
-                        </div>
-
-                        <div>
-                            <label htmlFor="manager-fleet">Fleet</label>
-                            <select id="manager-fleet" value={fleetManagerForm.fleet_id}
-                                    onChange={(event) =>
-                                        setFleetManagerForm({...fleetManagerForm, fleet_id: event.target.value,}) } required >
-                                <option value="">Select Fleet</option>
 
                                 {
-                                    fleets.map((fleet) => (
-                                            <option key={fleet.fleet_id} value={fleet.fleet_id}>
-                                                {fleet.name} ({fleet.fleet_id})
-                                            </option>
-                                        )
-                                    )
+                                    createError && ( <p role="alert">{createError}</p> )
                                 }
-                            </select>
-                        </div>
 
-                        {/*<div>*/}
-                        {/*    <label htmlFor="manager-department">Department ID</label>*/}
-                        {/*    <input id="manager-department" type="text" value={fleetManagerForm.department_id}*/}
-                        {/*           onChange={(event) =>*/}
-                        {/*               setFleetManagerForm({...fleetManagerForm, department_id: event.target.value,}) } />*/}
-                        {/*</div>*/}
-
-                        <div>
-                            <label htmlFor="manager-birth-date">Date of Birth</label>
-                            <input id="manager-birth-date" type="date" value={fleetManagerForm.date_of_birth}
-                                onChange={(event) =>
-                                    setFleetManagerForm({...fleetManagerForm, date_of_birth: event.target.value,}) } />
-                        </div>
-
-                        <div>
-                            <label htmlFor="manager-identity">Identity Card Number</label>
-                            <input id="manager-identity" type="text" value={fleetManagerForm.identity_card_number}
-                                onChange={(event) =>
-                                    setFleetManagerForm({...fleetManagerForm, identity_card_number: event.target.value,}) }/>
-                        </div>
-
-                        <div>
-                            <label htmlFor="manager-tax-id">Tax ID</label>
-                            <input id="manager-tax-id" type="text" value={fleetManagerForm.tax_id}
-                                onChange={(event) =>
-                                    setFleetManagerForm({...fleetManagerForm,tax_id: event.target.value,}) } />
-                        </div>
-
-                        <div>
-                            <label htmlFor="manager-phone">Phone Number</label>
-                            <input id="manager-phone" type="tel" value={fleetManagerForm.phone_number}
-                                onChange={(event) =>
-                                    setFleetManagerForm({ ...fleetManagerForm, phone_number: event.target.value, }) } />
-                        </div>
-
-                        <div>
-                            <label htmlFor="manager-hire-date">Hire Date</label>
-                            <input id="manager-hire-date" type="date" value={fleetManagerForm.hire_date}
-                                onChange={(event) =>
-                                    setFleetManagerForm({ ...fleetManagerForm, hire_date: event.target.value, }) } />
-                        </div>
-
-                        <button type="submit" disabled={isCreatingManager}>
-                            {isCreatingManager ? "Creating..." : "Create Fleet Manager"}
-                        </button>
-
-                        {
-                            createManagerError && ( <p role="alert">{createManagerError}</p>)
-                        }
-
-                        {
-                            createManagerSuccess && (<p>{createManagerSuccess}</p>)
-                        }
-
-                    </form>
-
-                    <hr />
-                    <h3>Fleet Managers</h3>
-                    {
-                        show_fleet_managers()
-                    }
-                    {
-                        show_fleet_manager_details()
-                    }
-                    {
-                        edit_fleet_manager_details()
-                    }
-                    {
-                        manager_error_show()
-                    }
-                    <hr />
-                                    {/* Φόρμα δημιουργίας νέου Driver από τον Admin. */}
-                    <h3>Create Driver</h3>
-
-                    <form onSubmit={createDriver}>
-                        {(
-                            [
-                                ["username", "Username", true],
-                                ["driver_id", "Driver ID", true],
-                                ["first_name", "First Name", true],
-                                ["last_name", "Last Name", true],
-                                ["email", "Email", true],
-                                ["date_of_birth", "Date of Birth", false],
-                                ["identity_card_number", "Identity Card Number", false],
-                                ["tax_id", "Tax ID", false],
-                                ["phone_number", "Phone Number", false],
-                                ["license_number", "License Number", false],
-                                ["license_category", "License Category", false],
-                                ["license_expiry_date", "License Expiry Date", false],
-                                ["hire_date", "Hire Date", false],
-                            ] as const
-                        ).map(([field, label, required]) => (
-                            <div key={field}>
-                                <label htmlFor={`driver-${field}`}>
-                                    {label}{required ? " *" : ""}
-                                </label>
-
-                                <input
-                                    id={`driver-${field}`}
-                                    required={required}
-                                    type={
-                                        field === "email"
-                                            ? "email"
-                                            : field === "date_of_birth" ||
-                                              field === "license_expiry_date" ||
-                                              field === "hire_date"
-                                            ? "date"
-                                            : "text"
-                                    }
-                                    value={driverForm[field]}
-                                    onChange={(event) =>
-                                        setDriverForm({
-                                            ...driverForm,
-                                            [field]: event.target.value,
-                                        })
-                                    }
-                                />
-                            </div>
-                        ))}
-
-                        {/* Επιλέγουμε Fleet από τα ήδη διαθέσιμα Fleets. */}
-                        <div>
-                            <label htmlFor="driver-fleet">Fleet</label>
-                            <select
-                                id="driver-fleet"
-                                value={driverForm.fleet_id}
-                                onChange={(event) =>
-                                    setDriverForm({
-                                        ...driverForm,
-                                        fleet_id: event.target.value,
-                                    })
+                                {
+                                    createSuccess && ( <p role="status">{createSuccess}</p> )
                                 }
-                            >
-                                <option value="">No Fleet</option>
-                                {fleets.map((fleet) => (
-                                    <option key={fleet.fleet_id} value={fleet.fleet_id}>
-                                        {fleet.name} ({fleet.fleet_id})
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
 
-                        {/* Το Department παραμένει προαιρετικό. */}
-                        {/*<div>*/}
-                        {/*    <label htmlFor="driver-department">Department ID</label>*/}
-                        {/*    <input*/}
-                        {/*        id="driver-department"*/}
-                        {/*        value={driverForm.department_id}*/}
-                        {/*        onChange={(event) =>*/}
-                        {/*            setDriverForm({*/}
-                        {/*                ...driverForm,*/}
-                        {/*                department_id: event.target.value,*/}
-                        {/*            })*/}
-                        {/*        }*/}
-                        {/*    />*/}
-                        {/*</div>*/}
 
-                        {createDriverError && (
-                            <p role="alert">{createDriverError}</p>
-                        )}
 
-                        {createDriverSuccess && (
-                            <p role="status">{createDriverSuccess}</p>
-                        )}
+                                <h3>Fleets</h3>
+                                {
+                                    show_fleets()
+                                }
+                                {
+                                    deleteError && <p role="alert">{deleteError}</p>
+                                }
+                                {
+                                    deleteSuccess && <p role="status">{deleteSuccess}</p>
+                                }
+                                {
+                                    show_fleet_details()
+                                }
+                                {
+                                    edit_fleet_details()
+                                }
+                        </section>
+                    )
+                }
 
-                        <button type="submit" disabled={isCreatingDriver}> {isCreatingDriver ? "Creating..." : "Create Driver"} </button>
-                    </form>
+                <section>
 
-                    <hr />
-                    <h3>Drivers</h3>
                     {
-                        show_drivers()
+                        activeAdminSection === "managers" && (
+                            <section>
+                                <hr />
+                                {/* Φόρμα δημιουργίας νέου Fleet Manager από τον Admin. */}
+                                <button type="button" onClick={() => setShowCreateManager((previous) => !previous)} disabled={isCreatingManager}> Create Fleet Manager </button>
+
+                                {showCreateManager && (
+                                    <div>
+                                        <h3>Create Fleet Manager</h3>
+
+                                        <form onSubmit={createFleetManager}>
+                                            <div>
+                                                <label htmlFor="manager-username">Username</label>
+                                                <input
+                                                    id="manager-username"
+                                                    type="text"
+                                                    value={fleetManagerForm.username}
+                                                    onChange={(event) =>
+                                                        setFleetManagerForm({ ...fleetManagerForm, username: event.target.value, }) } required />
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="manager-id">Manager ID</label>
+                                                <input id="manager-id" type="text" value={fleetManagerForm.manager_id}
+                                                       onChange={(event) =>
+                                                           setFleetManagerForm({...fleetManagerForm, manager_id: event.target.value,}) } required />
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="manager-first-name">First Name</label>
+                                                <input id="manager-first-name" type="text" value={fleetManagerForm.first_name}
+                                                       onChange={(event) =>
+                                                           setFleetManagerForm({...fleetManagerForm, first_name: event.target.value,}) } required />
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="manager-last-name">Last Name</label>
+                                                <input id="manager-last-name" type="text" value={fleetManagerForm.last_name}
+                                                       onChange={(event) =>
+                                                           setFleetManagerForm({...fleetManagerForm, last_name: event.target.value,}) } required />
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="manager-email">Email</label>
+                                                <input id="manager-email" type="email" value={fleetManagerForm.email}
+                                                    onChange={(event) =>
+                                                        setFleetManagerForm({...fleetManagerForm, email: event.target.value,}) } required />
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="manager-fleet">Fleet</label>
+                                                <select id="manager-fleet" value={fleetManagerForm.fleet_id}
+                                                        onChange={(event) =>
+                                                            setFleetManagerForm({...fleetManagerForm, fleet_id: event.target.value,}) } required >
+                                                    <option value="">Select Fleet</option>
+
+                                                    {
+                                                        fleets.map((fleet) => (
+                                                                <option key={fleet.fleet_id} value={fleet.fleet_id}>
+                                                                    {fleet.name} ({fleet.fleet_id})
+                                                                </option>
+                                                            )
+                                                        )
+                                                    }
+                                                </select>
+                                            </div>
+
+                                            {/*<div>*/}
+                                            {/*    <label htmlFor="manager-department">Department ID</label>*/}
+                                            {/*    <input id="manager-department" type="text" value={fleetManagerForm.department_id}*/}
+                                            {/*           onChange={(event) =>*/}
+                                            {/*               setFleetManagerForm({...fleetManagerForm, department_id: event.target.value,}) } />*/}
+                                            {/*</div>*/}
+
+                                            <div>
+                                                <label htmlFor="manager-birth-date">Date of Birth</label>
+                                                <input id="manager-birth-date" type="date" value={fleetManagerForm.date_of_birth}
+                                                    onChange={(event) =>
+                                                        setFleetManagerForm({...fleetManagerForm, date_of_birth: event.target.value,}) } />
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="manager-identity">Identity Card Number</label>
+                                                <input id="manager-identity" type="text" value={fleetManagerForm.identity_card_number}
+                                                    onChange={(event) =>
+                                                        setFleetManagerForm({...fleetManagerForm, identity_card_number: event.target.value,}) }/>
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="manager-tax-id">Tax ID</label>
+                                                <input id="manager-tax-id" type="text" value={fleetManagerForm.tax_id}
+                                                    onChange={(event) =>
+                                                        setFleetManagerForm({...fleetManagerForm,tax_id: event.target.value,}) } />
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="manager-phone">Phone Number</label>
+                                                <input id="manager-phone" type="tel" value={fleetManagerForm.phone_number}
+                                                    onChange={(event) =>
+                                                        setFleetManagerForm({ ...fleetManagerForm, phone_number: event.target.value, }) } />
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="manager-hire-date">Hire Date</label>
+                                                <input id="manager-hire-date" type="date" value={fleetManagerForm.hire_date}
+                                                    onChange={(event) =>
+                                                        setFleetManagerForm({ ...fleetManagerForm, hire_date: event.target.value, }) } />
+                                            </div>
+
+                                            <button type="submit" disabled={isCreatingManager}>
+                                                {isCreatingManager ? "Creating..." : "Create Fleet Manager"}
+                                            </button>
+
+
+
+                                        </form>
+                                    </div>
+                                )}
+
+                                {
+                                    createManagerError && ( <p role="alert">{createManagerError}</p>)
+                                }
+
+                                {
+                                    createManagerSuccess && (<p>{createManagerSuccess}</p>)
+                                }
+
+                                <hr />
+                                <h3>Fleet Managers</h3>
+                                {
+                                    show_fleet_managers()
+                                }
+                                {
+                                    show_fleet_manager_details()
+                                }
+                                {
+                                    edit_fleet_manager_details()
+                                }
+                                {
+                                    manager_error_show()
+                                }
+                            </section>
+                        )
                     }
+
+
                     {
-                        show_driver_details()
+                        activeAdminSection === "drivers" && (
+                            <section>
+                                <hr />
+
+                                <button type="button" onClick={() => setShowCreateDriver((previous) => !previous)} disabled={isCreatingDriver}> Create Driver </button>
+                                {showCreateDriver && (
+                                    <div>
+                                        {/* Φόρμα δημιουργίας νέου Driver από τον Admin. */}
+                                        <h3>Create Driver</h3>
+
+                                        <form onSubmit={createDriver}>
+                                            {(
+                                                [
+                                                    ["username", "Username", true],
+                                                    ["driver_id", "Driver ID", true],
+                                                    ["first_name", "First Name", true],
+                                                    ["last_name", "Last Name", true],
+                                                    ["email", "Email", true],
+                                                    ["date_of_birth", "Date of Birth", false],
+                                                    ["identity_card_number", "Identity Card Number", false],
+                                                    ["tax_id", "Tax ID", false],
+                                                    ["phone_number", "Phone Number", false],
+                                                    ["license_number", "License Number", false],
+                                                    ["license_category", "License Category", false],
+                                                    ["license_expiry_date", "License Expiry Date", false],
+                                                    ["hire_date", "Hire Date", false],
+                                                ] as const
+                                            ).map(([field, label, required]) => (
+                                                <div key={field}>
+                                                    <label htmlFor={`driver-${field}`}>
+                                                        {label}{required ? " *" : ""}
+                                                    </label>
+
+                                                    <input
+                                                        id={`driver-${field}`}
+                                                        required={required}
+                                                        type={
+                                                            field === "email"
+                                                                ? "email"
+                                                                : field === "date_of_birth" ||
+                                                                  field === "license_expiry_date" ||
+                                                                  field === "hire_date"
+                                                                ? "date"
+                                                                : "text"
+                                                        }
+                                                        value={driverForm[field]}
+                                                        onChange={(event) =>
+                                                            setDriverForm({
+                                                                ...driverForm,
+                                                                [field]: event.target.value,
+                                                            })
+                                                        }
+                                                    />
+                                                </div>
+                                            ))}
+
+                                            {/* Επιλέγουμε Fleet από τα ήδη διαθέσιμα Fleets. */}
+                                            <div>
+                                                <label htmlFor="driver-fleet">Fleet</label>
+                                                <select
+                                                    id="driver-fleet"
+                                                    value={driverForm.fleet_id}
+                                                    onChange={(event) =>
+                                                        setDriverForm({
+                                                            ...driverForm,
+                                                            fleet_id: event.target.value,
+                                                        })
+                                                    }
+                                                >
+                                                    <option value="">No Fleet</option>
+                                                    {fleets.map((fleet) => (
+                                                        <option key={fleet.fleet_id} value={fleet.fleet_id}>
+                                                            {fleet.name} ({fleet.fleet_id})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Το Department παραμένει προαιρετικό. */}
+                                            {/*<div>*/}
+                                            {/*    <label htmlFor="driver-department">Department ID</label>*/}
+                                            {/*    <input*/}
+                                            {/*        id="driver-department"*/}
+                                            {/*        value={driverForm.department_id}*/}
+                                            {/*        onChange={(event) =>*/}
+                                            {/*            setDriverForm({*/}
+                                            {/*                ...driverForm,*/}
+                                            {/*                department_id: event.target.value,*/}
+                                            {/*            })*/}
+                                            {/*        }*/}
+                                            {/*    />*/}
+                                            {/*</div>*/}
+
+
+
+                                            <button type="submit" disabled={isCreatingDriver}> {isCreatingDriver ? "Creating..." : "Create Driver"} </button>
+                                        </form>
+                                    </div>
+                                )}
+                                {
+                                    createDriverError && (<p role="alert">{createDriverError}</p>)
+                                }
+
+                                {
+                                    createDriverSuccess && (<p role="status">{createDriverSuccess}</p>)
+                                }
+
+                                <hr />
+                                <h3>Drivers</h3>
+                                {
+                                    show_drivers()
+                                }
+                                {
+                                    show_driver_details()
+                                }
+                                {
+                                    edit_driver_details()
+                                }
+                                {
+                                    driver_error_show()
+                                }
+                            </section>
+                        )
                     }
+
                     {
-                        edit_driver_details()
-                    }
-                    {
-                        driver_error_show()
-                    }
-                    <hr />
+                        activeAdminSection === "vehicles" && (
+                            <section>
 
-                    <h3>Create Vehicle</h3>
+                                <hr />
 
-                    <form onSubmit={createVehicle}>
-                        <div>
-                            <label htmlFor="vehicle-plate">Plate Number *</label>
-                            <input id="vehicle-plate" required value={vehicleForm.plate_number}
-                                   onChange={(event) =>
-                                       setVehicleForm({...vehicleForm, plate_number: event.target.value,})} />
-                        </div>
+                                <h3>Create Vehicle</h3>
+                                <button type="button" onClick={() => setShowCreateVehicle((previous) => !previous)} disabled={isCreatingVehicle}> Create Vehicle </button>
 
-                        <div>
-                            <label htmlFor="vehicle-brand">Brand</label>
-                            <input id="vehicle-brand" value={vehicleForm.brand}
-                                   onChange={(event) =>
-                                       setVehicleForm({...vehicleForm, brand: event.target.value,})} />
-                        </div>
+                                {showCreateVehicle && (
+                                    <div>
 
-                        <div>
-                            <label htmlFor="vehicle-model">Model</label>
-                            <input id="vehicle-model" value={vehicleForm.model}
-                                   onChange={(event) =>
-                                       setVehicleForm({...vehicleForm, model: event.target.value,})} />
-                        </div>
+                                    <form onSubmit={createVehicle}>
+                                        <div>
+                                            <label htmlFor="vehicle-plate">Plate Number *</label>
+                                            <input id="vehicle-plate" required value={vehicleForm.plate_number}
+                                                   onChange={(event) =>
+                                                       setVehicleForm({...vehicleForm, plate_number: event.target.value,})} />
+                                        </div>
 
-                        <div>
-                            <label htmlFor="vehicle-year">Year</label>
-                            <input id="vehicle-year" type="number" step="1" value={vehicleForm.year}
-                                   onChange={(event) =>
-                                       setVehicleForm({...vehicleForm, year: event.target.value,})} />
-                        </div>
+                                        <div>
+                                            <label htmlFor="vehicle-brand">Brand</label>
+                                            <input id="vehicle-brand" value={vehicleForm.brand}
+                                                   onChange={(event) =>
+                                                       setVehicleForm({...vehicleForm, brand: event.target.value,})} />
+                                        </div>
 
-                        <div>
-                            <label htmlFor="vehicle-imei">Device IMEI *</label>
-                            <input id="vehicle-imei" required value={vehicleForm.device_imei}
-                                   onChange={(event) =>
-                                       setVehicleForm({...vehicleForm, device_imei: event.target.value,})} />
-                        </div>
+                                        <div>
+                                            <label htmlFor="vehicle-model">Model</label>
+                                            <input id="vehicle-model" value={vehicleForm.model}
+                                                   onChange={(event) =>
+                                                       setVehicleForm({...vehicleForm, model: event.target.value,})} />
+                                        </div>
 
-                        {/* Χρησιμοποιούμε τη λίστα Fleets που έχει ήδη φορτωθεί. */}
-                        <div>
-                            <label htmlFor="vehicle-fleet">Fleet</label>
-                            <select id="vehicle-fleet" value={vehicleForm.fleet_id}
-                                    onChange={(event) =>
-                                        setVehicleForm({...vehicleForm, fleet_id: event.target.value,driver_id: "",})}>
-                                <option value="">Unassigned</option>
+                                        <div>
+                                            <label htmlFor="vehicle-year">Year</label>
+                                            <input id="vehicle-year" type="number" step="1" value={vehicleForm.year}
+                                                   onChange={(event) =>
+                                                       setVehicleForm({...vehicleForm, year: event.target.value,})} />
+                                        </div>
 
-                                {fleets.map((fleet) => (
-                                    <option key={fleet.fleet_id} value={fleet.fleet_id}>
-                                        {fleet.name} ({fleet.fleet_id})
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                                        <div>
+                                            <label htmlFor="vehicle-imei">Device IMEI *</label>
+                                            <input id="vehicle-imei" required value={vehicleForm.device_imei}
+                                                   onChange={(event) =>
+                                                       setVehicleForm({...vehicleForm, device_imei: event.target.value,})} />
+                                        </div>
 
-                        {/* Προσφέρουμε για ανάθεση μόνο ACTIVE Drivers με Fleet. */}
-                        <div>
-                            <label htmlFor="vehicle-driver">Driver</label>
-                            <select id="vehicle-driver" value={vehicleForm.driver_id}
-                                    onChange={(event) =>
-                                        setVehicleForm({...vehicleForm, driver_id: event.target.value,})}>
-                                <option value="">Unassigned</option>
+                                        {/* Χρησιμοποιούμε τη λίστα Fleets που έχει ήδη φορτωθεί. */}
+                                        <div>
+                                            <label htmlFor="vehicle-fleet">Fleet</label>
+                                            <select id="vehicle-fleet" value={vehicleForm.fleet_id}
+                                                    onChange={(event) =>
+                                                        setVehicleForm({...vehicleForm, fleet_id: event.target.value,driver_id: "",})}>
+                                                <option value="">Unassigned</option>
 
-                                {drivers.map((driver) => {
-                                    if (driver.status !== "ACTIVE") {
-                                        return null;
-                                    }
+                                                {fleets.map((fleet) => (
+                                                    <option key={fleet.fleet_id} value={fleet.fleet_id}>
+                                                        {fleet.name} ({fleet.fleet_id})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
 
-                                    if (driver.fleet_id === null || driver.fleet_id === "") {
-                                        return null;
-                                    }
+                                        {/* Προσφέρουμε για ανάθεση μόνο ACTIVE Drivers με Fleet. */}
+                                        <div>
+                                            <label htmlFor="vehicle-driver">Driver</label>
+                                            <select id="vehicle-driver" value={vehicleForm.driver_id}
+                                                    onChange={(event) =>
+                                                        setVehicleForm({...vehicleForm, driver_id: event.target.value,})}>
+                                                <option value="">Unassigned</option>
 
-                                    // Αν έχει επιλεγεί Fleet, δείχνουμε μόνο τους Drivers του.
-                                    if (vehicleForm.fleet_id !== "" &&
-                                        driver.fleet_id !== vehicleForm.fleet_id) {
-                                        return null;
-                                    }
+                                                {drivers.map((driver) => {
+                                                    if (driver.status !== "ACTIVE") {
+                                                        return null;
+                                                    }
 
-                                    return (
-                                        <option key={driver.driver_id} value={driver.driver_id}>
-                                            {driver.first_name} {driver.last_name} ({driver.driver_id})
-                                        </option>
-                                    );
-                                })}
-                            </select>
-                        </div>
+                                                    if (driver.fleet_id === null || driver.fleet_id === "") {
+                                                        return null;
+                                                    }
 
-                        <p>The backend checks Fleet and Driver assignments.</p>
+                                                    // Αν έχει επιλεγεί Fleet, δείχνουμε μόνο τους Drivers του.
+                                                    if (vehicleForm.fleet_id !== "" &&
+                                                        driver.fleet_id !== vehicleForm.fleet_id) {
+                                                        return null;
+                                                    }
 
-                        {createVehicleError && (
-                            <p role="alert">{createVehicleError}</p>
-                        )}
+                                                    return (
+                                                        <option key={driver.driver_id} value={driver.driver_id}>
+                                                            {driver.first_name} {driver.last_name} ({driver.driver_id})
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
+                                        </div>
 
-                        {createVehicleSuccess && (
-                            <p role="status">{createVehicleSuccess}</p>
-                        )}
+                                        <p>The backend checks Fleet and Driver assignments.</p>
 
-                        <button type="submit" disabled={isCreatingVehicle}>
-                            Create Vehicle
-                        </button>
-                    </form>
 
-                    <hr />
-                    <h3>Vehicles</h3>
-                    {
-                        show_vehicles()
-                    }
-                    {
-                        show_vehicle_details()
-                    }
-                    {
-                        edit_vehicle_details()
+                                        <button type="submit" disabled={isCreatingVehicle}>
+                                            Create Vehicle
+                                        </button>
+                                    </form>
+                                </div>
+                                )}
+                                {createVehicleError && (
+                                    <p role="alert">{createVehicleError}</p>
+                                )}
+
+                                {createVehicleSuccess && (
+                                    <p role="status">{createVehicleSuccess}</p>
+                                )}
+
+
+                                <hr />
+                                <h3>Vehicles</h3>
+                                {
+                                    show_vehicles()
+                                }
+                                {
+                                    show_vehicle_details()
+                                }
+                                {
+                                    edit_vehicle_details()
+                                }
+
+                                {
+                                    deactivateVehicleError && (<p role="alert">{deactivateVehicleError}</p>)
+                                }
+
+                                {
+                                    deactivateVehicleSuccess && (<p role="status">{deactivateVehicleSuccess}</p>)
+                                }
+                                {
+                                    activateVehicleError && (<p role="alert">{activateVehicleError}</p>)
+                                }
+                                {
+                                    activateVehicleSuccess && (<p role="status">{activateVehicleSuccess}</p>)
+                                }
+                                {
+                                    deleteVehicleError && (<p role="alert">{deleteVehicleError}</p>)
+                                }
+                                {
+                                    deleteVehicleSuccess && (<p role="status">{deleteVehicleSuccess}</p>)
+                                }
+                            </section>
+                        )
                     }
                     {
                         show_vehicle_tracking()
                     }
-                    {
-                        deactivateVehicleError && (<p role="alert">{deactivateVehicleError}</p>)
-                    }
-
-                    {
-                        deactivateVehicleSuccess && (<p role="status">{deactivateVehicleSuccess}</p>)
-                    }
-                    {
-                        activateVehicleError && (<p role="alert">{activateVehicleError}</p>)
-                    }
-                    {
-                        activateVehicleSuccess && (<p role="status">{activateVehicleSuccess}</p>)
-                    }
-                    {
-                        deleteVehicleError && (<p role="alert">{deleteVehicleError}</p>)
-                    }
-                    {
-                        deleteVehicleSuccess && (<p role="status">{deleteVehicleSuccess}</p>)
-                    }
 
 
                 </section>
-            </section>
+                </div>
+            </div>
         );
     }
     else {

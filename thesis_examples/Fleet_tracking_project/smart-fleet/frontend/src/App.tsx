@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { useAuth } from "./auth/AuthContext";
 import "./App.css";
 
-import { useVehicleTracking } from "./hooks/useVehicleTracking";
-
 import type { Vehicle } from "./types/Vehicle";
 import type { DriverProfile as DriverProfileData } from "./types/DriverProfile";
 import type {  FleetManagerProfile as FleetManagerProfileData } from "./types/FleetManagerProfile";
+
+import { useVehicleTracking } from "./hooks/useVehicleTracking";
+
 import LatestPosition from "./components/LatestPosition";
 import LiveMap from "./components/LiveMap";
 import DriverProfile from "./components/DriverProfile";
@@ -15,6 +16,8 @@ import FleetManagerProfile from "./components/FleetManagerProfile";
 import FleetVehicles from "./components/FleetVehicles";
 import FleetDrivers from "./components/FleetDrivers";
 import AdminDashboard from "./components/AdminDashboard";
+
+import TokenTimer from "./components/TokenTimer";
 
 function App() {
 
@@ -221,9 +224,12 @@ useEffect(() => {
                 <p>Logged in as: {username}</p>
             </div>
 
-            <button onClick={logout}>
-                Logout
-            </button>
+
+            <div className="app-header-actions">
+
+                <TokenTimer/>
+                <button onClick={logout}> Logout</button>
+            </div>
         </header>
 
         <main className="app-content">
@@ -232,45 +238,45 @@ useEffect(() => {
                 <p>Roles: {roles.join(", ")}</p>
             </section>
 
-          {hasRole("driver") && (
-              <section>
-                  <h2>Driver Dashboard</h2>
-                  {error && <p>{error}</p>}
+            {hasRole("driver") && (
+                <section>
+                    <h2>Driver Dashboard</h2>
+                    {error && <p>{error}</p>}
 
-                  {driverProfile && (
-                      <DriverProfile profile={driverProfile} />
-                  )}
+                    {driverProfile && (
+                        <DriverProfile profile={driverProfile}/>
+                    )}
 
-                  {assignedVehicle && (
-                      <MyVehicle vehicle={assignedVehicle} />
-                  )}
+                    {assignedVehicle && (
+                        <MyVehicle vehicle={assignedVehicle}/>
+                    )}
 
-                  {latestPosition !== null && (
-                      <>
-                          <LatestPosition position={latestPosition} />
-                          <LiveMap position={latestPosition} />
-                      </>
-                  )}
-              </section>
-          )}
-         {hasRole("fleet_manager") && (
-            <section>
-                <h2>Fleet Manager Dashboard</h2>
+                    {latestPosition !== null && (
+                        <>
+                            <LatestPosition position={latestPosition}/>
+                            <LiveMap position={latestPosition}/>
+                        </>
+                    )}
+                </section>
+            )}
+            {hasRole("fleet_manager") && (
+                <section>
+                    <h2>Fleet Manager Dashboard</h2>
 
-                {error && <p>{error}</p>}
+                    {error && <p>{error}</p>}
 
-                {fleetManagerProfile && (
-                  <FleetManagerProfile profile={fleetManagerProfile} />
-                )}
+                    {fleetManagerProfile && (
+                        <FleetManagerProfile profile={fleetManagerProfile}/>
+                    )}
 
-                <FleetVehicles vehicles={fleetVehicles} />
+                    <FleetVehicles vehicles={fleetVehicles}/>
 
-                <FleetDrivers drivers={fleetDrivers} />
-            </section>
-        )}
-        {hasRole("admin") && (
-            <AdminDashboard />
-        )}
+                    <FleetDrivers drivers={fleetDrivers}/>
+                </section>
+            )}
+            {hasRole("admin") && (
+                <AdminDashboard/>
+            )}
         </main>
     </div>
   );

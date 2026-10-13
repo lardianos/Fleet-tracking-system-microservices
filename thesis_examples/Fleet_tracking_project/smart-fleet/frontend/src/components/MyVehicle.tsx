@@ -6,7 +6,7 @@ interface MyVehicleProps {
 
 function MyVehicle({ vehicle }: MyVehicleProps) {
   return (
-    <div>
+    <div className="dashboard-details">
       <h3>My Vehicle</h3>
 
       <p>Plate: {vehicle.plate_number}</p>

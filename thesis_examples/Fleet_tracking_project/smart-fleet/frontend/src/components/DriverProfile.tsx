@@ -6,7 +6,7 @@ interface DriverProfileProps {
 
 function DriverProfile({ profile }: DriverProfileProps) {
   return (
-    <div>
+    <div className="dashboard-details">
       <h3>My Profile</h3>
 
       <p>

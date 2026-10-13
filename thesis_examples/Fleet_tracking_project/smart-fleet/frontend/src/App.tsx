@@ -26,6 +26,22 @@ function App() {
     // Αρχικά είναι null μέχρι να ολοκληρωθεί το πρώτο REST request.
 
     // const [latestPosition, setLatestPosition] = useState<Position | null>(null);
+    // Κρατάμε την επιλεγμένη ενότητα του Driver.
+    const [activeDriverSection, setActiveDriverSection] = useState("profile");
+        // Κρατάμε την επιλεγμένη ενότητα του Fleet Manager.
+    const [activeManagerSection, setActiveManagerSection] = useState("profile");
+
+        // Κρατάμε το όχημα που επέλεξε ο Fleet Manager για tracking.
+    const [managerTrackingVehicle, setManagerTrackingVehicle] = useState<Vehicle | null>(null);
+
+    let managerTrackingImei: string | null = null;
+
+    if (managerTrackingVehicle !== null) {
+        managerTrackingImei = managerTrackingVehicle.device_imei;
+    }
+
+    // Χρησιμοποιούμε την ίδια λειτουργία tracking με Driver και Admin.
+    const managerLatestPosition = useVehicleTracking(managerTrackingImei);
 
     // Κρατάει πιθανό μήνυμα σφάλματος από το REST request.
     const [error, setError] = useState("");
@@ -51,170 +67,182 @@ function App() {
     // Κρατάει όλους τους drivers του fleet που διαχειρίζεται ο manager.
     const [fleetDrivers, setFleetDrivers] = useState<DriverProfileData[]>([]);
 
-useEffect(() => {
-  async function loadDriverProfile() {
-      try {
-          setError("");
-          // Ζητάμε το Driver Profile του authenticated χρήστη.
-          // Το API Gateway βρίσκει το σωστό profile από το JWT sub.
+    useEffect(() => {
+      async function loadDriverProfile() {
+          try {
+              setError("");
+              // Ζητάμε το Driver Profile του authenticated χρήστη.
+              // Το API Gateway βρίσκει το σωστό profile από το JWT sub.
+              const response = await fetch(
+                  "http://localhost:8004/api/v1/drivers/me", { headers: { Authorization: `Bearer ${token}`, }, } );
+
+              if (!response.ok) {
+                throw new Error(
+                  `Failed to load driver profile: ${response.status}`
+                );
+              }
+
+              const profile: DriverProfileData = await response.json();
+
+              setDriverProfile(profile);
+
+            } catch (requestError) {
+              console.error("Failed to load driver profile:", requestError);
+              setError("Could not load driver profile.");
+            }
+      }
+
+      if (token && hasRole("driver")) {
+        loadDriverProfile();
+      }
+    }, [token, hasRole]);
+
+    useEffect(() => {
+        async function loadMyVehicle() {
+            try {
+
+                // Καθαρίζουμε προηγούμενο μήνυμα σφάλματος.
+                setError("");
+
+                // Ζητάμε τα vehicles που αντιστοιχούν
+                // στον authenticated χρήστη.
+                const response = await fetch(
+                    "http://localhost:8004/api/v1/drivers/me/vehicles", { headers: { Authorization: `Bearer ${token}`, }, } );
+
+                if (!response.ok) {
+                    throw new Error(
+                        `Failed to load driver vehicles: ${response.status}`);
+                }
+
+                const vehicles: Vehicle[] = await response.json();
+
+                // Αν δεν υπάρχει ανατεθειμένο vehicle,
+                // δεν μπορούμε να ξεκινήσουμε live tracking.
+                if (vehicles.length === 0) {
+                    setError("No vehicle is assigned to this driver.");
+                    return;
+                }
+
+                // Προς το παρόν χρησιμοποιούμε το πρώτο vehicle.
+                const vehicle = vehicles[0];
+
+                console.log("Assigned vehicle:", vehicle);
+
+                // Αποθηκεύουμε ολόκληρο το vehicle για να εμφανίσουμε
+                // τα στοιχεία του στο Driver Dashboard.
+                setAssignedVehicle(vehicle);
+
+                // Αποθηκεύουμε ξεχωριστά το IMEI γιατί χρησιμοποιείται
+                // από το WebSocket subscription.
+                setVehicleImei(vehicle.device_imei);
+            } catch (requestError) {
+              console.error("Failed to load assigned vehicle:", requestError);
+              setError("Could not load assigned vehicle.");
+            }
+        }
+
+        if (token && hasRole("driver")) {
+            loadMyVehicle();
+        }
+    }, [token, hasRole]);
+
+
+    useEffect(() => {
+      async function loadFleetManagerProfile() {
+        try {
           const response = await fetch(
-              "http://localhost:8004/api/v1/drivers/me", { headers: { Authorization: `Bearer ${token}`, }, } );
+            "http://localhost:8004/api/v1/fleet-managers/me",
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
 
           if (!response.ok) {
             throw new Error(
-              `Failed to load driver profile: ${response.status}`
+              `Failed to load fleet manager profile: ${response.status}`
             );
           }
 
-          const profile: DriverProfileData = await response.json();
+          const profile: FleetManagerProfileData = await response.json();
 
-          setDriverProfile(profile);
-
+          setFleetManagerProfile(profile);
         } catch (requestError) {
-          console.error("Failed to load driver profile:", requestError);
-          setError("Could not load driver profile.");
+          console.error(
+            "Failed to load fleet manager profile:",
+            requestError
+          );
+          setError("Could not load fleet manager profile.");
         }
-  }
+      }
 
-  if (token && hasRole("driver")) {
-    loadDriverProfile();
-  }
-}, [token, hasRole]);
+      if (token && hasRole("fleet_manager")) {
+        loadFleetManagerProfile();
+      }
+    }, [token, hasRole]);
 
-useEffect(() => {
-    async function loadMyVehicle() {
+    useEffect(() => {
+      async function loadFleetData() {
         try {
+            const [vehiclesResponse, driversResponse] = await Promise.all([
+                fetch(
+                    "http://localhost:8004/api/v1/fleet-managers/me/vehicles",
+                    {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                    },
+                    }
+                ),
+                fetch(
+                  "http://localhost:8004/api/v1/fleet-managers/me/drivers",
+                  {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                    },
+                  }
+                ),
+          ]);
 
-            // Καθαρίζουμε προηγούμενο μήνυμα σφάλματος.
-            setError("");
+          if (!vehiclesResponse.ok) {
+            throw new Error(
+              `Failed to load fleet vehicles: ${vehiclesResponse.status}`
+            );
+          }
 
-            // Ζητάμε τα vehicles που αντιστοιχούν
-            // στον authenticated χρήστη.
-            const response = await fetch(
-                "http://localhost:8004/api/v1/drivers/me/vehicles", { headers: { Authorization: `Bearer ${token}`, }, } );
+          if (!driversResponse.ok) {
+            throw new Error(
+              `Failed to load fleet drivers: ${driversResponse.status}`
+            );
+          }
 
-            if (!response.ok) {
-                throw new Error(
-                    `Failed to load driver vehicles: ${response.status}`);
-            }
+          const vehicles: Vehicle[] = await vehiclesResponse.json();
+          const drivers: DriverProfileData[] = await driversResponse.json();
 
-            const vehicles: Vehicle[] = await response.json();
-
-            // Αν δεν υπάρχει ανατεθειμένο vehicle,
-            // δεν μπορούμε να ξεκινήσουμε live tracking.
-            if (vehicles.length === 0) {
-                setError("No vehicle is assigned to this driver.");
-                return;
-            }
-
-            // Προς το παρόν χρησιμοποιούμε το πρώτο vehicle.
-            const vehicle = vehicles[0];
-
-            console.log("Assigned vehicle:", vehicle);
-
-            // Αποθηκεύουμε ολόκληρο το vehicle για να εμφανίσουμε
-            // τα στοιχεία του στο Driver Dashboard.
-            setAssignedVehicle(vehicle);
-
-            // Αποθηκεύουμε ξεχωριστά το IMEI γιατί χρησιμοποιείται
-            // από το WebSocket subscription.
-            setVehicleImei(vehicle.device_imei);
+          setFleetVehicles(vehicles);
+          setFleetDrivers(drivers);
         } catch (requestError) {
-          console.error("Failed to load assigned vehicle:", requestError);
-          setError("Could not load assigned vehicle.");
+          console.error("Failed to load fleet data:", requestError);
+          setError("Could not load fleet data.");
         }
-    }
-
-    if (token && hasRole("driver")) {
-        loadMyVehicle();
-    }
-}, [token, hasRole]);
-
-
-useEffect(() => {
-  async function loadFleetManagerProfile() {
-    try {
-      const response = await fetch(
-        "http://localhost:8004/api/v1/fleet-managers/me",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to load fleet manager profile: ${response.status}`
-        );
       }
 
-      const profile: FleetManagerProfileData = await response.json();
-
-      setFleetManagerProfile(profile);
-    } catch (requestError) {
-      console.error(
-        "Failed to load fleet manager profile:",
-        requestError
-      );
-      setError("Could not load fleet manager profile.");
-    }
-  }
-
-  if (token && hasRole("fleet_manager")) {
-    loadFleetManagerProfile();
-  }
-}, [token, hasRole]);
-
-useEffect(() => {
-  async function loadFleetData() {
-    try {
-        const [vehiclesResponse, driversResponse] = await Promise.all([
-            fetch(
-                "http://localhost:8004/api/v1/fleet-managers/me/vehicles",
-                {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-                }
-            ),
-            fetch(
-              "http://localhost:8004/api/v1/fleet-managers/me/drivers",
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            ),
-      ]);
-
-      if (!vehiclesResponse.ok) {
-        throw new Error(
-          `Failed to load fleet vehicles: ${vehiclesResponse.status}`
-        );
+      if (token && hasRole("fleet_manager")) {
+        loadFleetData();
       }
+    }, [token, hasRole]);
 
-      if (!driversResponse.ok) {
-        throw new Error(
-          `Failed to load fleet drivers: ${driversResponse.status}`
+        // Αντικαθιστούμε το ενημερωμένο όχημα στη λίστα του Fleet Manager.
+    function replaceFleetVehicleInList(updatedVehicle: Vehicle) {
+        setFleetVehicles((previous) =>
+            previous.map((vehicle) => {
+                if (vehicle.id === updatedVehicle.id) return updatedVehicle;
+                return vehicle;
+            })
         );
-      }
-
-      const vehicles: Vehicle[] = await vehiclesResponse.json();
-      const drivers: DriverProfileData[] = await driversResponse.json();
-
-      setFleetVehicles(vehicles);
-      setFleetDrivers(drivers);
-    } catch (requestError) {
-      console.error("Failed to load fleet data:", requestError);
-      setError("Could not load fleet data.");
     }
-  }
 
-  if (token && hasRole("fleet_manager")) {
-    loadFleetData();
-  }
-}, [token, hasRole]);
+
 
   return (
     <div className="app">
@@ -222,6 +250,7 @@ useEffect(() => {
             <div>
                 <h1>Smart Fleet Tracking</h1>
                 <p>Logged in as: {username}</p>
+                <p className="app-user-roles">Roles: {roles.join(", ")}</p>
             </div>
 
 
@@ -233,50 +262,118 @@ useEffect(() => {
         </header>
 
         <main className="app-content">
-            <section>
-                <h2>User access</h2>
-                <p>Roles: {roles.join(", ")}</p>
-            </section>
 
-            {hasRole("driver") && (
-                <section>
-                    <h2>Driver Dashboard</h2>
-                    {error && <p>{error}</p>}
 
-                    {driverProfile && (
-                        <DriverProfile profile={driverProfile}/>
-                    )}
+                       {
+                           hasRole("driver") && (
+               <section className="user-dashboard">
+                   <div className="admin-layout">
+                       <nav className="admin-sidebar" aria-label="Driver navigation">
+                           <h2>Driver</h2>
 
-                    {assignedVehicle && (
-                        <MyVehicle vehicle={assignedVehicle}/>
-                    )}
+                           <button type="button" aria-pressed={activeDriverSection === "profile"} onClick={() => setActiveDriverSection("profile")}> My Profile </button>
+                           <button type="button" aria-pressed={activeDriverSection === "vehicle"} onClick={() => setActiveDriverSection("vehicle")}> My Vehicle </button>
+                           <button type="button" aria-pressed={activeDriverSection === "tracking"} onClick={() => setActiveDriverSection("tracking")}> Live Tracking </button>
+                       </nav>
 
-                    {latestPosition !== null && (
-                        <>
-                            <LatestPosition position={latestPosition}/>
-                            <LiveMap position={latestPosition}/>
-                        </>
-                    )}
-                </section>
-            )}
-            {hasRole("fleet_manager") && (
-                <section>
-                    <h2>Fleet Manager Dashboard</h2>
+                       <div className="admin-content">
+                           {
+                               error && (<p role="alert">{error}</p>)
+                           }
 
-                    {error && <p>{error}</p>}
+                           {
+                               activeDriverSection === "profile" && driverProfile !== null && (<DriverProfile profile={driverProfile}/>)
+                           }
 
-                    {fleetManagerProfile && (
-                        <FleetManagerProfile profile={fleetManagerProfile}/>
-                    )}
+                           {
+                               activeDriverSection === "vehicle" && assignedVehicle !== null && (<MyVehicle vehicle={assignedVehicle}/>)
+                           }
 
-                    <FleetVehicles vehicles={fleetVehicles}/>
+                           {
+                               activeDriverSection === "tracking" && (
+                               <div className="user-tracking">
+                                   <h3>Live Tracking</h3>
 
-                    <FleetDrivers drivers={fleetDrivers}/>
-                </section>
-            )}
-            {hasRole("admin") && (
-                <AdminDashboard/>
-            )}
+                                   {
+                                       latestPosition !== null && (
+                                           <>
+                                               <LatestPosition position={latestPosition}/>
+                                               <LiveMap position={latestPosition}/>
+                                           </>
+                                       )
+                                   }
+
+                                   {
+                                       latestPosition === null && (<p>No position received yet.</p>)
+                                   }
+                               </div>
+                           )}
+                       </div>
+                   </div>
+               </section>
+           )}
+            {
+                hasRole("fleet_manager") && (
+
+                   <section className="user-dashboard">
+                   <div className="admin-layout">
+                       <nav className="admin-sidebar" aria-label="Fleet Manager navigation">
+                           <h2>Fleet Manager</h2>
+
+                           <button type="button" aria-pressed={activeManagerSection === "profile"} onClick={() => setActiveManagerSection("profile")}> My Profile </button>
+                           <button type="button" aria-pressed={activeManagerSection === "vehicles"} onClick={() => setActiveManagerSection("vehicles")}> Fleet Vehicles </button>
+                           <button type="button" aria-pressed={activeManagerSection === "drivers"} onClick={() => setActiveManagerSection("drivers")}> Fleet Drivers </button>
+                       </nav>
+
+                       <div className="admin-content">
+                           {
+                               error && (<p role="alert">{error}</p>)
+                           }
+
+                           {
+                               activeManagerSection === "profile" && fleetManagerProfile !== null && (<FleetManagerProfile profile={fleetManagerProfile}/>)
+                           }
+
+                            {
+                               activeManagerSection === "vehicles" && (<FleetVehicles vehicles={fleetVehicles} drivers={fleetDrivers} onTrackVehicle={setManagerTrackingVehicle} onVehicleUpdated={replaceFleetVehicleInList}/>
+                               )
+                           }
+
+                           {
+                               activeManagerSection === "drivers" && ( <FleetDrivers drivers={fleetDrivers} vehicles={fleetVehicles} onTrackVehicle={setManagerTrackingVehicle}/>)
+                           }
+                           {/* Το tracking παραμένει ορατό ανεξάρτητα από την επιλεγμένη ενότητα. */}
+                           {
+                               managerTrackingVehicle !== null && (
+                                   <div className="user-tracking">
+                                       <h3>GPS Tracking: {managerTrackingVehicle.plate_number}</h3>
+                                       <p>Device IMEI: {managerTrackingVehicle.device_imei}</p>
+
+                                       {
+                                           managerLatestPosition !== null && (
+                                               <>
+                                                   <LatestPosition position={managerLatestPosition}/>
+                                                   <LiveMap position={managerLatestPosition}/>
+                                               </>
+                                           )
+                                       }
+
+                                       {
+                                           managerLatestPosition === null && (<p>No position received yet.</p>)
+                                       }
+
+                                       <button type="button" onClick={() => setManagerTrackingVehicle(null)}> Close Tracking </button>
+                                   </div>
+                               )
+                           }
+
+                       </div>
+                   </div>
+               </section>
+           )}
+            {
+                hasRole("admin") && (<AdminDashboard/>)
+            }
         </main>
     </div>
   );

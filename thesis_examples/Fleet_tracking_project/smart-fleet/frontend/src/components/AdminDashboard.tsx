@@ -812,9 +812,13 @@ function AdminDashboard() {
                         <td>| {fleet.name} </td>
                         <td>| {fleet.description ?? "—"} </td>
                         <td>
-                            <button type="button" onClick={()=>fleetDetails(fleet)} disabled={deletingFleetId !== null}>view</button>
-                            <button type="button" onClick={() => startEditingFleet(fleet)} disabled={deletingFleetId !== null}> Edit </button>
-                            <button style={{background:"red"}} type="button" onClick={() => deleteFleet(fleet)} disabled={deletingFleetId !== null}>
+                            <button type="button" onClick={() => setViewFleetId(viewFleetId === fleet.fleet_id?null:fleet.fleet_id)} disabled={deletingFleetId !== null}>view</button>
+
+                            {/*<button type="button" onClick={()=>fleetDetails(fleet)} disabled={deletingFleetId !== null}>view</button>*/}
+                            <button type="button" disabled={isUpdating || deletingFleetId !== null} onClick={() => { if (editingFleetId === fleet.fleet_id) { setEditingFleetId(null); } else { startEditingFleet(fleet); }}}> Edit </button>
+                            {/*<button type="button" onClick={() => setEditingFleetId(editingFleetId === fleet.fleet_id?null:fleet.fleet_id)} disabled={deletingFleetId !== null}> Edit </button>*/}
+                            {/*<button type="button" onClick={() => startEditingFleet(fleet)} disabled={deletingFleetId !== null}> Edit </button>*/}
+                            <button style={{background:"red",color:'white'}} type="button" onClick={() => deleteFleet(fleet)} disabled={deletingFleetId !== null}>
                                 {deletingFleetId === fleet.fleet_id ? "Deleting..." : "Delete"} </button>
 
                         </td>
@@ -896,7 +900,7 @@ function AdminDashboard() {
         if (!fleet) return null;
 
         return (
-            <div>
+            <div className="admin-details">
                 <h3>Details: {fleet.fleet_id}</h3>
                 <p>Name: {fleet.name}</p>
                 <p>Description: {fleet.description ?? "—"}</p>
@@ -1468,19 +1472,20 @@ function AdminDashboard() {
 
                                             </td>
                                             <td>
-                                                <button type="button" onClick={() => startEditingFleetManager(manager)} disabled={isUpdatingManager}> Edit </button>
+                                                <button type="button" disabled={isUpdatingManager} onClick={() => { if (editingManagerId === manager.manager_id) { setEditingManagerId(null); } else { startEditingFleetManager(manager); } }}> Edit </button>
+                                                {/*<button type="button" onClick={() => setEditingManagerId(editingManagerId === manager.manager_id?null:manager.manager_id)} disabled={isUpdatingManager}> Edit </button>*/}
                                             </td>
                                             <td>
                                                 {manager.status === "ACTIVE" &&
                                                     (<button style={{background:"white",color:"red"}}type="button" onClick={() => deactivateFleetManager(manager)} disabled={deactivatingManagerId !== null}>
                                                         {deactivatingManagerId === manager.manager_id ? "Deactivating..." : "Deactivate"} </button>)}
                                                 {manager.status === "INACTIVE" &&
-                                                    (<button style={{background:"green"}}type="button" onClick={() => activateFleetManager(manager)} disabled={activatingManagerId !== null}>
+                                                    (<button style={{background:"green", color:"white"}}type="button" onClick={() => activateFleetManager(manager)} disabled={activatingManagerId !== null}>
                                                         {activatingManagerId === manager.manager_id ? "Activating..." : "Activate"} </button>)}
                                             </td>
                                             <td>
                                                 {manager.status === "INACTIVE" && (
-                                                    <button style={{background:"red"}}type="button" onClick={() => deleteFleetManager(manager)} disabled={deletingManagerId !== null}>
+                                                    <button style={{background:"red",color:"white"}}type="button" onClick={() => deleteFleetManager(manager)} disabled={deletingManagerId !== null}>
                                                         {deletingManagerId === manager.manager_id ? "Deleting..." : "Delete"} </button>
                                                 )}
                                             </td>
@@ -1559,7 +1564,7 @@ function AdminDashboard() {
             const manager = fleetManagers.find((manager) => manager.manager_id === viewManagerId);
             if(manager)
                 return (
-                    <div>
+                    <div className="admin-details">
                         <h3>Fleet Manager Details: {manager.manager_id}</h3>
 
                         <p>First Name: {manager.first_name}</p>
@@ -1744,10 +1749,13 @@ function AdminDashboard() {
                                 <button type="button" onClick={() => setViewDriverId(viewDriverId === driver.driver_id ? null : driver.driver_id)}> View </button>
                             </td>
                             <td>
-                                <button type="button" onClick={() => startEditingDriver(driver)} disabled={isUpdatingDriver}> Edit </button>
+                                <button type="button" disabled={isUpdatingDriver} onClick={() => { if (editingDriverId === driver.driver_id) { setEditingDriverId(null); } else { startEditingDriver(driver); } }}> Edit </button>
+                                {/*<button type="button" onClick={() => setEditingDriverId(editingDriverId === driver.driver_id?null:driver.driver_id)} disabled={isUpdatingDriver}> Edit </button>*/}
                             </td>
                             <td>
-                                <button type="button" onClick={() => setSelectedDriverId(driver.driver_id)} disabled={isLoadingDriverVehicles}> Vehicles </button>
+
+                                <button type="button" onClick={() => setSelectedDriverId(selectedDriverId === driver.driver_id?null:driver.driver_id)} disabled={isLoadingDriverVehicles}> Vehicles </button>
+                                {/*<button type="button" onClick={() => setSelectedDriverId(driver.driver_id)} disabled={isLoadingDriverVehicles}> Vehicles </button>*/}
                             </td>
                             <td>
 
@@ -1755,12 +1763,12 @@ function AdminDashboard() {
                                     (<button style={{background:"white", color:"red"}}type="button" onClick={() => deactivateDriver(driver)} disabled={deactivatingDriverId !== null}>
                                         {deactivatingDriverId === driver.driver_id ? "Deactivating..." : "Deactivate"} </button>)}
                                 {driver.status === "INACTIVE" &&
-                                    (<button style={{background:"green"}} type="button" onClick={() => activateDriver(driver)} disabled={activatingDriverId !== null}>
+                                    (<button style={{background:"green",color:"white"}} type="button" onClick={() => activateDriver(driver)} disabled={activatingDriverId !== null}>
                                         {activatingDriverId === driver.driver_id ? "Activating..." : "Activate"} </button>)}
                             </td>
                             <td>
                                 {driver.status === "INACTIVE" &&
-                                    (<button style={{background:"red"}} type="button" onClick={() => deleteDriver(driver)} disabled={deletingDriverId !== null}>
+                                    (<button style={{background:"red",color:"white"}} type="button" onClick={() => deleteDriver(driver)} disabled={deletingDriverId !== null}>
                                         {deletingDriverId === driver.driver_id ? "Deleting..." : "Delete"} </button>)}
                             </td>
                         </tr>
@@ -1829,7 +1837,7 @@ function AdminDashboard() {
             const driver = drivers.find((driver) => driver.driver_id === viewDriverId);
             if(driver)
                 return (
-                    <div>
+                    <div className="admin-details">
                         <h3>Driver Details: {driver.driver_id}</h3>
 
                         <p>First Name: {driver.first_name}</p>
@@ -2883,10 +2891,14 @@ function AdminDashboard() {
                                 <td>{driverName}</td>
                                 <td>{vehicle.status === "INACTIVE" ? <p style={{ color: "red" }}>{vehicle.status}</p> : <p style={{ color: "green" }}>{vehicle.status}</p> }</td>
                                 <td>
-                                    <button type="button" onClick={() => setViewVehicleId(vehicle.id)}> View </button>
+
+                                    <button type="button" onClick={() => setViewVehicleId(viewVehicleId === vehicle.id?null:vehicle.id)}> View </button>
+                                    {/*<button type="button" onClick={() => setViewVehicleId(vehicle.id)}> View </button>*/}
                                 </td>
                                 <td>
-                                     <button type="button" onClick={() => startEditingVehicle(vehicle)} disabled={isVehicleActionRunning}> Edit </button>
+                                    <button type="button" disabled={isVehicleActionRunning} onClick={() => {if (editingVehicleId === vehicle.id) { setEditingVehicleId(null); } else { startEditingVehicle(vehicle); } }}> Edit </button>
+                                     {/*<button type="button" onClick={() => setEditingVehicleId(editingVehicleId === vehicle.id?null:vehicle.id)}> Edit </button>*/}
+                                     {/*<button type="button" onClick={() => startEditingVehicle(vehicle)} disabled={isVehicleActionRunning}> Edit </button>*/}
                                 </td>
 
                                 <td>
@@ -2935,7 +2947,7 @@ function AdminDashboard() {
         }
 
         return (
-            <div>
+            <div className="admin-details">
                 <h3>Vehicle Details: {vehicle.plate_number}</h3>
 
                 <p>Vehicle ID: {vehicle.id}</p>
@@ -3075,7 +3087,7 @@ function AdminDashboard() {
         }
 
         return (
-            <div>
+            <div className="admin-tracking">
                 <h3>GPS Tracking</h3>
                 <p>Vehicle: {selectedTrackingVehicle.plate_number}</p>
                 <p>Brand: {selectedTrackingVehicle.brand}</p>
@@ -3220,7 +3232,8 @@ function AdminDashboard() {
                             <section>
                                 <hr />
                                 {/* Φόρμα δημιουργίας νέου Fleet Manager από τον Admin. */}
-                                <button type="button" onClick={() => setShowCreateManager((previous) => !previous)} disabled={isCreatingManager}> Create Fleet Manager </button>
+                                <button type="button" onClick={() => setShowCreateManager((previous) => !previous)} disabled={isCreatingManager}>  {!showCreateManager ? "Create Fleet Manager" : "Close"}</button>
+                                {/*<button type="button" onClick={() => setShowCreateManager((previous) => !previous)} disabled={isCreatingManager}> Create Fleet Manager </button>*/}
 
                                 {showCreateManager && (
                                     <div>
@@ -3366,8 +3379,9 @@ function AdminDashboard() {
                         activeAdminSection === "drivers" && (
                             <section>
                                 <hr />
-
-                                <button type="button" onClick={() => setShowCreateDriver((previous) => !previous)} disabled={isCreatingDriver}> Create Driver </button>
+                                <button type="button" onClick={() => setShowCreateDriver((previous) => !previous)} disabled={isCreatingDriver}>  {!showCreateDriver ? "Create Driver" : "Close"}</button>
+                                {/*<button type="button" onClick={() => setShowCreateDriver((previous) => !previous)} disabled={isCreatingDriver}> Create Driver </button>*/}
+                                {/*<button type="button" onClick={() => setShowCreateDriver((previous) => !previous)} disabled={isCreatingDriver}> Create Driver </button>*/}
                                 {showCreateDriver && (
                                     <div>
                                         {/* Φόρμα δημιουργίας νέου Driver από τον Admin. */}
@@ -3494,11 +3508,12 @@ function AdminDashboard() {
 
                                 <hr />
 
-                                <h3>Create Vehicle</h3>
+
                                 <button type="button" onClick={() => setShowCreateVehicle((previous) => !previous)} disabled={isCreatingVehicle}> Create Vehicle </button>
 
                                 {showCreateVehicle && (
                                     <div>
+                                        <h3>Create Vehicle</h3>
 
                                     <form onSubmit={createVehicle}>
                                         <div>

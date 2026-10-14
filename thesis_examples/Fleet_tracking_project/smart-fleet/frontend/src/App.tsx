@@ -36,9 +36,7 @@ function App() {
 
     let managerTrackingImei: string | null = null;
 
-    if (managerTrackingVehicle !== null) {
-        managerTrackingImei = managerTrackingVehicle.device_imei;
-    }
+    if (managerTrackingVehicle !== null) { managerTrackingImei = managerTrackingVehicle.device_imei;}
 
     // Χρησιμοποιούμε την ίδια λειτουργία tracking με Driver και Admin.
     const managerLatestPosition = useVehicleTracking(managerTrackingImei);
@@ -58,6 +56,11 @@ function App() {
 
     const [assignedVehicle, setAssignedVehicle] = useState<Vehicle | null>(null);
 
+        // Κρατάμε όλα τα οχήματα που είναι ανατεθειμένα στον Driver.
+    const [driverVehicles, setDriverVehicles] = useState<Vehicle[]>([]);
+    const [isLoadingDriverVehicles, setIsLoadingDriverVehicles] = useState(false);
+    const [driverVehiclesError, setDriverVehiclesError] = useState("");
+
     // Κρατάει το business profile του authenticated Fleet Manager.
     const [fleetManagerProfile, setFleetManagerProfile] = useState< FleetManagerProfileData | null>(null);
 
@@ -66,6 +69,11 @@ function App() {
 
     // Κρατάει όλους τους drivers του fleet που διαχειρίζεται ο manager.
     const [fleetDrivers, setFleetDrivers] = useState<DriverProfileData[]>([]);
+
+    // Παρακολουθούμε την ενεργοποίηση και το αποτέλεσμα του αιτήματος.
+    const [activatingVehicleId, setActivatingVehicleId] = useState<string | null>(null);
+    const [activateVehicleError, setActivateVehicleError] = useState("");
+    const [activateVehicleSuccess, setActivateVehicleSuccess] = useState("");
 
     useEffect(() => {
       async function loadDriverProfile() {
@@ -98,52 +106,55 @@ function App() {
     }, [token, hasRole]);
 
     useEffect(() => {
-        async function loadMyVehicle() {
+        if (!token || !hasRole("driver")) return;
+
+        const controller = new AbortController();
+
+        // Ανακτούμε όλα τα ανατεθειμένα οχήματα χωρίς αυτόματη επιλογή του πρώτου.
+        async function loadAssignedVehicles() {
+            setIsLoadingDriverVehicles(true);
+            setDriverVehiclesError("");
+            setDriverVehicles([]);
+            setAssignedVehicle(null);
+            setVehicleImei(null);
+
             try {
-
-                // Καθαρίζουμε προηγούμενο μήνυμα σφάλματος.
-                setError("");
-
-                // Ζητάμε τα vehicles που αντιστοιχούν
-                // στον authenticated χρήστη.
                 const response = await fetch(
-                    "http://localhost:8004/api/v1/drivers/me/vehicles", { headers: { Authorization: `Bearer ${token}`, }, } );
+                    "http://localhost:8004/api/v1/drivers/me/vehicles",
+                    { headers: { Authorization: `Bearer ${token}`, }, signal: controller.signal, }
+                );
 
                 if (!response.ok) {
-                    throw new Error(
-                        `Failed to load driver vehicles: ${response.status}`);
+                    throw new Error(`Failed to load assigned vehicles: ${response.status}`);
                 }
 
                 const vehicles: Vehicle[] = await response.json();
 
-                // Αν δεν υπάρχει ανατεθειμένο vehicle,
-                // δεν μπορούμε να ξεκινήσουμε live tracking.
-                if (vehicles.length === 0) {
-                    setError("No vehicle is assigned to this driver.");
-                    return;
+                if (!controller.signal.aborted) {
+                    setDriverVehicles(vehicles);
+                }
+            } catch (error) {
+                if (controller.signal.aborted) return;
+
+                let errorMessage = "Could not load assigned vehicles.";
+
+                if (error instanceof Error) {
+                    errorMessage = error.message;
                 }
 
-                // Προς το παρόν χρησιμοποιούμε το πρώτο vehicle.
-                const vehicle = vehicles[0];
-
-                console.log("Assigned vehicle:", vehicle);
-
-                // Αποθηκεύουμε ολόκληρο το vehicle για να εμφανίσουμε
-                // τα στοιχεία του στο Driver Dashboard.
-                setAssignedVehicle(vehicle);
-
-                // Αποθηκεύουμε ξεχωριστά το IMEI γιατί χρησιμοποιείται
-                // από το WebSocket subscription.
-                setVehicleImei(vehicle.device_imei);
-            } catch (requestError) {
-              console.error("Failed to load assigned vehicle:", requestError);
-              setError("Could not load assigned vehicle.");
+                setDriverVehiclesError(errorMessage);
+            } finally {
+                if (!controller.signal.aborted) {
+                    setIsLoadingDriverVehicles(false);
+                }
             }
         }
 
-        if (token && hasRole("driver")) {
-            loadMyVehicle();
-        }
+        loadAssignedVehicles();
+
+        return () => {
+            controller.abort();
+        };
     }, [token, hasRole]);
 
 
@@ -233,6 +244,7 @@ function App() {
     }, [token, hasRole]);
 
         // Αντικαθιστούμε το ενημερωμένο όχημα στη λίστα του Fleet Manager.
+    // Ενημερώνουμε τη λίστα και το επιλεγμένο όχημα tracking με τα νέα στοιχεία.
     function replaceFleetVehicleInList(updatedVehicle: Vehicle) {
         setFleetVehicles((previous) =>
             previous.map((vehicle) => {
@@ -240,6 +252,62 @@ function App() {
                 return vehicle;
             })
         );
+
+                // Κλείνουμε το tracking όταν απενεργοποιείται το επιλεγμένο όχημα.
+        setManagerTrackingVehicle((previous) => {
+            if (previous !== null && previous.id === updatedVehicle.id) {
+                if (updatedVehicle.status === "INACTIVE") return null;
+                return updatedVehicle;
+            }
+
+            return previous;
+        });
+    }
+
+        // Επιλέγουμε το όχημα για προβολή και για το κοινό tracking hook.
+    function selectDriverVehicle(vehicleId: string) {
+        const vehicle = driverVehicles.find((item) => item.id === vehicleId);
+
+        if (vehicle === undefined) {
+            setAssignedVehicle(null);
+            setVehicleImei(null);
+            return;
+        }
+
+        setAssignedVehicle(vehicle);
+        setVehicleImei(vehicle.device_imei);
+    }
+
+    // Εμφανίζουμε την ίδια επιλογή οχήματος στις δύο ενότητες του Driver.
+    function showDriverVehicleSelection() {
+        if (isLoadingDriverVehicles) return <p>Loading assigned vehicles...</p>;
+        if (driverVehiclesError !== "") return <p role="alert">{driverVehiclesError}</p>;
+        if (driverVehicles.length === 0) return <p>No vehicles assigned to this Driver.</p>;
+
+        let selectedVehicleId = "";
+
+        if (assignedVehicle !== null) {
+            selectedVehicleId = assignedVehicle.id;
+        }
+
+        return (
+            <div>
+                <label htmlFor="driver-selected-vehicle">Select Vehicle </label>
+                <select id="driver-selected-vehicle" value={selectedVehicleId}
+                        onChange={(event) => selectDriverVehicle(event.target.value)}>
+                    <option value="">Select a vehicle</option>
+
+                    {driverVehicles.map((vehicle) => (
+                        <option key={vehicle.id} value={vehicle.id}>{vehicle.plate_number}</option>
+                    ))}
+                </select>
+            </div>
+        );
+    }
+
+        // Προσθέτουμε στη λίστα το νέο όχημα που επέστρεψε το backend.
+    function addFleetVehicleToList(createdVehicle: Vehicle) {
+        setFleetVehicles((previous) => [...previous, createdVehicle]);
     }
 
 
@@ -271,8 +339,9 @@ function App() {
                        <nav className="admin-sidebar" aria-label="Driver navigation">
                            <h2>Driver</h2>
 
+
                            <button type="button" aria-pressed={activeDriverSection === "profile"} onClick={() => setActiveDriverSection("profile")}> My Profile </button>
-                           <button type="button" aria-pressed={activeDriverSection === "vehicle"} onClick={() => setActiveDriverSection("vehicle")}> My Vehicle </button>
+                           <button type="button" aria-pressed={activeDriverSection === "vehicle"} onClick={() => setActiveDriverSection("vehicle")}> My Vehicles </button>
                            <button type="button" aria-pressed={activeDriverSection === "tracking"} onClick={() => setActiveDriverSection("tracking")}> Live Tracking </button>
                        </nav>
 
@@ -286,14 +355,35 @@ function App() {
                            }
 
                            {
-                               activeDriverSection === "vehicle" && assignedVehicle !== null && (<MyVehicle vehicle={assignedVehicle}/>)
-                           }
+                               activeDriverSection === "vehicle" && (
+                               <div>
+                                   <h3>My Vehicles</h3>
+
+                                   {isLoadingDriverVehicles && (<p>Loading assigned vehicles...</p>)}
+
+                                   {driverVehiclesError !== "" && (
+                                       <p role="alert">{driverVehiclesError}</p>
+                                   )}
+
+                                   {!isLoadingDriverVehicles && driverVehiclesError === "" && driverVehicles.length === 0 && (
+                                       <p>No vehicles assigned to this Driver.</p>
+                                   )}
+
+                                   {!isLoadingDriverVehicles && driverVehiclesError === "" && (
+                                       driverVehicles.map((vehicle) => (
+                                           <MyVehicle key={vehicle.id} vehicle={vehicle}/>
+                                       ))
+                                   )}
+                               </div>
+                           )}
 
                            {
                                activeDriverSection === "tracking" && (
                                <div className="user-tracking">
                                    <h3>Live Tracking</h3>
-
+                                   {
+                                       showDriverVehicleSelection()
+                                   }
                                    {
                                        latestPosition !== null && (
                                            <>
@@ -304,7 +394,13 @@ function App() {
                                    }
 
                                    {
-                                       latestPosition === null && (<p>No position received yet.</p>)
+                                       latestPosition === null && (
+                                           <p>
+                                               {assignedVehicle === null && driverVehicles.length > 0 && (<p>Select a vehicle to start tracking.</p>)}
+
+                                               {assignedVehicle !== null && latestPosition === null && (<p>No position received yet.</p>)}
+                                           </p>
+                                       )
                                    }
                                </div>
                            )}
@@ -334,9 +430,8 @@ function App() {
                                activeManagerSection === "profile" && fleetManagerProfile !== null && (<FleetManagerProfile profile={fleetManagerProfile}/>)
                            }
 
-                            {
-                               activeManagerSection === "vehicles" && (<FleetVehicles vehicles={fleetVehicles} drivers={fleetDrivers} onTrackVehicle={setManagerTrackingVehicle} onVehicleUpdated={replaceFleetVehicleInList}/>
-                               )
+                           {
+                               activeManagerSection === "vehicles" && (<FleetVehicles vehicles={fleetVehicles} drivers={fleetDrivers}onTrackVehicle={setManagerTrackingVehicle} onVehicleUpdated={replaceFleetVehicleInList} onVehicleCreated={addFleetVehicleToList}/>)
                            }
 
                            {

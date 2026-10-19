@@ -10,4 +10,4 @@ COPY src ./src/
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 
-CMD ["python", "/app/src/main.py"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]

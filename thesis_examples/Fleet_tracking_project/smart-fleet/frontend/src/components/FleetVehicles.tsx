@@ -423,6 +423,8 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
 
         setActivateVehicleError("");
         setActivateVehicleSuccess("");
+        setActivateVehicleError("");
+        setActivateVehicleSuccess("");
 
         if (!token || isVehicleActionRunning) return;
         if (vehicle.status !== "ACTIVE") return;
@@ -630,6 +632,7 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
                                 </td>
                                 <td>
                                     {vehicle.status === "ACTIVE" && (<button type="button" onClick={() => deactivateVehicle(vehicle)} disabled={isVehicleActionRunning}> Deactivate </button>)}
+                                    {vehicle.status === "INACTIVE" && (<button type="button" onClick={() => activateVehicle(vehicle)} disabled={isVehicleActionRunning}> Activate </button>)}
                                 </td>
                             </tr>
                         ))}
@@ -642,6 +645,12 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
             }
             {
                 deactivateVehicleSuccess !== "" && (<p role="status">{deactivateVehicleSuccess}</p>)
+            }
+            {
+                activateVehicleError !== "" && (<p role="alert">{activateVehicleError}</p>)
+            }
+            {
+                activateVehicleSuccess !== "" && (<p role="status">{activateVehicleSuccess}</p>)
             }
 
             {

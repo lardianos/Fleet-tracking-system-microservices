@@ -12,118 +12,116 @@ Position Processor
     ├── Redis key: vehicle:latest:{imei}
     └── TimescaleDB table: vehicle_positions
 """
-
-import json
-import os
+import asyncio
+import psycopg2
 import logging
-from kafka import KafkaConsumer
-from redis import Redis
-from kafka_producer import PositionEventProducer
+from contextlib import asynccontextmanager
+from threading import Event, Thread
+
+from datetime import datetime
+
+from fastapi import FastAPI, HTTPException, Query
+
+from position_consumer import consume_positions
 from db_repository import PositionRepository
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def manage_position_processor(app: FastAPI):
+    # Ο consumer εκτελείται σε ξεχωριστό thread για να μην μπλοκάρει το API.
+    stop_event = Event()
+    position_consumer_thread = Thread( target=consume_positions, args=(stop_event,), name="position-consumer", )
 
-def main():
-    # -------------------------
-    # Kafka Configuration
-    # -------------------------
-    kafka_bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
-    topic = os.getenv("KAFKA_TOPIC_TELEMETRY", "telemetry.positions")
-    group_id = os.getenv("KAFKA_CONSUMER_GROUP", "position-processor-group")
+    app.state.position_consumer_thread = position_consumer_thread
+    position_consumer_thread.start()
 
-    # # -------------------------
-    # # Redis Configuration
-    # # -------------------------
-    # redis_host = os.getenv("REDIS_HOST", "redis")
-    # redis_port = int(os.getenv("REDIS_PORT", "6379"))
-    #
-    # redis_client = Redis(
-    #     host=redis_host,
-    #     port=redis_port,
-    #     decode_responses=True,
-    # )
-
-    # -------------------------
-    # TimescaleDB Repository
-    # -------------------------
-    position_repository = PositionRepository()
-
-    position_event_producer = PositionEventProducer()
-
-    logger.info("Starting Position Processor...")
-    logger.info("Consuming topic: %s", topic)
-    # logger.info("Redis: %s:%s", redis_host, redis_port)
-
-    # -------------------------
-    # Kafka Consumer
-    # -------------------------
-    fleet_topic = os.getenv("KAFKA_TOPIC_FLEET_VEHICLES", "fleet.vehicles")
-
-    consumer = KafkaConsumer(
-        topic,
-        fleet_topic,
-        bootstrap_servers=kafka_bootstrap_servers,
-        group_id=group_id,
-        auto_offset_reset="earliest",
-        enable_auto_commit=True,
-        value_deserializer=lambda v: json.loads(v.decode("utf-8")),
-        key_deserializer=lambda k: k.decode("utf-8") if k else None,
-    )
-
-    # -------------------------
-    # Main Processing Loop
-    # -------------------------
-    for message in consumer:
-        if message.topic == fleet_topic:
-            event = message.value
-
-            # Επεξεργαζόμαστε μόνο vehicle.created events.
-            # Αυτά τα events έρχονται από το Fleet API όταν δημιουργείται νέο όχημα.
-            if event.get("event_type") == "vehicle.created":
-                position_repository.save_imei_vehicle_mapping(
-                    device_imei=event["device_imei"],
-                    vehicle_id=event["vehicle_id"],
-                )
-
-            continue
-        imei = message.key
-        telemetry = message.value
-
-        # Αν για κάποιο λόγο το Kafka key λείπει, χρησιμοποιούμε το imei από το payload.
-        # Αυτό προστατεύει το service από μη πλήρη Kafka messages.
-        if not telemetry.get("imei"):
-            telemetry["imei"] = imei
+    try:
+        # Το API εξυπηρετεί αιτήματα όσο ο consumer επεξεργάζεται θέσεις.
+        yield
+    finally:
+        # Ζητάμε τερματισμό και περιμένουμε να κλείσουν οι συνδέσεις του consumer.
+        stop_event.set()
+        await asyncio.to_thread(position_consumer_thread.join)
 
 
-        vehicle_id = position_repository.find_vehicle_id_by_imei(telemetry["imei"])
-        telemetry["vehicle_id"] = vehicle_id
+app = FastAPI( title="Position Processor", lifespan=manage_position_processor,)
 
 
-        # Αποθηκεύουμε το ίδιο telemetry record στην TimescaleDB για ιστορικό.
-        position_repository.save_position(telemetry)
+@app.get("/health")
+def get_position_processor_health():
+    # Αν σταματήσει απρόσμενα ο consumer, δεν αναφέρουμε την υπηρεσία ως υγιή.
+    if not app.state.position_consumer_thread.is_alive():
+        raise HTTPException( status_code=503, detail="Position consumer is not running.", )
 
-        #redis_key = f"vehicle:latest:{imei}"
+    return {"status": "running", "position_consumer": "running"}
 
-        # Αποθηκεύουμε την τελευταία γνωστή θέση στη Redis για live χρήση.
-       # redis_client.set(redis_key, json.dumps(telemetry, ensure_ascii=False))
 
-        # Δημοσιεύουμε το processed telemetry event.
-        # Άλλα services δεν χρειάζεται να ξέρουν Redis ή TimescaleDB.
-        position_event_producer.publish_position(
-            telemetry
+@app.get("/vehicles/{vehicle_id}/positions")
+def get_vehicle_position_history(
+    vehicle_id: str,
+    start_time: datetime = Query(...),
+    end_time: datetime = Query(...),
+    limit: int = Query(1000, ge=1, le=1000),
+    after_time: datetime | None = Query(None),
+    after_imei: str | None = Query(None, min_length=1, max_length=32),
+):
+    # Απαιτούμε ζώνη ώρας ώστε το χρονικό διάστημα να είναι σαφές.
+    if start_time.utcoffset() is None or end_time.utcoffset() is None:
+        raise HTTPException(
+            status_code=422,
+            detail="start_time and end_time must include a timezone.",
         )
 
-        logger.info(
-            "Processed telemetry: imei=%s lat=%s lon=%s speed=%s vehicle_id=%s",
-            imei,
-            telemetry.get("latitude"),
-            telemetry.get("longitude"),
-            telemetry.get("speed_kmh"),
-            telemetry.get("vehicle_id"),
+    if start_time >= end_time:
+        raise HTTPException(
+            status_code=422,
+            detail="start_time must be earlier than end_time.",
         )
 
+    # Η συνέχεια μιας σελίδας απαιτεί και την ώρα και το IMEI.
+    if (after_time is None) != (after_imei is None):
+        raise HTTPException(
+            status_code=422,
+            detail="after_time and after_imei must be provided together.",
+        )
 
-if __name__ == "__main__":
-    main()
+    if after_time is not None:
+        if after_time.utcoffset() is None:
+            raise HTTPException(
+                status_code=422,
+                detail="after_time must include a timezone.",
+            )
+
+        if after_time < start_time or after_time >= end_time:
+            raise HTTPException(
+                status_code=422,
+                detail="after_time must be within the requested time range.",
+            )
+
+    position_repository = None
+
+    try:
+        # Κάθε αίτημα ανοίγει δική του σύνδεση.
+        # Δεν χρησιμοποιούμε τη σύνδεση του Kafka consumer.
+        position_repository = PositionRepository()
+
+        return position_repository.get_vehicle_position_history(
+            vehicle_id=vehicle_id,
+            start_time=start_time,
+            end_time=end_time,
+            limit=limit,
+            after_time=after_time,
+            after_imei=after_imei,
+        )
+    except psycopg2.Error:
+        logger.exception("Failed to retrieve position history for vehicle_id=%s", vehicle_id)
+
+        raise HTTPException(
+            status_code=503,
+            detail="Position history is temporarily unavailable.",
+        )
+    finally:
+        # Κλείνουμε τη σύνδεση είτε ολοκληρωθεί είτε αποτύχει η αναζήτηση.
+        if position_repository is not None:
+            position_repository.close()

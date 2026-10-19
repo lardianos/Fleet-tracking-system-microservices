@@ -52,3 +52,7 @@ class PositionEventProducer:
             "Published processed position: imei=%s",
             telemetry.get("imei"),
         )
+
+    def close(self):
+        # Περιμένουμε την αποστολή των εκκρεμών μηνυμάτων και κλείνουμε τον producer.
+        self.producer.close()

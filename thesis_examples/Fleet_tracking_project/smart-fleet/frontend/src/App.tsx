@@ -18,6 +18,7 @@ import FleetDrivers from "./components/FleetDrivers";
 import AdminDashboard from "./components/AdminDashboard";
 
 import TokenTimer from "./components/TokenTimer";
+import PositionHistory from "./components/PositionHistory";
 
 function App() {
 
@@ -419,6 +420,7 @@ function App() {
                            <button type="button" aria-pressed={activeManagerSection === "profile"} onClick={() => setActiveManagerSection("profile")}> My Profile </button>
                            <button type="button" aria-pressed={activeManagerSection === "vehicles"} onClick={() => setActiveManagerSection("vehicles")}> Fleet Vehicles </button>
                            <button type="button" aria-pressed={activeManagerSection === "drivers"} onClick={() => setActiveManagerSection("drivers")}> Fleet Drivers </button>
+                           <button type="button" aria-pressed={activeManagerSection === "history"} onClick={() => setActiveManagerSection("history")}> Position History </button>
                        </nav>
 
                        <div className="admin-content">
@@ -437,6 +439,8 @@ function App() {
                            {
                                activeManagerSection === "drivers" && ( <FleetDrivers drivers={fleetDrivers} vehicles={fleetVehicles} onTrackVehicle={setManagerTrackingVehicle}/>)
                            }
+                           {activeManagerSection === "history" && (<PositionHistory vehicles={fleetVehicles} drivers={fleetDrivers}/>)}
+
                            {/* Το tracking παραμένει ορατό ανεξάρτητα από την επιλεγμένη ενότητα. */}
                            {
                                managerTrackingVehicle !== null && (

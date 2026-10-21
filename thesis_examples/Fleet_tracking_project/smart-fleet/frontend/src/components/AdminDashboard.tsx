@@ -8,6 +8,7 @@ import type { Fleet } from "../types/Fleet";
 import { useVehicleTracking } from "../hooks/useVehicleTracking";
 import LatestPosition from "./LatestPosition";
 import LiveMap from "./LiveMap";
+import PositionHistory from "./PositionHistory";
 // Περιγράφουμε μόνο τα πεδία του Fleet που χρειαζόμαστε
 // για την εμφάνιση της λίστας στο Admin Dashboard.
 
@@ -3113,10 +3114,12 @@ function AdminDashboard() {
                     <button type="button" aria-pressed={activeAdminSection === "managers"} onClick={() => setActiveAdminSection("managers")}> Fleet Managers </button>
                     <button type="button" aria-pressed={activeAdminSection === "drivers"} onClick={() => setActiveAdminSection("drivers")}> Drivers </button>
                     <button type="button" aria-pressed={activeAdminSection === "vehicles"} onClick={() => setActiveAdminSection("vehicles")}> Vehicles </button>
+                    <button type="button" aria-pressed={activeAdminSection === "history"} onClick={() => setActiveAdminSection("history")}> Position History </button>
                 </nav>
 
                 <div className="admin-content">
                     <h2>Admin Dashboard</h2>
+                    {activeAdminSection === "history" && (<PositionHistory vehicles={vehicles} drivers={drivers}/>)}
                 {
                     activeAdminSection === "fleets" && (
                         <section>

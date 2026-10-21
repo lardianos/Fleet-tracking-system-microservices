@@ -3028,3 +3028,126 @@ def get_entity_audit_logs(entity_type: str, entity_id: str):
         audit_log_document_to_response(document)
         for document in documents
     ]
+
+@app.get("/drivers/{driver_id}/vehicle-assignment-audit", response_model=list[AuditLogResponse],)
+def get_driver_vehicle_assignment_audit(driver_id: str):
+    # Αναζητούμε τις αναθέσεις και αποδεσμεύσεις του Driver στα audit των οχημάτων.
+    # Ελέγχουμε και τις δύο τιμές ώστε να περιλαμβάνονται οι αλλαγές οδηγού.
+    documents = audit_logs_collection.find({
+        "entity_type": "VEHICLE",
+        "$or": [
+            {"changes.driver_id.from_value": driver_id},
+            {"changes.driver_id.to_value": driver_id},
+        ],
+    }).sort([
+        ("timestamp", 1),
+        ("_id", 1),
+    ])
+
+    # Επιστρέφουμε τις παλαιότερες αλλαγές πρώτες για να σχηματίσουμε
+    # στη συνέχεια τα χρονικά διαστήματα κάθε ανάθεσης.
+    return [
+        audit_log_document_to_response(document)
+        for document in documents
+    ]
+@app.get("/drivers/{driver_id}/vehicle-assignment-periods")
+def get_driver_vehicle_assignment_periods(
+    driver_id: str,
+    start_time: datetime,
+    end_time: datetime,
+):
+    # Απαιτούμε σαφές χρονικό διάστημα με ζώνη ώρας.
+    if start_time.utcoffset() is None or end_time.utcoffset() is None:
+        raise HTTPException(
+            status_code=422,
+            detail="start_time and end_time must include a timezone.",
+        )
+
+    if start_time >= end_time:
+        raise HTTPException(
+            status_code=422,
+            detail="start_time must be earlier than end_time.",
+        )
+
+    audit_logs = get_driver_vehicle_assignment_audit(driver_id)
+    open_assignments = {}
+    assignment_periods = []
+
+    for audit_log in audit_logs:
+        event_time = audit_log.timestamp
+
+        # Η MongoDB μπορεί να επιστρέψει UTC datetime χωρίς πληροφορία ζώνης ώρας.
+        if event_time.utcoffset() is None:
+            event_time = event_time.replace(tzinfo=timezone.utc)
+
+        # Οι μεταγενέστερες αλλαγές δεν επηρεάζουν το ζητούμενο διάστημα.
+        if event_time >= end_time:
+            break
+
+        vehicle_id = audit_log.entity_id
+        driver_change = audit_log.changes["driver_id"]
+
+        if driver_change.from_value == driver_id:
+            assignment = open_assignments.pop(vehicle_id, None)
+
+            # Δεν υποθέτουμε πότε ξεκίνησε μια ανάθεση αν λείπει η καταγραφή της.
+            if assignment is None:
+                # Αν η αποδέσμευση έγινε πριν ή ακριβώς στην αρχή της αναζήτησης,
+                # η άγνωστη προηγούμενη ανάθεση δεν επηρεάζει το ζητούμενο διάστημα.
+                if event_time <= start_time:
+                    continue
+
+                # Αν έγινε μέσα στο διάστημα, δεν γνωρίζουμε από πότε
+                # πρέπει να συμπεριλάβουμε τις θέσεις του οχήματος.
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Assignment audit is incomplete for vehicle {vehicle_id}.",
+                )
+
+            period_start = max(assignment["start_time"], start_time)
+
+            if period_start < event_time:
+                assignment_periods.append({
+                    "vehicle_id": vehicle_id,
+                    "plate_number": assignment["plate_number"],
+                    "fleet_id": assignment["fleet_id"],
+                    "start_time": period_start,
+                    "end_time": event_time,
+                })
+
+        if driver_change.to_value == driver_id:
+            if vehicle_id in open_assignments:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Assignment audit is inconsistent for vehicle {vehicle_id}.",
+                )
+
+            # Κάθε όχημα έχει ανεξάρτητο διάστημα ανάθεσης.
+            # Ένας Driver μπορεί να έχει περισσότερα από ένα οχήματα.
+            open_assignments[vehicle_id] = {
+                "start_time": event_time,
+                "plate_number": audit_log.related_entities.plate_number,
+                "fleet_id": audit_log.related_entities.fleet_id,
+            }
+
+    # Όσες αναθέσεις δεν έκλεισαν συνεχίζονται μέχρι το τέλος της αναζήτησης.
+    for vehicle_id, assignment in open_assignments.items():
+        period_start = max(assignment["start_time"], start_time)
+
+        if period_start < end_time:
+            assignment_periods.append({
+                "vehicle_id": vehicle_id,
+                "plate_number": assignment["plate_number"],
+                "fleet_id": assignment["fleet_id"],
+                "start_time": period_start,
+                "end_time": end_time,
+            })
+
+    assignment_periods.sort(
+        key=lambda period: (period["start_time"], period["vehicle_id"])
+    )
+
+    return {
+        "driver_id": driver_id,
+        "assignment_periods": assignment_periods,
+    }

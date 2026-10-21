@@ -117,6 +117,8 @@ services:
       KEYCLOAK_ADMIN_REALM: smart-fleet
       KEYCLOAK_ADMIN_CLIENT_ID: smart-fleet-api-gateway
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+
+      POSITION_PROCESSOR_URL: http://position-processor:8001
     depends_on:
       - fleet-api
       - live-tracking-service

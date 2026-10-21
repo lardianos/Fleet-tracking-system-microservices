@@ -1,0 +1,57 @@
+
+/* Το ιστορικό χρησιμοποιεί την υπάρχουσα απλή εμφάνιση των dashboards. */
+.position-history {
+    margin: 20px 0;
+    padding: 20px;
+    border: 1px solid #dce0e5;
+    border-radius: 4px;
+    background: #ffffff;
+}
+
+.position-history h3 {
+    margin-top: 0;
+}
+
+.position-history-table {
+    overflow-x: auto;
+    margin: 16px 0;
+}
+
+.position-history-selected {
+    padding: 12px;
+    margin: 16px 0;
+    border: 1px solid #dce0e5;
+    border-radius: 4px;
+    background: #f7f9fb;
+}
+
+.position-history-selected label {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.position-history-selected input[type="range"] {
+    width: 100%;
+}
+
+.position-history-map {
+    height: 460px;
+    width: 100%;
+    border: 1px solid #dce0e5;
+    border-radius: 4px;
+    z-index: 0;
+}
+
+.position-history p {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+    .position-history {
+        padding: 12px;
+    }
+
+    .position-history-map {
+        height: 360px;
+    }
+}

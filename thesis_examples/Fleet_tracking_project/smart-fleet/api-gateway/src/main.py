@@ -24,12 +24,14 @@ from admin_fleet_manager import AdminFleetManagerCreate, AdminFleetManagerUpdate
 from admin_vehicle import VehicleCreateRequest, VehicleUpdateRequest
 from admin_fleet import FleetCreateRequest, FleetUpdateRequest
 
-from fastapi import FastAPI, Request, Response, Depends, HTTPException
+from fastapi import FastAPI, Request, Response, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from jwt import PyJWKClient, PyJWTError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import Body
 from pydantic import BaseModel, ConfigDict, Field
+from datetime import datetime
+from urllib.parse import quote
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -100,6 +102,8 @@ app.add_middleware(
 FLEET_API_URL = os.getenv( "FLEET_API_URL", "http://fleet-api:8000",)
 
 LIVE_TRACKING_SERVICE_URL = os.getenv( "LIVE_TRACKING_SERVICE_URL", "http://live-tracking-service:8002",)
+
+POSITION_PROCESSOR_URL = os.getenv( "POSITION_PROCESSOR_URL", "http://position-processor:8001",)
 
 # Δηλώνουμε στο Swagger ότι τα προστατευμένα endpoints
 # χρησιμοποιούν Bearer JWT για την αυθεντικοποίηση.
@@ -847,6 +851,53 @@ async def get_authenticated_fleet_manager_fleet_id( token_payload: dict,) -> str
         raise HTTPException( status_code=409, detail="Fleet Manager is not assigned to a fleet", )
 
     return fleet_id
+
+def validate_position_history_time_range(start_time: datetime, end_time: datetime):
+    # Απαιτούμε ζώνη ώρας για να μην ερμηνεύονται διαφορετικά οι ίδιες ώρες.
+    if start_time.utcoffset() is None or end_time.utcoffset() is None:
+        raise HTTPException(
+            status_code=422,
+            detail="start_time and end_time must include a timezone.",
+        )
+
+    if start_time >= end_time:
+        raise HTTPException(
+            status_code=422,
+            detail="start_time must be earlier than end_time.",
+        )
+
+
+async def request_position_history_json( client: httpx.AsyncClient, url: str, service_name: str, params: dict | None = None,):
+    # Χρησιμοποιείται μόνο για τα REST αιτήματα της λειτουργίας ιστορικού.
+    try:
+        response = await client.get(url, params=params)
+    except httpx.TimeoutException:
+        raise HTTPException( status_code=504, detail=f"{service_name} request timed out.", )
+    except httpx.RequestError:
+        raise HTTPException( status_code=503, detail=f"{service_name} unavailable.", )
+
+    # Κρατάμε τα business και validation σφάλματα των εσωτερικών υπηρεσιών.
+    if response.status_code in (400, 404, 409, 422):
+        detail = "Could not retrieve position history data."
+
+        try:
+            error_data = response.json()
+
+            if isinstance(error_data, dict):
+                detail = error_data.get("detail", detail)
+        except ValueError:
+            pass
+
+        raise HTTPException(status_code=response.status_code, detail=detail)
+
+    if response.status_code != 200:
+        raise HTTPException( status_code=503, detail=f"{service_name} could not complete the request.", )
+
+    try:
+        return response.json()
+    except ValueError:
+        raise HTTPException( status_code=502, detail=f"{service_name} returned an invalid response.", )
+
 # -------------------------
 # API Endpoints
 # -------------------------
@@ -3934,40 +3985,146 @@ async def delete_vehicle( request: Request, vehicle_id: str, token_payload: dict
 
     return await proxy_request(request, target_url)
 
-# @app.api_route( "/api/v1/vehicles", methods=["GET", "POST"],)
-# async def vehicles_collection( request: Request, token_payload: dict = Depends(validate_access_token), ):
-#     """
-#     Προωθεί requests συλλογής οχημάτων προς το Fleet API.
-#
-#     GET:
-#     - Επιστρέφει τη λίστα οχημάτων.
-#
-#     POST:
-#     - Δημιουργεί νέο όχημα μέσω Fleet API.
-#     - Το Fleet API παραμένει owner της MongoDB και των vehicle events.
-#     """
-#     role_checker( token_payload, VEHICLE_MANAGEMENT_ROLES,)
-#
-#     logger.info("========= Decoded JWT payload %s ============\n", token_payload)
-#
-#     target_url = f"{FLEET_API_URL}/vehicles"
-#
-#     return await proxy_request(request, target_url)
-#
-# @app.api_route( "/api/v1/vehicles/{vehicle_id}", methods=["GET", "PUT", "PATCH", "DELETE"], )
-# async def vehicle_item(request: Request, vehicle_id: str, token_payload: dict = Depends(validate_access_token), ):
-#     """
-#     Προωθεί requests συγκεκριμένου οχήματος προς το Fleet API.
-#
-#     Το route μένει generic ώστε να μπορεί να υποστηρίξει και μελλοντικά
-#     PUT/PATCH/DELETE όταν προστεθούν στο Fleet API.
-#     """
-#
-#     role_checker( token_payload, VEHICLE_MANAGEMENT_ROLES,)
-#
-#     target_url = f"{FLEET_API_URL}/vehicles/{vehicle_id}"
-#
-#     return await proxy_request(request, target_url)
+@app.get("/api/v1/vehicles/{vehicle_id}/positions")
+async def get_vehicle_position_history( vehicle_id: str, start_time: datetime = Query(...), end_time: datetime = Query(...), limit: int = Query(1000, ge=1, le=1000),
+                                        after_time: datetime | None = Query(None), after_imei: str | None = Query(None, min_length=1, max_length=32), token_payload: dict = Depends(validate_access_token),):
+    # Driver δεν έχει πρόσβαση στη λειτουργία ιστορικού.
+    role_checker(token_payload, VEHICLE_MANAGEMENT_ROLES)
+    validate_position_history_time_range(start_time, end_time)
+
+    if (after_time is None) != (after_imei is None):
+        raise HTTPException(
+            status_code=422,
+            detail="after_time and after_imei must be provided together.",
+        )
+
+    if after_time is not None:
+        if after_time.utcoffset() is None:
+            raise HTTPException(
+                status_code=422,
+                detail="after_time must include a timezone.",
+            )
+
+        if after_time < start_time or after_time >= end_time:
+            raise HTTPException(
+                status_code=422,
+                detail="after_time must be within the requested time range.",
+            )
+
+    user_roles = token_payload.get("realm_access", {}).get("roles", [])
+    encoded_vehicle_id = quote(vehicle_id, safe="")
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        if "admin" not in user_roles:
+            # Το fleet προκύπτει από το JWT και το profile του Manager.
+            manager_fleet_id = await get_authenticated_fleet_manager_fleet_id(token_payload)
+
+            vehicle = await request_position_history_json(
+                client,
+                f"{FLEET_API_URL}/vehicles/{encoded_vehicle_id}",
+                "Fleet API",
+            )
+
+            # Η πρόσβαση στο ιστορικό βασίζεται στο σημερινό fleet του οχήματος.
+            if vehicle.get("fleet_id") != manager_fleet_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Fleet Manager can access history only for vehicles in their own fleet.",
+                )
+
+        params = {
+            "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat(),
+            "limit": limit,
+        }
+
+        if after_time is not None:
+            params["after_time"] = after_time.isoformat()
+            params["after_imei"] = after_imei
+
+        # Ο Processor παραμένει υπεύθυνος για την ανάκτηση από το TimescaleDB.
+        return await request_position_history_json(
+            client,
+            f"{POSITION_PROCESSOR_URL}/vehicles/{encoded_vehicle_id}/positions",
+            "Position Processor",
+            params,
+        )
+
+
+@app.get("/api/v1/drivers/{driver_id}/vehicle-assignment-periods")
+async def get_driver_vehicle_assignment_periods( driver_id: str, start_time: datetime = Query(...), end_time: datetime = Query(...),
+                                                 token_payload: dict = Depends(validate_access_token),):
+
+    role_checker(token_payload, VEHICLE_MANAGEMENT_ROLES)
+    validate_position_history_time_range(start_time, end_time)
+
+    user_roles = token_payload.get("realm_access", {}).get("roles", [])
+    allowed_vehicle_ids = None
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        if "admin" not in user_roles:
+            # Ελέγχουμε ότι ο Manager έχει profile και ανάθεση σε fleet.
+            await get_authenticated_fleet_manager_fleet_id(token_payload)
+
+            keycloak_user_id = quote(token_payload["sub"], safe="")
+            manager_profile_url = (
+                f"{FLEET_API_URL}/fleet-managers/by-keycloak-user/{keycloak_user_id}"
+            )
+
+            fleet_drivers = await request_position_history_json(
+                client,
+                f"{manager_profile_url}/drivers",
+                "Fleet API",
+            )
+
+            driver_is_in_fleet = False
+
+            for driver in fleet_drivers:
+                if driver.get("driver_id") == driver_id:
+                    driver_is_in_fleet = True
+                    break
+
+            if not driver_is_in_fleet:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Fleet Manager can access history only for drivers in their own fleet.",
+                )
+
+            fleet_vehicles = await request_position_history_json(
+                client,
+                f"{manager_profile_url}/vehicles",
+                "Fleet API",
+            )
+
+            # Δεν αρκεί ο Driver να ανήκει στο fleet.
+            # Μπορεί παλαιότερα να είχε οχήματα που σήμερα ανήκουν σε άλλο fleet.
+            allowed_vehicle_ids = set()
+
+            for vehicle in fleet_vehicles:
+                allowed_vehicle_ids.add(vehicle["id"])
+
+        encoded_driver_id = quote(driver_id, safe="")
+
+        result = await request_position_history_json(
+            client,
+            f"{FLEET_API_URL}/drivers/{encoded_driver_id}/vehicle-assignment-periods",
+            "Fleet API",
+            {
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+            },
+        )
+
+        if allowed_vehicle_ids is not None:
+            visible_periods = []
+
+            for period in result["assignment_periods"]:
+                if period["vehicle_id"] in allowed_vehicle_ids:
+                    visible_periods.append(period)
+
+            result["assignment_periods"] = visible_periods
+
+        return result
 
 @app.api_route( "/api/v1/vehicles/{imei}/latest-position", methods=["GET"], )
 async def get_vehicle_latest_position(request: Request, imei: str, token_payload: dict = Depends(validate_access_token), ):

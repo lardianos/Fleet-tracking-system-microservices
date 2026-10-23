@@ -8,63 +8,101 @@
 import json
 import os
 import logging
+import psycopg2
+
 from kafka import KafkaConsumer
 from redis import Redis
 from kafka_producer import PositionEventProducer
+from kafka.errors import NoBrokersAvailable
+
 from db_repository import PositionRepository
 from threading import Event
+from contextlib import ExitStack
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-def consume_positions(stop_event: Event):
-    # -------------------------
-    # Kafka Configuration
-    # -------------------------
-    kafka_bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
-    topic = os.getenv("KAFKA_TOPIC_TELEMETRY", "telemetry.positions")
-    group_id = os.getenv("KAFKA_CONSUMER_GROUP", "position-processor-group")
-
-    # # -------------------------
-    # # Redis Configuration
-    # # -------------------------
-    # redis_host = os.getenv("REDIS_HOST", "redis")
-    # redis_port = int(os.getenv("REDIS_PORT", "6379"))
-    #
-    # redis_client = Redis(
-    #     host=redis_host,
-    #     port=redis_port,
-    #     decode_responses=True,
-    # )
-
-    # -------------------------
-    # TimescaleDB Repository
-    # -------------------------
-    position_repository = PositionRepository()
-
-    position_event_producer = PositionEventProducer()
-
-    logger.info("Starting Position Processor...")
-    logger.info("Consuming topic: %s", topic)
-    # logger.info("Redis: %s:%s", redis_host, redis_port)
-
-    # -------------------------
-    # Kafka Consumer
-    # -------------------------
-    fleet_topic = os.getenv("KAFKA_TOPIC_FLEET_VEHICLES", "fleet.vehicles")
-
-    consumer = KafkaConsumer(
-        topic,
-        fleet_topic,
-        bootstrap_servers=kafka_bootstrap_servers,
-        group_id=group_id,
-        auto_offset_reset="earliest",
-        enable_auto_commit=True,
-        value_deserializer=lambda v: json.loads(v.decode("utf-8")),
-        key_deserializer=lambda k: k.decode("utf-8") if k else None,
+def connect_position_dependencies(stop_event: Event):
+    kafka_bootstrap_servers = os.getenv(
+        "KAFKA_BOOTSTRAP_SERVERS",
+        "kafka:9092",
     )
 
+    topic = os.getenv(
+        "KAFKA_TOPIC_TELEMETRY",
+        "telemetry.positions",
+    )
+
+    fleet_topic = os.getenv(
+        "KAFKA_TOPIC_FLEET_VEHICLES",
+        "fleet.vehicles",
+    )
+
+    group_id = os.getenv(
+        "KAFKA_CONSUMER_GROUP",
+        "position-processor-group",
+    )
+
+    while not stop_event.is_set():
+        try:
+            # Αν αποτύχει κάποιο επόμενο βήμα, κλείνουμε όσα έχουν ήδη ανοίξει.
+            with ExitStack() as connections:
+                position_repository = PositionRepository()
+                connections.callback(position_repository.close)
+
+                position_event_producer = PositionEventProducer()
+                connections.callback(position_event_producer.close)
+
+                consumer = KafkaConsumer(
+                    topic,
+                    fleet_topic,
+                    bootstrap_servers=kafka_bootstrap_servers,
+                    group_id=group_id,
+                    auto_offset_reset="earliest",
+                    enable_auto_commit=True,
+                    value_deserializer=lambda value: json.loads(value.decode("utf-8")),
+                    key_deserializer=lambda key: key.decode("utf-8") if key else None,
+                )
+
+                connections.callback(consumer.close)
+
+                if stop_event.is_set():
+                    return None
+
+                # Οι συνδέσεις δημιουργήθηκαν επιτυχώς.
+                # Από εδώ και πέρα τις κλείνει το υπάρχον finally της consume_positions.
+                connections.pop_all()
+
+                logger.info(
+                    "Position dependencies connected. Starting consumption."
+                )
+
+                return (
+                    consumer,
+                    position_repository,
+                    position_event_producer,
+                    fleet_topic,
+                )
+
+        except (NoBrokersAvailable, psycopg2.OperationalError) as error:
+            logger.warning(
+                "Position dependencies unavailable: %s; retrying in 5 seconds",
+                error,
+            )
+
+            # Διακόπτουμε την αναμονή αμέσως αν ζητηθεί τερματισμός.
+            if stop_event.wait(5):
+                return None
+
+    return None
+
+def consume_positions(stop_event: Event):
+    connections = connect_position_dependencies(stop_event)
+
+    if connections is None:
+        return
+
+    consumer, position_repository, position_event_producer, fleet_topic = connections
     # -------------------------
     # Main Processing Loop
     # -------------------------
@@ -80,7 +118,7 @@ def consume_positions(stop_event: Event):
                         event = message.value
 
                         # Ενημερώνουμε την αντιστοίχιση IMEI και οχήματος.
-                        if event.get("event_type") == "vehicle.created":
+                        if event.get("event_type") in ("vehicle.created", "vehicle.mapping.updated"):
                             position_repository.save_imei_vehicle_mapping(
                                 device_imei=event["device_imei"],
                                 vehicle_id=event["vehicle_id"],

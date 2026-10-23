@@ -15,6 +15,17 @@ services:
       - kafka
     restart: unless-stopped
 
+  simulator-routing:
+    image: ghcr.io/project-osrm/osrm-backend:v6.0.0
+    container_name: simulator-routing
+    volumes:
+      - ./simulator/maps:/data
+    command: ["osrm-routed", "--algorithm", "mld", "--threads", "1", "/data/attica.osrm"]
+    mem_limit: 1g
+    memswap_limit: 1g
+    cpus: "1.0"
+    restart: unless-stopped
+
   teltonika-simulator:
     image: python:3.11-slim
     container_name: teltonika-simulator
@@ -22,9 +33,90 @@ services:
     volumes:
       - ./simulator:/app
     command: >
-      sh -c "python teltonika_simulator.py --host device-gateway --port 7494 --imei 123456789012345 --interval 5"
+      python -u teltonika_simulator.py
+      --host device-gateway
+      --port 7494
+      --imei 123456789012345
+      --interval 5
+      --base-latitude 37.9842
+      --base-longitude 23.7273
+      --destination-latitude 38.0080
+      --destination-longitude 23.7900
+      --max-speed 140
+      --destination-wait-seconds 1800
     depends_on:
       - device-gateway
+      - simulator-routing
+    restart: unless-stopped
+
+  teltonika-simulator-2:
+    image: python:3.11-slim
+    container_name: teltonika-simulator-2
+    working_dir: /app
+    volumes:
+      - ./simulator:/app
+    command: >
+      python -u teltonika_simulator.py
+      --host device-gateway
+      --port 7494
+      --imei 123456789012346
+      --interval 5
+      --base-latitude 37.9842
+      --base-longitude 23.7273
+      --destination-latitude 37.9440
+      --destination-longitude 23.6470
+      --max-speed 140
+      --destination-wait-seconds 1800
+    depends_on:
+      - device-gateway
+      - simulator-routing
+    restart: unless-stopped
+
+  teltonika-simulator-3:
+    image: python:3.11-slim
+    container_name: teltonika-simulator-3
+    working_dir: /app
+    volumes:
+      - ./simulator:/app
+    command: >
+      python -u teltonika_simulator.py
+      --host device-gateway
+      --port 7494
+      --imei 123456789012347
+      --interval 5
+      --base-latitude 37.9842
+      --base-longitude 23.7273
+      --destination-latitude 38.0740
+      --destination-longitude 23.8110
+      --max-speed 140
+      --destination-wait-seconds 1800
+    depends_on:
+      - device-gateway
+      - simulator-routing
+    restart: unless-stopped
+
+  teltonika-simulator-4:
+    image: python:3.11-slim
+    container_name: teltonika-simulator-4
+    working_dir: /app
+    volumes:
+      - ./simulator:/app
+    command: >
+      python -u teltonika_simulator.py
+      --host device-gateway
+      --port 7494
+      --imei 123456789012232
+      --interval 5
+      --base-latitude 37.9842
+      --base-longitude 23.7273
+      --destination-latitude 38.0340
+      --destination-longitude 23.8210
+      --max-speed 140
+      --destination-wait-seconds 1800
+    depends_on:
+      - device-gateway
+      - simulator-routing
+    restart: unless-stopped
 
   fleet-api:
     build:

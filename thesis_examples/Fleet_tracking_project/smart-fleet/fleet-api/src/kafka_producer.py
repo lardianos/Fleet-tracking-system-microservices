@@ -30,6 +30,8 @@ class FleetEventProducer:
 
         logger.info("Fleet Kafka producer connected to %s", bootstrap_servers)
 
+
+
     def publish_vehicle_created(self, vehicle: dict):
         # Δημοσιεύουμε event δημιουργίας οχήματος.
         # Δεν στέλνουμε όλο το vehicle document, μόνο τα απαραίτητα στοιχεία
@@ -42,7 +44,7 @@ class FleetEventProducer:
 
         future = self.producer.send(
             self.topic,
-            key=event["device_imei"],
+            key=event["vehicle_id"],
             value=event,
         )
 
@@ -52,6 +54,31 @@ class FleetEventProducer:
             "Published vehicle.created event: imei=%s topic=%s partition=%s offset=%s",
             event["device_imei"],
             metadata.topic,
+            metadata.partition,
+            metadata.offset,
+        )
+
+    def publish_vehicle_mapping(self, vehicle: dict):
+        # Δημοσιεύουμε την τρέχουσα αντιστοίχιση από τα metadata του Fleet API.
+        event = {
+            "event_type": "vehicle.mapping.updated",
+            "vehicle_id": str(vehicle["_id"]),
+            "device_imei": vehicle["device_imei"],
+        }
+
+        future = self.producer.send(
+            self.topic,
+            key=event["vehicle_id"],
+            value=event,
+        )
+
+        # Περιμένουμε την επιβεβαίωση παραλαβής από τον broker.
+        metadata = future.get(timeout=10)
+
+        logger.info(
+            "Published vehicle mapping: vehicle_id=%s imei=%s partition=%s offset=%s",
+            event["vehicle_id"],
+            event["device_imei"],
             metadata.partition,
             metadata.offset,
         )

@@ -6,9 +6,15 @@ Compatible with Teltonika Codec 8 (minimal AVL record, no IO elements or with si
 import socket
 import struct
 import time
-import random
+import math
+import logging
 import argparse
+from vehicle_simulation import VehicleSimulation
+
 from typing import Tuple
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # -------------------------
 # CRC-16/IBM (poly 0xA001) utility
@@ -106,79 +112,309 @@ def build_full_tcp_packet(codec_payload: bytes) -> bytes:
 # -------------------------
 # Simulator main
 # -------------------------
-def run_simulator(server_host: str, server_port: int, imei: str,
-                  interval: float = 5.0, jitter: float = 0.1):
+# Συνθετικές κλειστές διαδρομές για ελεγχόμενες δοκιμές.
+# Τα σημεία δεν αποτελούν αντιστοίχιση στο οδικό δίκτυο.
+SIMULATOR_ROUTES = {
+    "route_1": [
+        (38.0250, 23.7800),
+        (38.0250, 23.7880),
+        (38.0300, 23.7880),
+        (38.0300, 23.7800),
+        (38.0250, 23.7800),
+    ],
+    "route_2": [
+        (37.9900, 23.7350),
+        (37.9900, 23.7430),
+        (37.9960, 23.7430),
+        (37.9960, 23.7350),
+        (37.9900, 23.7350),
+    ],
+}
+
+
+def calculate_distance_m(first: tuple, second: tuple) -> float:
+    # Υπολογίζουμε την απόσταση δύο σημείων με τον τύπο Haversine.
+    latitude_1 = math.radians(first[0])
+    latitude_2 = math.radians(second[0])
+    latitude_difference = latitude_2 - latitude_1
+    longitude_difference = math.radians(second[1] - first[1])
+
+    value = (
+        math.sin(latitude_difference / 2) ** 2
+        + math.cos(latitude_1) * math.cos(latitude_2)
+        * math.sin(longitude_difference / 2) ** 2
+    )
+
+    value = max(0.0, min(1.0, value))
+
+    return 6371000 * 2 * math.atan2(
+        math.sqrt(value),
+        math.sqrt(1 - value),
+    )
+
+
+def calculate_angle_deg(first: tuple, second: tuple) -> int:
+    # Η κατεύθυνση ακολουθεί το τμήμα της διαδρομής που διανύουμε.
+    latitude_1 = math.radians(first[0])
+    latitude_2 = math.radians(second[0])
+    longitude_difference = math.radians(second[1] - first[1])
+
+    horizontal = math.sin(longitude_difference) * math.cos(latitude_2)
+
+    vertical = (
+        math.cos(latitude_1) * math.sin(latitude_2)
+        - math.sin(latitude_1) * math.cos(latitude_2)
+        * math.cos(longitude_difference)
+    )
+
+    return round(math.degrees(math.atan2(horizontal, vertical))) % 360
+
+
+class SimulatedRoute:
+    def __init__(self, route_name: str, start_point: int):
+        self.points = SIMULATOR_ROUTES[route_name]
+        self.segment_lengths = []
+
+        for index in range(len(self.points) - 1):
+            self.segment_lengths.append(
+                calculate_distance_m(
+                    self.points[index],
+                    self.points[index + 1],
+                )
+            )
+
+        self.total_length = sum(self.segment_lengths)
+
+        # Κάθε container μπορεί να ξεκινά από διαφορετική γωνία της διαδρομής.
+        self.distance_m = sum(self.segment_lengths[:start_point])
+
+    def advance(self, elapsed_seconds: float, speed_kmh: int) -> tuple:
+        # Η μετακίνηση εξαρτάται από την ταχύτητα και τον πραγματικό χρόνο.
+        # Όταν ολοκληρωθεί ένας κύκλος, συνεχίζουμε από την αρχή.
+        self.distance_m = (
+            self.distance_m + speed_kmh / 3.6 * elapsed_seconds
+        ) % self.total_length
+
+        remaining_distance = self.distance_m
+
+        for index, segment_length in enumerate(self.segment_lengths):
+            if remaining_distance < segment_length:
+                first = self.points[index]
+                second = self.points[index + 1]
+                fraction = remaining_distance / segment_length
+
+                latitude = first[0] + (second[0] - first[0]) * fraction
+                longitude = first[1] + (second[1] - first[1]) * fraction
+                angle = calculate_angle_deg(first, second)
+
+                return latitude, longitude, angle
+
+            remaining_distance -= segment_length
+
+        # Καλύπτουμε μικρές αποκλίσεις κινητής υποδιαστολής στο τέλος του κύκλου.
+        return (
+            self.points[0][0],
+            self.points[0][1],
+            calculate_angle_deg(self.points[0], self.points[1]),
+        )
+
+def receive_exact(sock: socket.socket, length: int) -> bytes:
+    # Το TCP μπορεί να παραδώσει το ACK σε περισσότερα από ένα recv.
+    received = bytearray()
+
+    while len(received) < length:
+        part = sock.recv(length - len(received))
+
+        if not part:
+            raise ConnectionError("Gateway closed the connection.")
+
+        received.extend(part)
+
+    return bytes(received)
+
+
+def run_simulator(args):
+    simulation = None
+
+    while simulation is None:
+        try:
+            simulation = VehicleSimulation(args)
+        except OSError as error:
+            logger.warning(
+                "Routing unavailable: %s; retrying in 5 seconds",
+                error,
+            )
+
+            time.sleep(5)
+
+    logger.info(
+        "Routes ready: imei=%s outbound=%.0fm return=%.0fm",
+        args.imei,
+        simulation.routes[0].length,
+        simulation.routes[1].length,
+    )
+
+    pending_packet = None
+    pending_position = None
+    last_update = None
+    next_send = 0.0
+
     while True:
         try:
-            with socket.create_connection((server_host, server_port), timeout=10) as sock:
-                print(f"[+] Connected to {server_host}:{server_port}")
+            with socket.create_connection(
+                (args.host, args.port),
+                timeout=10,
+            ) as sock:
+                sock.sendall(build_imei_blob(args.imei))
 
-                # Send IMEI blob
-                imei_blob = build_imei_blob(imei)
-                sock.sendall(imei_blob)
-                print(f"[>] Sent IMEI: {imei}")
+                if receive_exact(sock, 1) != b"\x01":
+                    raise ConnectionError("Gateway rejected the IMEI.")
 
-                # Wait for 1-byte ACK
-                ack = sock.recv(1)
-                if not ack:
-                    print("[-] No ACK from server, closing.")
-                    return
-                if ack == b'\x01':
-                    print("[<] Server accepted IMEI (0x01). Sending AVL data...")
-                else:
-                    print(f"[<] Server rejected IMEI or returned: {ack.hex()}. Exiting.")
-                    return
-
-                # Send AVL packets in a loop
                 while True:
-                    # generate sample GPS (you can modify to read from a track file)
-                    lat = random.uniform(37.90, 38.05)     # example around Athens area
-                    lon = random.uniform(23.60, 23.85)
-                    speed = random.randint(0, 120)
-                    alt = random.randint(0, 300)
-                    angle = random.randint(0, 359)
-                    sats = random.randint(3, 12)
-                    priority = 0x00
+                    now = time.monotonic()
 
-                    codec_payload = build_codec8_avl_packet(latitude=lat, longitude=lon,
-                                                            speed_kmh=speed, altitude_m=alt,
-                                                            angle_deg=angle, satellites=sats,
-                                                            priority=priority)
-                    tcp_packet = build_full_tcp_packet(codec_payload)
+                    if last_update is not None:
+                        simulation.advance(now - last_update)
 
-                    sock.sendall(tcp_packet)
-                    print(f"[>] Sent AVL packet (len {len(tcp_packet)} bytes) lat={lat:.6f}, lon={lon:.6f}, speed={speed}")
+                    last_update = now
 
-                    # After sending AVL packet, the server should reply with 4-byte accepted records integer.
-                    # Some servers send 4-bytes. We'll attempt to read up to 4 bytes (blocking read).
-                    try:
-                        resp = sock.recv(4)
-                        if resp:
-                            print(f"[<] Server response (raw): {resp.hex()}")
-                        else:
-                            print("[-] No server response after AVL packet (connection might be closed).")
-                            break
-                    except socket.timeout:
-                        print("[-] No response within timeout after AVL packet.")
-                        break
+                    if pending_packet is None and now >= next_send:
+                        pending_position = simulation.snapshot()
 
-                    time.sleep(interval + random.uniform(-jitter, jitter))
+                        latitude, longitude, speed, angle, state = pending_position
 
-        except (ConnectionRefusedError, OSError) as e:
-            print(f"[-] Connection error: {e}. Retrying in 5s...")
-            time.sleep(5.0)
+                        payload = build_codec8_avl_packet(
+                            latitude=latitude,
+                            longitude=longitude,
+                            speed_kmh=speed,
+                            altitude_m=80,
+                            angle_deg=angle,
+                            satellites=10,
+                            priority=0,
+                        )
 
-# -------------------------
-# CLI
-# -------------------------
+                        pending_packet = build_full_tcp_packet(payload)
+
+                    if pending_packet is not None:
+                        sock.sendall(pending_packet)
+
+                        accepted = struct.unpack(
+                            ">I",
+                            receive_exact(sock, 4),
+                        )[0]
+
+                        if accepted != 1:
+                            raise ConnectionError(
+                                "Gateway did not acknowledge the record."
+                            )
+
+                        latitude, longitude, speed, angle, state = pending_position
+
+                        logger.info(
+                            "ACK imei=%s state=%s lat=%.7f lon=%.7f speed=%s angle=%s",
+                            args.imei,
+                            state,
+                            latitude,
+                            longitude,
+                            speed,
+                            angle,
+                        )
+
+                        # Το πακέτο διατηρείται μέχρι το ACK, ακόμη και σε επανασύνδεση.
+                        pending_packet = None
+                        next_send = time.monotonic() + args.interval
+
+                    time.sleep(0.2)
+
+        except OSError as error:
+            logger.warning(
+                "Connection interrupted: imei=%s error=%s; retrying in 5 seconds",
+                args.imei,
+                error,
+            )
+
+            time.sleep(5)
+
+
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Teltonika Codec8 TCP simulator")
-    p.add_argument("--host", "-H", default="127.0.0.1", help="Server host")
-    p.add_argument("--port", "-P", type=int, default=7494, help="Server port")
-    p.add_argument("--imei", "-i", default="123456789012345", help="IMEI (15 digits)")
-    p.add_argument("--interval", "-t", type=float, default=5.0, help="Seconds between AVL packets")
-    return p.parse_args()
+    parser = argparse.ArgumentParser(
+        description="Teltonika road trip simulator"
+    )
+
+    parser.add_argument("--host", "-H", default="127.0.0.1")
+    parser.add_argument("--port", "-P", type=int, default=7494)
+    parser.add_argument("--imei", "-i", default="123456789012345")
+    parser.add_argument("--interval", "-t", type=float, default=5)
+
+    parser.add_argument(
+        "--routing-url",
+        default="http://simulator-routing:5000",
+    )
+
+    parser.add_argument("--base-latitude", type=float, required=True)
+    parser.add_argument("--base-longitude", type=float, required=True)
+
+    parser.add_argument("--destination-latitude", type=float, required=True)
+    parser.add_argument("--destination-longitude", type=float, required=True)
+
+    parser.add_argument("--max-speed", type=int, default=140)
+    parser.add_argument("--destination-wait-seconds", type=float, default=1800)
+
+    parser.add_argument("--acceleration", type=float, default=1.5)
+    parser.add_argument("--deceleration", type=float, default=2.5)
+
+    parser.add_argument("--speed-change-seconds", type=float, default=20)
+    parser.add_argument("--stop-every-seconds", type=float, default=180)
+    parser.add_argument("--stop-seconds", type=float, default=30)
+
+    args = parser.parse_args()
+
+    if len(args.imei) != 15 or not args.imei.isascii() or not args.imei.isdigit():
+        parser.error("IMEI must contain exactly 15 ASCII digits.")
+
+    if not 1 <= args.port <= 65535:
+        parser.error("Port must be between 1 and 65535.")
+
+    if not 1 <= args.max_speed <= 140:
+        parser.error("Maximum speed must be between 1 and 140 km/h.")
+
+    for name in (
+        "interval",
+        "acceleration",
+        "deceleration",
+        "speed_change_seconds",
+        "stop_every_seconds",
+        "stop_seconds",
+    ):
+        value = getattr(args, name)
+
+        if not math.isfinite(value) or value <= 0:
+            parser.error(f"{name} must be a positive finite number.")
+
+    if (
+        not math.isfinite(args.destination_wait_seconds)
+        or args.destination_wait_seconds < 0
+    ):
+        parser.error("Destination wait must be a non-negative finite number.")
+
+    for name, maximum in (
+        ("base_latitude", 90),
+        ("base_longitude", 180),
+        ("destination_latitude", 90),
+        ("destination_longitude", 180),
+    ):
+        value = getattr(args, name)
+
+        if not math.isfinite(value) or abs(value) > maximum:
+            parser.error(f"Invalid coordinate: {name}.")
+
+    return args
+
 
 if __name__ == "__main__":
-    args = parse_args()
-    run_simulator(args.host, args.port, args.imei, interval=args.interval)
+    logging.basicConfig(level=logging.INFO)
+
+    try:
+        run_simulator(parse_args())
+    except KeyboardInterrupt:
+        logger.info("Simulator stopped.")

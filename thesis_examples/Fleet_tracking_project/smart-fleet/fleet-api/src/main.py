@@ -1016,6 +1016,10 @@ def update_vehicle(vehicle_id: str, vehicle: VehicleUpdate):
             )
         )
 
+    # Ενημερώνουμε το mapping όταν αλλάζει η συσκευή του οχήματος.
+    if existing_vehicle.get("device_imei") != updated_vehicle.get("device_imei"):
+        fleet_event_producer.publish_vehicle_mapping(updated_vehicle)
+
     return vehicle_document_to_response(updated_vehicle)
 
 @app.delete("/vehicles/{vehicle_id}")

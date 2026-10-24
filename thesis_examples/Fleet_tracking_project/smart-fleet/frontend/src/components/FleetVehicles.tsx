@@ -3,6 +3,8 @@ import type { Vehicle } from "../types/Vehicle";
 import { useAuth } from "../auth/AuthContext";
 import type { DriverProfile } from "../types/DriverProfile";
 
+import { authenticatedFetch } from "../auth/session";
+
 interface FleetVehiclesProps {
     vehicles: Vehicle[];
     drivers: DriverProfile[];
@@ -127,7 +129,7 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
         setAssignmentError("");
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/vehicles/${encodeURIComponent(assignmentVehicle.id)}`,
                 { method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", },
                   body: JSON.stringify({ driver_id: driverId }), }
@@ -224,7 +226,7 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
         setIsCreatingVehicle(true);
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 "http://localhost:8004/api/v1/vehicles",
                 { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", },
                   body: JSON.stringify(payload), }
@@ -370,7 +372,7 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
         setIsUpdatingVehicle(true);
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/vehicles/${encodeURIComponent(editingVehicleId)}`,
                 { method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", },
                   body: JSON.stringify(payload), }
@@ -437,7 +439,7 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
         setDeactivateVehicleSuccess("");
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/vehicles/${encodeURIComponent(vehicle.id)}/deactivate`,
                 { method: "POST", headers: { Authorization: `Bearer ${token}`, }, }
             );
@@ -494,7 +496,7 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
         setDeactivateVehicleSuccess("");
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/vehicles/${encodeURIComponent(vehicle.id)}/activate`,
                 { method: "POST", headers: { Authorization: `Bearer ${token}`, }, }
             );

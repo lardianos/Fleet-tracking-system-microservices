@@ -236,6 +236,10 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_TOPIC_FLEET_VEHICLES: fleet.vehicles
+      KAFKA_LOG_DIRS: /tmp/kafka-logs
+    volumes:
+      - kafka_data:/tmp/kafka-logs
+
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -329,6 +333,8 @@ services:
 
 volumes:
   kafka_data:
+    external: true
+    name: smart-fleet-kafka-data
   timescale_data:
   mongo_data:
   keycloak_db_data:

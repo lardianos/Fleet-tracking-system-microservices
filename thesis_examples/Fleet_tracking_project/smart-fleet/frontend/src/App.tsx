@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "./auth/AuthContext";
 import "./App.css";
 
+import { authenticatedFetch } from "./auth/session";
+
 import type { Vehicle } from "./types/Vehicle";
 import type { DriverProfile as DriverProfileData } from "./types/DriverProfile";
 import type {  FleetManagerProfile as FleetManagerProfileData } from "./types/FleetManagerProfile";
@@ -326,7 +328,7 @@ function App() {
             <div className="app-header-actions">
 
                 <TokenTimer/>
-                <button onClick={logout}> Logout</button>
+                <button type="button" data-skip-session-refresh onClick={logout}> Logout </button>
             </div>
         </header>
 

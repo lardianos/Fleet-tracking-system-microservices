@@ -1940,42 +1940,42 @@ async def admin_deactivate_driver( driver_id: str, token_payload: dict = Depends
         )
 
     keycloak_user_id = existing_driver.get("keycloak_user_id")
+    keycloak_user = None
+    originally_enabled = False
 
-    if not keycloak_user_id:
-        raise HTTPException(
-            status_code=409,
-            detail="Driver has no Keycloak identity",
-        )
+    # Αν υπάρχει αποθηκευμένο ID, ελέγχουμε αν υπάρχει ακόμη ο λογαριασμός.
+    # Το None σημαίνει επιβεβαιωμένη απουσία από το Keycloak.
+    if keycloak_user_id:
+        try:
+            keycloak_user = await keycloak_admin_client.get_user_by_id(
+                keycloak_user_id
+            )
+        except Exception:
+            logger.exception(
+                "Could not verify Keycloak identity: driver_id=%s user_id=%s",
+                driver_id,
+                keycloak_user_id,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Could not verify Keycloak identity. Driver was not deactivated.",
+            )
 
-    # Διαβάζουμε την τρέχουσα κατάσταση του λογαριασμού.
-    try:
-        keycloak_user = await keycloak_admin_client.get_user_by_id(
-            keycloak_user_id
-        )
-    except Exception:
-        logger.exception(
-            "Could not retrieve Keycloak user: user_id=%s",
+    if keycloak_user is not None:
+        originally_enabled = keycloak_user.get("enabled")
+
+        if not isinstance(originally_enabled, bool):
+            raise HTTPException(
+                status_code=503,
+                detail="Could not determine Keycloak account state",
+            )
+    else:
+        # Η απουσία λογαριασμού δεν εμποδίζει την απενεργοποίηση
+        # του business profile και την αποδέσμευση των οχημάτων.
+        logger.warning(
+            "Deactivating Driver without an existing Keycloak account: driver_id=%s user_id=%s",
+            driver_id,
             keycloak_user_id,
-        )
-        raise HTTPException(
-            status_code=503,
-            detail="Could not retrieve Keycloak identity",
-        )
-
-    if keycloak_user is None:
-        raise HTTPException(
-            status_code=409,
-            detail="Keycloak identity not found",
-        )
-
-    # Κρατάμε την προηγούμενη κατάσταση για πιθανή
-    # αντιστάθμιση σε περίπτωση ρητής αποτυχίας.
-    originally_enabled = keycloak_user.get("enabled")
-
-    if not isinstance(originally_enabled, bool):
-        raise HTTPException(
-            status_code=503,
-            detail="Could not determine Keycloak account state",
         )
 
     # Απενεργοποιούμε πρώτα την ταυτότητα.
@@ -2140,24 +2140,20 @@ async def admin_deactivate_driver( driver_id: str, token_payload: dict = Depends
             ),
         )
 
-    try:
-        await keycloak_admin_client.logout_user(
-            keycloak_user_id
-        )
-    except Exception:
-        logger.exception(
-            "Driver deactivated but Keycloak logout failed: "
-            "driver_id=%s user_id=%s",
-            driver_id,
-            keycloak_user_id,
-        )
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Driver was deactivated, but session termination "
-                "could not be confirmed."
-            ),
-        )
+    # Δεν υπάρχει συνεδρία προς τερματισμό όταν ο λογαριασμός λείπει.
+    if keycloak_user is not None:
+        try:
+            await keycloak_admin_client.logout_user(keycloak_user_id)
+        except Exception:
+            logger.exception(
+                "Driver deactivated but Keycloak logout failed: driver_id=%s user_id=%s",
+                driver_id,
+                keycloak_user_id,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Driver was deactivated, but session termination could not be confirmed.",
+            )
 
     logger.info(
         "Deactivated Driver: driver_id=%s keycloak_user_id=%s",
@@ -2249,13 +2245,9 @@ async def admin_delete_driver( driver_id: str, token_payload: dict = Depends(val
 
     if existing_driver is not None:
         driver_found = True
+        # Κρατάμε το ID όταν υπάρχει, ώστε να διαγράψουμε και τον λογαριασμό.
+        # Η απουσία ID δεν εμποδίζει τη διαγραφή ενός ανενεργού Driver.
         keycloak_user_id = existing_driver.get("keycloak_user_id")
-
-        if not keycloak_user_id:
-            raise HTTPException(
-                status_code=500,
-                detail="Driver does not have a Keycloak user ID",
-            )
 
         # Hard Delete επιτρέπεται μόνο αφού έχει προηγηθεί
         # το Soft Delete του Driver.
@@ -2340,6 +2332,19 @@ async def admin_delete_driver( driver_id: str, token_payload: dict = Depends(val
                 "Driver deletion from Fleet API could not be confirmed"
             ),
         )
+    # Η διαγραφή του Fleet Profile έχει ήδη επιβεβαιωθεί παραπάνω.
+    # Αν δεν υπήρχε συνδεδεμένο ID, δεν υπάρχει επιπλέον λογαριασμός
+    # που μπορούμε να διαγράψουμε μέσω αυτής της εγγραφής.
+    if not keycloak_user_id:
+        logger.info(
+            "Hard deleted Driver without a linked Keycloak ID: driver_id=%s",
+            driver_id,
+        )
+
+        return {
+            "message": "Driver hard deleted successfully",
+            "driver_id": driver_id,
+        }
 
     # ---------------------------------------------------------
     # 5. Διαγράφουμε το Keycloak identity.
@@ -4343,3 +4348,17 @@ async def get_vehicle_assignment_audit( vehicle_id: str, token_payload: dict = D
                 })
 
         return assignment_logs
+
+@app.get("/api/v1/admin/audit-logs")
+async def get_admin_audit_logs(
+    request: Request,
+    token_payload: dict = Depends(validate_access_token),
+):
+    # Μόνο ο Admin μπορεί να διαβάσει το συνολικό business audit.
+    role_checker(token_payload, ADMIN_ROLES)
+
+    # Το υπάρχον proxy προωθεί και τα query parameters.
+    return await proxy_request(
+        request,
+        f"{FLEET_API_URL}/audit-logs/search",
+    )

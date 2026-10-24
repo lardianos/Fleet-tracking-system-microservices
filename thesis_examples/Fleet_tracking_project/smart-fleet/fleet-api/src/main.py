@@ -20,7 +20,7 @@ import logging
 import time
 
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field, ConfigDict
 from pymongo import MongoClient
 from bson import ObjectId
@@ -31,7 +31,6 @@ from datetime import datetime, timezone
 from pymongo.errors import DuplicateKeyError
 
 from kafka_producer import FleetEventProducer
-
 
 # Ρυθμίζουμε το βασικό logging του Fleet API.
 logging.basicConfig(level=logging.INFO)
@@ -125,7 +124,14 @@ fleets_collection = database["fleets"]
 # Οι εγγραφές του audit trail δεν χρησιμοποιούνται ως η τρέχουσα κατάσταση
 # μιας οντότητας. Χρησιμοποιούνται για ιστορικό, έλεγχο αλλαγών και
 # μελλοντικό trace-back σχέσεων Driver → Vehicle → Fleet.
+
+
 audit_logs_collection = database["audit_logs"]
+# Ταξινομούμε σταθερά το audit ακόμη και όταν δύο εγγραφές έχουν ίδια ώρα.
+audit_logs_collection.create_index(
+    [("timestamp", -1), ("_id", -1)],
+    name="audit_timestamp_id",
+)
 
 # -------------------------
 # Data Models
@@ -2996,6 +3002,114 @@ def delete_fleet(fleet_id: str):
     return {
         "message": "Fleet deleted successfully",
         "fleet_id": fleet_id,
+    }
+
+
+@app.get("/audit-logs/search")
+def search_audit_logs(
+    entity_type: str | None = Query(default=None, max_length=50),
+    entity_id: str | None = Query(default=None, max_length=200),
+    action: str | None = Query(default=None, max_length=100),
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    before_time: datetime | None = None,
+    before_id: str | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
+):
+    # Τα χρονικά φίλτρα πρέπει να δηλώνουν timezone.
+    for value in (start_time, end_time, before_time):
+        if value is not None and value.utcoffset() is None:
+            raise HTTPException(
+                status_code=422,
+                detail="Dates must include a timezone.",
+            )
+
+    # Κρατάμε σταθερό το τέλος της αναζήτησης στις επόμενες σελίδες.
+    if end_time is None:
+        end_time = datetime.now(timezone.utc)
+
+    if start_time is not None and start_time >= end_time:
+        raise HTTPException(
+            status_code=422,
+            detail="Start time must be earlier than end time.",
+        )
+
+    if (before_time is None) != (before_id is None):
+        raise HTTPException(
+            status_code=422,
+            detail="before_time and before_id must be provided together.",
+        )
+
+    conditions = []
+    time_filter = {"$lt": end_time}
+
+    if start_time is not None:
+        time_filter["$gte"] = start_time
+
+    conditions.append({"timestamp": time_filter})
+
+    if entity_type is not None and entity_type.strip():
+        conditions.append({"entity_type": entity_type.strip().upper()})
+
+    if entity_id is not None and entity_id.strip():
+        conditions.append({"entity_id": entity_id.strip()})
+
+    if action is not None and action.strip():
+        conditions.append({"action": action.strip().upper()})
+
+    if before_id is not None:
+        if not ObjectId.is_valid(before_id):
+            raise HTTPException(status_code=422, detail="Invalid audit cursor.")
+
+        if before_time >= end_time:
+            raise HTTPException(status_code=422, detail="Audit cursor is outside the time range.")
+
+        if start_time is not None and before_time < start_time:
+            raise HTTPException(status_code=422, detail="Audit cursor is outside the time range.")
+
+        # Ζητάμε μόνο εγγραφές που βρίσκονται μετά την τελευταία
+        # εγγραφή της προηγούμενης σελίδας στη φθίνουσα ταξινόμηση.
+        conditions.append({
+            "$or": [
+                {"timestamp": {"$lt": before_time}},
+                {
+                    "timestamp": before_time,
+                    "_id": {"$lt": ObjectId(before_id)},
+                },
+            ]
+        })
+
+    documents = list(
+        audit_logs_collection.find({"$and": conditions})
+        .sort([("timestamp", -1), ("_id", -1)])
+        .limit(limit + 1)
+    )
+
+    has_more = len(documents) > limit
+    documents = documents[:limit]
+    next_cursor = None
+
+    if has_more:
+        last_document = documents[-1]
+        last_time = last_document["timestamp"]
+
+        # Η MongoDB μπορεί να επιστρέψει UTC datetime χωρίς timezone.
+        if last_time.tzinfo is None:
+            last_time = last_time.replace(tzinfo=timezone.utc)
+
+        next_cursor = {
+            "before_time": last_time.isoformat(),
+            "before_id": str(last_document["_id"]),
+        }
+
+    return {
+        "logs": [
+            audit_log_document_to_response(document)
+            for document in documents
+        ],
+        "has_more": has_more,
+        "next_cursor": next_cursor,
+        "end_time": end_time.isoformat(),
     }
 
 @app.get("/audit-logs", response_model=list[AuditLogResponse])

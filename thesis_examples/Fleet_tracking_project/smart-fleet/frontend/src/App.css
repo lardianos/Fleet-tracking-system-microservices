@@ -498,3 +498,45 @@ button:focus-visible {
         height: 360px;
     }
 }
+
+
+/* Επιτρέπουμε οριζόντια κύλιση χωρίς να ανοίγει όλη η σελίδα. */
+/* Εμφανίζουμε περίπου 10 γραμμές και κυλάμε τα υπόλοιπα αποτελέσματα. */
+.audit-logs-table {
+    max-width: 100%;
+    max-height: 550px;
+    overflow: auto;
+}
+
+/* Κρατάμε τις επικεφαλίδες ορατές κατά την κύλιση. */
+.audit-logs-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #edf0f4;
+}
+
+.audit-logs-table > table {
+    margin: 0;
+}
+
+.audit-log-details {
+    padding: 16px;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.admin-content .audit-log-details p {
+    margin: 8px 0;
+}
+
+.audit-log-change {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #dce0e5;
+}
+
+.audit-log-change code {
+    white-space: pre-wrap;
+}

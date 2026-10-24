@@ -9,6 +9,10 @@ import { useVehicleTracking } from "../hooks/useVehicleTracking";
 import LatestPosition from "./LatestPosition";
 import LiveMap from "./LiveMap";
 import PositionHistory from "./PositionHistory";
+
+import { authenticatedFetch } from "../auth/session";
+
+import AuditLogs from "./AuditLogs";
 // Περιγράφουμε μόνο τα πεδία του Fleet που χρειαζόμαστε
 // για την εμφάνιση της λίστας στο Admin Dashboard.
 
@@ -382,7 +386,7 @@ function AdminDashboard() {
 
             try {
                 // Το Frontend επικοινωνεί μόνο με το API Gateway.
-                const response = await fetch(
+                const response = await authenticatedFetch(
                     "http://localhost:8004/api/v1/fleets",
                     {
                         headers: {
@@ -444,7 +448,7 @@ function AdminDashboard() {
 
             try {
                 // Όλα τα requests περνούν από το API Gateway.
-                const response = await fetch( "http://localhost:8004/api/v1/admin/fleet-managers", {
+                const response = await authenticatedFetch( "http://localhost:8004/api/v1/admin/fleet-managers", {
                         headers: { Authorization: `Bearer ${token}`, }, signal: controller.signal,
                     }
                 );
@@ -497,7 +501,7 @@ function AdminDashboard() {
                 // Το Frontend επικοινωνεί μόνο με το API Gateway.
                 // Το Gateway ελέγχει τον Admin και προωθεί
                 // το αίτημα στο Fleet API.
-                const response = await fetch(
+                const response = await authenticatedFetch(
                     "http://localhost:8004/api/v1/admin/drivers",
                     {
                         headers: {
@@ -557,7 +561,7 @@ function AdminDashboard() {
             setVehiclesError("");
 
             try {
-                const response = await fetch(
+                const response = await authenticatedFetch(
                     "http://localhost:8004/api/v1/vehicles",
                     {
                         headers: {
@@ -616,7 +620,7 @@ function AdminDashboard() {
             setIsLoadingDriverVehicles(true);
 
             try {
-                const response = await fetch(
+                const response = await authenticatedFetch(
                     `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(selectedDriverId)}/vehicles`,
                     { headers: { Authorization: `Bearer ${token}`, }, signal: controller.signal, }
                 );
@@ -725,7 +729,7 @@ function AdminDashboard() {
 
     try {
         // Η δημιουργία πραγματοποιείται μέσω του API Gateway.
-        const response = await fetch(
+        const response = await authenticatedFetch(
             "http://localhost:8004/api/v1/fleets",
             {
                 method: "POST",
@@ -976,7 +980,7 @@ function AdminDashboard() {
         setIsUpdating(true);
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/fleets/${encodeURIComponent(editingFleetId)}`,
                 {
                     method: "PATCH",
@@ -1041,7 +1045,7 @@ function AdminDashboard() {
         try {
             // Το Backend ελέγχει αν υπάρχουν συνδεδεμένοι
             // Fleet Managers, Drivers ή Vehicles.
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/fleets/${encodeURIComponent(fleet.fleet_id)}`,
                 {
                     method: "DELETE",
@@ -1129,7 +1133,7 @@ function AdminDashboard() {
                 hire_date: fleetManagerForm.hire_date || null,
             };
 
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 "http://localhost:8004/api/v1/admin/fleet-managers",
                 {
                     method: "POST",
@@ -1236,7 +1240,7 @@ function AdminDashboard() {
                 hire_date: editFleetManagerForm.hire_date || null,
             };
 
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/admin/fleet-managers/${encodeURIComponent(editingManagerId)}`,
                 {
                     method: "PATCH",
@@ -1288,7 +1292,7 @@ function AdminDashboard() {
         setDeactivateManagerSuccess("");
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/admin/fleet-managers/${encodeURIComponent(manager.manager_id)}/deactivate`,
                 {
                     method: "POST", headers: { Authorization: `Bearer ${token}`, },
@@ -1336,7 +1340,7 @@ function AdminDashboard() {
         setActivateManagerSuccess("");
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/admin/fleet-managers/${encodeURIComponent(manager.manager_id)}/activate`,
                 {
                     method: "POST",
@@ -1396,7 +1400,7 @@ function AdminDashboard() {
         setDeleteManagerSuccess("");
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/admin/fleet-managers/${encodeURIComponent(manager.manager_id)}`,
                 {
                     method: "DELETE",
@@ -1642,7 +1646,7 @@ function AdminDashboard() {
 
             // Το API Gateway αναλαμβάνει τη δημιουργία της
             // Keycloak identity και του Driver Profile.
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 "http://localhost:8004/api/v1/admin/drivers",
                 {
                     method: "POST",
@@ -1917,7 +1921,7 @@ function AdminDashboard() {
                 // department_id: editDriverForm.department_id.trim() || null,
             };
 
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(editingDriverId)}`,
                 {
                     method: "PATCH",
@@ -2061,7 +2065,7 @@ function AdminDashboard() {
         setDeactivateDriverSuccess("");
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(driver.driver_id)}/deactivate`,
                 {
                     method: "POST",
@@ -2121,7 +2125,7 @@ function AdminDashboard() {
         setActivateDriverSuccess("");
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(driver.driver_id)}/activate`,
                 {
                     method: "POST",
@@ -2174,7 +2178,7 @@ function AdminDashboard() {
         setDeleteDriverSuccess("");
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(driver.driver_id)}`,
                 {
                     method: "DELETE",
@@ -2218,7 +2222,7 @@ function AdminDashboard() {
     //     setIsLoadingDriverVehicles(true);
     //
     //     try {
-    //         const response = await fetch(
+    //         const response = await authenticatedFetch(
     //             `http://localhost:8004/api/v1/admin/drivers/${encodeURIComponent(driver.driver_id)}/vehicles`,
     //             {
     //                 method: "GET",
@@ -2324,7 +2328,7 @@ function AdminDashboard() {
         setIsCreatingVehicle(true);
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 "http://localhost:8004/api/v1/vehicles",
                 {
                     method: "POST",
@@ -2497,7 +2501,7 @@ function AdminDashboard() {
         setIsUpdatingVehicle(true);
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/vehicles/${encodeURIComponent(editingVehicleId)}`,
                 {
                     method: "PATCH",
@@ -2621,7 +2625,7 @@ function AdminDashboard() {
         setDeactivateVehicleSuccess("");
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/vehicles/${encodeURIComponent(vehicle.id)}/deactivate`,
                 {
                     method: "POST",
@@ -2715,7 +2719,7 @@ function AdminDashboard() {
         setDeactivateVehicleSuccess("");
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/vehicles/${encodeURIComponent(vehicle.id)}/activate`,
                 { method: "POST", headers: { Authorization: `Bearer ${token}`, }, }
             );
@@ -2782,7 +2786,7 @@ function AdminDashboard() {
         setDeactivateVehicleSuccess("");
 
         try {
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `http://localhost:8004/api/v1/vehicles/${encodeURIComponent(vehicle.id)}`,
                 { method: "DELETE", headers: { Authorization: `Bearer ${token}`, }, }
             );
@@ -3115,11 +3119,13 @@ function AdminDashboard() {
                     <button type="button" aria-pressed={activeAdminSection === "drivers"} onClick={() => setActiveAdminSection("drivers")}> Drivers </button>
                     <button type="button" aria-pressed={activeAdminSection === "vehicles"} onClick={() => setActiveAdminSection("vehicles")}> Vehicles </button>
                     <button type="button" aria-pressed={activeAdminSection === "history"} onClick={() => setActiveAdminSection("history")}> Position History </button>
+                    <button type="button" aria-pressed={activeAdminSection === "audit"} onClick={() => setActiveAdminSection("audit")}> Audit Logs </button>
                 </nav>
 
                 <div className="admin-content">
                     <h2>Admin Dashboard</h2>
                     {activeAdminSection === "history" && (<PositionHistory vehicles={vehicles} drivers={drivers}/>)}
+                    {activeAdminSection === "audit" && (<AuditLogs/>)}
                 {
                     activeAdminSection === "fleets" && (
                         <section>

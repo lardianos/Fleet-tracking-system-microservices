@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import type { DriverAssignmentPeriodsResponse, HistoricalPosition, PositionHistorySegment, VehicleAssignmentAudit } from "../types/PositionHistory";
 import { buildVehicleHistorySegments, fetchPositionHistoryJson, loadAllVehiclePositions } from "../services/positionHistory";
 import PositionHistoryMap from "./PositionHistoryMap";
+import { authenticatedFetch } from "../auth/session";
 
 interface PositionHistoryProps {
     vehicles: { id: string; plate_number: string }[];
@@ -35,6 +36,7 @@ function PositionHistory({ vehicles, drivers }: PositionHistoryProps) {
     const [hasSearched, setHasSearched] = useState(false);
     const [selectedPositionIndex, setSelectedPositionIndex] = useState(0);
     const [searchDescription, setSearchDescription] = useState("");
+    const [historyVehicleId, setHistoryVehicleId] = useState("");
 
     useEffect(() => {
         return () => {
@@ -43,10 +45,33 @@ function PositionHistory({ vehicles, drivers }: PositionHistoryProps) {
         };
     }, []);
 
+        // Βρίσκουμε τα διαφορετικά οχήματα που περιλαμβάνονται στο αποτέλεσμα.
+    const historyVehicles = useMemo(() => {
+        const result: { id: string; plateNumber: string }[] = [];
+
+        for (const segment of segments) {
+            if (!result.some((vehicle) => vehicle.id === segment.vehicleId)) {
+                result.push({ id: segment.vehicleId, plateNumber: segment.plateNumber });
+            }
+        }
+
+        return result;
+    }, [segments]);
+
+    // Ο χάρτης και ο slider χρησιμοποιούν μόνο το επιλεγμένο όχημα.
+    const visibleSegments = useMemo(() => {
+        return segments.filter((segment) => segment.vehicleId === historyVehicleId);
+    }, [segments, historyVehicleId]);
+
+    function selectHistoryVehicle(vehicleId: string) {
+        setHistoryVehicleId(vehicleId);
+        setSelectedPositionIndex(0);
+    }
+
     const orderedPositions = useMemo(() => {
         const result: { position: HistoricalPosition; segment: PositionHistorySegment }[] = [];
 
-        for (const segment of segments) {
+        for (const segment of visibleSegments) {
             for (const position of segment.positions) result.push({ position, segment });
         }
 
@@ -57,7 +82,7 @@ function PositionHistory({ vehicles, drivers }: PositionHistoryProps) {
         });
 
         return result;
-    }, [segments]);
+    }, [visibleSegments]);
 
     let selectedEntry = null;
     if (selectedPositionIndex < orderedPositions.length) selectedEntry = orderedPositions[selectedPositionIndex];
@@ -86,6 +111,7 @@ function PositionHistory({ vehicles, drivers }: PositionHistoryProps) {
         setHasSearched(false);
         setSelectedPositionIndex(0);
         setSearchDescription("");
+        setHistoryVehicleId("");
     }
 
     function cancelHistorySearch() {
@@ -167,8 +193,16 @@ function PositionHistory({ vehicles, drivers }: PositionHistoryProps) {
                         }
                     );
 
+                    // Προτιμάμε την τρέχουσα πινακίδα από τη λίστα οχημάτων.
+                    // Αν το όχημα δεν υπάρχει πλέον στη λίστα, χρησιμοποιούμε την καταγεγραμμένη.
                     let plateNumber = period.vehicle_id;
-                    if (period.plate_number !== null && period.plate_number !== "") plateNumber = period.plate_number;
+                    const vehicle = vehicles.find((item) => item.id === period.vehicle_id);
+
+                    if (vehicle !== undefined) {
+                        plateNumber = vehicle.plate_number;
+                    } else if (period.plate_number !== null && period.plate_number !== "") {
+                        plateNumber = period.plate_number;
+                    }
 
                     loadedSegments.push({
                         vehicleId: period.vehicle_id, plateNumber, driverId: selectedId, assignmentKnown: true,
@@ -186,6 +220,23 @@ function PositionHistory({ vehicles, drivers }: PositionHistoryProps) {
             // Εμφανίζουμε αποτέλεσμα μόνο όταν ολοκληρωθούν όλα τα αιτήματα.
             // Αν αποτύχει μία σελίδα, δεν παρουσιάζουμε ελλιπές ιστορικό ως ολοκληρωμένο.
             setSegments(loadedSegments);
+
+                        // Επιλέγουμε αρχικά όχημα με καταγεγραμμένες θέσεις.
+            let initialVehicleId = "";
+
+            if (loadedSegments.length > 0) {
+                initialVehicleId = loadedSegments[0].vehicleId;
+            }
+
+            const segmentWithPositions = loadedSegments.find((segment) => segment.positions.length > 0);
+
+            if (segmentWithPositions !== undefined) {
+                initialVehicleId = segmentWithPositions.vehicleId;
+            }
+
+            setHistoryVehicleId(initialVehicleId);
+            setSelectedPositionIndex(0);
+
             setSearchDescription(`${description} | ${start.toLocaleString()} – ${end.toLocaleString()}`);
             setHasSearched(true);
             setProgress("");
@@ -257,9 +308,19 @@ function PositionHistory({ vehicles, drivers }: PositionHistoryProps) {
             {hasSearched && (
                 <div>
                     <p>{searchDescription}</p>
-                    <p>Recorded positions: {orderedPositions.length}</p>
+                    {historyVehicles.length > 1 && (
+                        <div>
+                            <label htmlFor={`${inputId}-history-vehicle`}>Vehicle to display</label>
+                            <select id={`${inputId}-history-vehicle`} value={historyVehicleId} onChange={(event) => selectHistoryVehicle(event.target.value)}>
+                                {historyVehicles.map((vehicle) => (
+                                    <option key={vehicle.id} value={vehicle.id}>{vehicle.plateNumber}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    <p>Recorded positions for selected vehicle: {orderedPositions.length}</p>
                     {segments.length === 0 && (<p>No assignments found for this driver in the selected time range.</p>)}
-                    {orderedPositions.length === 0 && segments.length > 0 && (<p>No recorded positions in the selected time range.</p>)}
+                    {orderedPositions.length === 0 && segments.length > 0 && (<p>No recorded positions for the selected vehicle in this time range.</p>)}
 
                     {segments.length > 0 && (
                         <div className="position-history-table">
@@ -292,7 +353,7 @@ function PositionHistory({ vehicles, drivers }: PositionHistoryProps) {
                         </div>
                     )}
 
-                    <PositionHistoryMap segments={segments} selectedPosition={selectedPosition} getDriverLabel={getDriverLabel}/>
+                    <PositionHistoryMap segments={visibleSegments} selectedPosition={selectedPosition} getDriverLabel={getDriverLabel}/>
                     {orderedPositions.length > 0 && (<p>Lines connect recorded GPS points; they are not matched to roads.</p>)}
                 </div>
             )}

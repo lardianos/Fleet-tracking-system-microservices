@@ -22,6 +22,8 @@ import AdminDashboard from "./components/AdminDashboard";
 import TokenTimer from "./components/TokenTimer";
 import PositionHistory from "./components/PositionHistory";
 
+import DashboardNotifications from "./components/DashboardNotifications";
+
 function App() {
 
     const { username, roles, hasRole, logout, token } = useAuth();
@@ -113,18 +115,15 @@ function App() {
 
         const controller = new AbortController();
 
-        // Ανακτούμε όλα τα ανατεθειμένα οχήματα χωρίς αυτόματη επιλογή του πρώτου.
+        // Ανανεώνουμε τη λίστα χωρίς να καθαρίζουμε την επιλογή του Driver.
         async function loadAssignedVehicles() {
             setIsLoadingDriverVehicles(true);
             setDriverVehiclesError("");
-            setDriverVehicles([]);
-            setAssignedVehicle(null);
-            setVehicleImei(null);
 
             try {
-                const response = await fetch(
+                const response = await authenticatedFetch(
                     "http://localhost:8004/api/v1/drivers/me/vehicles",
-                    { headers: { Authorization: `Bearer ${token}`, }, signal: controller.signal, }
+                    { signal: controller.signal }
                 );
 
                 if (!response.ok) {
@@ -133,16 +132,27 @@ function App() {
 
                 const vehicles: Vehicle[] = await response.json();
 
-                if (!controller.signal.aborted) {
-                    setDriverVehicles(vehicles);
-                }
-            } catch (error) {
+                if (controller.signal.aborted) return;
+
+                setDriverVehicles(vehicles);
+
+                // Διατηρούμε το επιλεγμένο όχημα εφόσον παραμένει ανατεθειμένο.
+                setAssignedVehicle((previous) => {
+                    if (previous === null) return null;
+
+                    const updatedVehicle = vehicles.find((vehicle) => vehicle.id === previous.id);
+
+                    if (updatedVehicle === undefined) return null;
+
+                    return updatedVehicle;
+                });
+            } catch (requestError) {
                 if (controller.signal.aborted) return;
 
                 let errorMessage = "Could not load assigned vehicles.";
 
-                if (error instanceof Error) {
-                    errorMessage = error.message;
+                if (requestError instanceof Error) {
+                    errorMessage = requestError.message;
                 }
 
                 setDriverVehiclesError(errorMessage);
@@ -159,6 +169,16 @@ function App() {
             controller.abort();
         };
     }, [token, hasRole]);
+
+    useEffect(() => {
+        // Συγχρονίζουμε το IMEI του tracking με το επιλεγμένο όχημα.
+        if (assignedVehicle === null) {
+            setVehicleImei(null);
+            return;
+        }
+
+        setVehicleImei(assignedVehicle.device_imei);
+    }, [assignedVehicle]);
 
 
     useEffect(() => {
@@ -325,11 +345,11 @@ function App() {
             </div>
 
 
-            <div className="app-header-actions">
-
-                <TokenTimer/>
-                <button type="button" data-skip-session-refresh onClick={logout}> Logout </button>
-            </div>
+        <div className="app-header-actions">
+            <DashboardNotifications/>
+            <TokenTimer/>
+            <button data-skip-session-refresh="true" onClick={logout}> Logout </button>
+        </div>
         </header>
 
         <main className="app-content">

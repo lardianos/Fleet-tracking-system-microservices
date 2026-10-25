@@ -27,11 +27,11 @@ from bson import ObjectId
 from datetime import date
 from pydantic import BaseModel, EmailStr
 from datetime import datetime, timezone
+from uuid import uuid4
 
 from pymongo.errors import DuplicateKeyError
 
 from kafka_producer import FleetEventProducer
-
 # Ρυθμίζουμε το βασικό logging του Fleet API.
 logging.basicConfig(level=logging.INFO)
 
@@ -1414,7 +1414,21 @@ def create_driver(driver: DriverCreate):
         created_driver["driver_id"],
         created_driver.get("fleet_id"),
     )
-
+    # Το profile δημιουργήθηκε και καταγράφηκε στο audit.
+    # Αποτυχία δημοσίευσης δεν αναιρεί τη δημιουργία του.
+    try:
+        fleet_event_producer.publish_account_created({
+            "event_id": str(uuid4()),
+            "event_type": "driver.created",
+            "entity_id": created_driver["driver_id"],
+            "keycloak_user_id": created_driver["keycloak_user_id"],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception:
+        logger.exception(
+            "Driver created, but account event publication failed. Admin action required: driver_id=%s",
+            created_driver["driver_id"],
+        )
     return driver_document_to_response(created_driver)
 
 @app.get( "/drivers/by-keycloak-user/{keycloak_user_id}", response_model=DriverResponse,)
@@ -2189,7 +2203,21 @@ def create_fleet_manager(    fleet_manager: FleetManagerCreate,):
         created_manager["manager_id"],
         created_manager.get("fleet_id"),
     )
-
+    # Η δημιουργία παραμένει επιτυχημένη ακόμη κι αν αποτύχει το event.
+    # Τότε ο Admin αναλαμβάνει τη διαδικασία για τον λογαριασμό.
+    try:
+        fleet_event_producer.publish_account_created({
+            "event_id": str(uuid4()),
+            "event_type": "fleet_manager.created",
+            "entity_id": created_manager["manager_id"],
+            "keycloak_user_id": created_manager["keycloak_user_id"],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception:
+        logger.exception(
+            "Fleet Manager created, but account event publication failed. Admin action required: manager_id=%s",
+            created_manager["manager_id"],
+        )
     return fleet_manager_document_to_response(created_manager)
 
 @app.get( "/fleet-managers", response_model=list[FleetManagerResponse],)
@@ -3006,16 +3034,9 @@ def delete_fleet(fleet_id: str):
 
 
 @app.get("/audit-logs/search")
-def search_audit_logs(
-    entity_type: str | None = Query(default=None, max_length=50),
-    entity_id: str | None = Query(default=None, max_length=200),
-    action: str | None = Query(default=None, max_length=100),
-    start_time: datetime | None = None,
-    end_time: datetime | None = None,
-    before_time: datetime | None = None,
-    before_id: str | None = None,
-    limit: int = Query(default=50, ge=1, le=100),
-):
+def search_audit_logs( entity_type: str | None = Query(default=None, max_length=50), entity_id: str | None = Query(default=None, max_length=200),
+                       action: str | None = Query(default=None, max_length=100), start_time: datetime | None = None, end_time: datetime | None = None,
+                       before_time: datetime | None = None, before_id: str | None = None,limit: int = Query(default=50, ge=1, le=100),):
     # Τα χρονικά φίλτρα πρέπει να δηλώνουν timezone.
     for value in (start_time, end_time, before_time):
         if value is not None and value.utcoffset() is None:
@@ -3169,11 +3190,7 @@ def get_driver_vehicle_assignment_audit(driver_id: str):
         for document in documents
     ]
 @app.get("/drivers/{driver_id}/vehicle-assignment-periods")
-def get_driver_vehicle_assignment_periods(
-    driver_id: str,
-    start_time: datetime,
-    end_time: datetime,
-):
+def get_driver_vehicle_assignment_periods( driver_id: str, start_time: datetime, end_time: datetime,):
     # Απαιτούμε σαφές χρονικό διάστημα με ζώνη ώρας.
     if start_time.utcoffset() is None or end_time.utcoffset() is None:
         raise HTTPException(

@@ -540,3 +540,97 @@ button:focus-visible {
 .audit-log-change code {
     white-space: pre-wrap;
 }
+
+
+.dashboard-notifications {
+    position: relative;
+}
+
+.dashboard-notification-panel {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: min(380px, calc(100vw - 32px));
+    overflow: hidden;
+    border: 1px solid #dce0e5;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #253041;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    z-index: 2000;
+    text-align: left;
+}
+
+.dashboard-notification-heading {
+    padding: 16px;
+    border-bottom: 1px solid #dce0e5;
+}
+
+.dashboard-notification-heading h3 {
+    margin: 0 0 6px;
+}
+
+.dashboard-notification-heading p {
+    margin: 0;
+    font-size: 12px;
+    color: #657080;
+}
+
+.dashboard-notification-empty {
+    margin: 0;
+    padding: 16px;
+}
+
+.dashboard-notification-list {
+    max-height: 420px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.dashboard-notification-list li {
+    padding: 16px;
+    border-bottom: 1px solid #edf0f4;
+    overflow-wrap: anywhere;
+}
+
+.dashboard-notification-list li:last-child {
+    border-bottom: none;
+}
+
+.dashboard-notification-list strong {
+    display: block;
+    font-size: 14px;
+}
+
+.dashboard-notification-list p {
+    margin: 8px 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.dashboard-notification-list time {
+    font-size: 12px;
+    color: #657080;
+}
+
+.dashboard-notification-heading-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.dashboard-notification-heading-row h3 {
+    margin: 0;
+}
+
+.dashboard-notification-heading-row {
+    margin-bottom: 8px;
+}
+
+.dashboard-notification-heading-row button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

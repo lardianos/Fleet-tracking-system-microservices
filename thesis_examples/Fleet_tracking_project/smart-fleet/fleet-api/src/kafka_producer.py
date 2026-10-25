@@ -21,6 +21,8 @@ class FleetEventProducer:
         bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
         self.topic = os.getenv("KAFKA_TOPIC_FLEET_VEHICLES", "fleet.vehicles")
 
+        self.account_topic = os.getenv("KAFKA_TOPIC_ACCOUNTS", "fleet.accounts")
+
         # Ο producer μετατρέπει τα Python dictionaries σε JSON bytes.
         self.producer = KafkaProducer(
             bootstrap_servers=bootstrap_servers,
@@ -29,6 +31,26 @@ class FleetEventProducer:
         )
 
         logger.info("Fleet Kafka producer connected to %s", bootstrap_servers)
+
+
+    def publish_account_created(self, event: dict):
+        # Δημοσιεύουμε μόνο τα IDs που χρειάζεται το Notification.
+        # Δεν στέλνουμε password ή σύνδεσμο ενεργοποίησης.
+        future = self.producer.send(
+            self.account_topic,
+            key=event["keycloak_user_id"],
+            value=event,
+        )
+
+        metadata = future.get(timeout=10)
+
+        logger.info(
+            "Published account event: type=%s event_id=%s partition=%s offset=%s",
+            event["event_type"],
+            event["event_id"],
+            metadata.partition,
+            metadata.offset,
+        )
 
 
 

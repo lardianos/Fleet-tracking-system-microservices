@@ -128,6 +128,7 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_TOPIC_FLEET_VEHICLES: fleet.vehicles
+      KAFKA_TOPIC_ACCOUNTS: fleet.accounts
       MONGO_HOST: mongodb
       MONGO_PORT: 27017
       MONGO_USER: fleet_admin
@@ -161,6 +162,56 @@ services:
       - timescaledb
     restart: unless-stopped
 
+  alert-engine:
+    build:
+      context: ./alert-engine
+      dockerfile: Dockerfile
+    container_name: alert-engine
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_PROCESSED_POSITIONS: processed.positions
+      KAFKA_TOPIC_ALERTS: fleet.alerts
+      KAFKA_CONSUMER_GROUP: alert-engine-group
+      SPEED_LIMIT_KMH: "100"
+      SPEED_DURATION_SECONDS: "10"
+      MAX_POSITION_GAP_SECONDS: "15"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  notification:
+    build:
+      context: ./notification
+      dockerfile: Dockerfile
+    container_name: notification
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_ACCOUNTS: fleet.accounts
+      KAFKA_CONSUMER_GROUP: notification-accounts-group
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: smart-fleet
+      KEYCLOAK_CLIENT_ID: notification
+      KEYCLOAK_CLIENT_SECRET: ${NOTIFICATION_KEYCLOAK_CLIENT_SECRET:?Set NOTIFICATION_KEYCLOAK_CLIENT_SECRET in .env}
+      KEYCLOAK_FRONTEND_CLIENT_ID: smart-fleet-frontend
+      FRONTEND_URL: http://localhost:5173/
+      FLEET_API_URL: http://fleet-api:8000
+      KAFKA_TOPIC_ALERTS: fleet.alerts
+      NOTIFICATION_ALERTS_GROUP: notification-alerts-group
+      KAFKA_TOPIC_DASHBOARD_NOTIFICATIONS: notifications.dashboard
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_FROM: no-reply@smart-fleet.test
+      ADMIN_KEYCLOAK_USER_ID: ${ADMIN_KEYCLOAK_USER_ID:?Set ADMIN_KEYCLOAK_USER_ID in .env}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Set ADMIN_EMAIL in .env}
+    depends_on:
+      - fleet-api
+      - kafka
+      - keycloak
+      - mailpit
+    restart: unless-stopped
+    stop_grace_period: 30s
+
   live-tracking-service:
     build:
       context: ./live-tracking-service
@@ -186,6 +237,11 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_TOPIC_PROCESSED_POSITIONS: processed.positions
       LIVE_TRACKING_SERVICE_URL: http://live-tracking-service:8002
+      KAFKA_TOPIC_DASHBOARD_NOTIFICATIONS: notifications.dashboard
+      KEYCLOAK_ISSUER_URL: http://localhost:8081/realms/smart-fleet
+      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/smart-fleet/protocol/openid-connect/certs
+      KEYCLOAK_CLIENT_ID: smart-fleet-frontend
+      FRONTEND_ORIGIN: http://localhost:5173
     depends_on:
       - kafka
       - live-tracking-service
@@ -327,8 +383,21 @@ services:
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloak_password
+      KC_HOSTNAME: http://localhost:8081
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
     depends_on:
       - keycloak-db
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:v1.27.4
+    container_name: mailpit
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    ports:
+      - "127.0.0.1:8025:8025"
+    volumes:
+      - mailpit_data:/data
     restart: unless-stopped
 
 volumes:
@@ -339,3 +408,4 @@ volumes:
   mongo_data:
   keycloak_db_data:
   frontend_node_modules:
+  mailpit_data:

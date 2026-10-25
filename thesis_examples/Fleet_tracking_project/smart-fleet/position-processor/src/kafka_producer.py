@@ -31,10 +31,11 @@ class PositionEventProducer:
 
         self.producer = KafkaProducer(
             bootstrap_servers=bootstrap_servers,
-            value_serializer=lambda value: json.dumps(
-                value,
-                ensure_ascii=False,
-            ).encode("utf-8"),
+            value_serializer=lambda value: json.dumps( value, ensure_ascii=False,).encode("utf-8"),
+            key_serializer=lambda key: key.encode("utf-8"),
+            acks="all",
+            retries=3,
+            max_in_flight_requests_per_connection=1,
         )
 
         logger.info(
@@ -42,17 +43,20 @@ class PositionEventProducer:
         )
 
     def publish_position(self, telemetry: dict):
-
-        self.producer.send(
+        # Το ίδιο IMEI κατευθύνεται στην ίδια Kafka partition.
+        future = self.producer.send(
             self.topic,
+            key=telemetry["imei"],
             value=telemetry,
         )
+
+        # Επιβεβαιώνουμε την παραλαβή πριν θεωρήσουμε τη δημοσίευση επιτυχημένη.
+        future.get(timeout=10)
 
         logger.info(
             "Published processed position: imei=%s",
             telemetry.get("imei"),
         )
-
     def close(self):
         # Περιμένουμε την αποστολή των εκκρεμών μηνυμάτων και κλείνουμε τον producer.
         self.producer.close()

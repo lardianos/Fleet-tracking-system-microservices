@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-
+from typing import Literal
 
 class VehicleCreateRequest(BaseModel):
     """
@@ -15,6 +15,7 @@ class VehicleCreateRequest(BaseModel):
     model: str | None = None
     year: int | None = None
     device_imei: str
+    device_model: Literal["GPS", "FMC003"] = "GPS"
     driver_id: str | None = None
     fleet_id: str | None = None
 
@@ -34,5 +35,6 @@ class VehicleUpdateRequest(BaseModel):
     model: str | None = None
     year: int | None = None
     device_imei: str | None = None
+    device_model: Literal["GPS", "FMC003"] | None = None
     driver_id: str | None = None
     fleet_id: str | None = None

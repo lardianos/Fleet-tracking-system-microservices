@@ -634,3 +634,20 @@ button:focus-visible {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+.obd-details {
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid #dce0e5;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #253041;
+}
+
+.obd-details h4 {
+    margin: 0 0 12px;
+}
+
+.obd-details p {
+    margin: 6px 0;
+}

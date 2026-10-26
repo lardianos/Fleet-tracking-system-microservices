@@ -1,3 +1,5 @@
+import type { ObdData } from "./ObdData";
+
 export interface Position {
   imei: string;
   codec_id: number;
@@ -12,4 +14,6 @@ export interface Position {
   event_io_id: number;
   io_elements: Record<string, unknown>;
   vehicle_id: string;
+  device_model?: string | null;
+  obd?: ObdData | null;
 }

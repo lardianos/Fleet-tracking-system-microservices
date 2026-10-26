@@ -10,6 +10,7 @@ import math
 import logging
 import argparse
 from vehicle_simulation import VehicleSimulation
+from obd_simulation import ObdSimulation
 
 from typing import Tuple
 
@@ -44,55 +45,60 @@ def pack_int32_deg7(value_deg: float) -> int:
     """
     return int(value_deg * 1e7)
 
+def build_codec8_io(io_elements: dict | None) -> bytes:
+    # Χωρίς πρόσθετα δεδομένα επιστρέφουμε το ίδιο κενό IO τμήμα όπως πριν.
+    if io_elements is None:
+        return b"\x00\x00\x00\x00\x00\x00"
+
+    if len(io_elements) > 255:
+        raise ValueError("Too many Codec 8 IO elements.")
+
+    # Event IO ID = 0: περιοδική εγγραφή, χωρίς συγκεκριμένο IO event.
+    io_part = bytes([0, len(io_elements)])
+
+    for size in (1, 2, 4, 8):
+        matching_elements = []
+
+        for io_id, value in io_elements.items():
+            if not 0 <= io_id <= 255:
+                raise ValueError("Codec 8 IO IDs must be between 0 and 255.")
+
+            if not isinstance(value, bytes) or len(value) not in (1, 2, 4, 8):
+                raise ValueError("Invalid Codec 8 IO value.")
+
+            if len(value) == size:
+                matching_elements.append((io_id, value))
+
+        io_part += bytes([len(matching_elements)])
+
+        for io_id, value in matching_elements:
+            io_part += bytes([io_id]) + value
+
+    return io_part
+
 def build_codec8_avl_packet(latitude: float, longitude: float, speed_kmh: int = 0,
                             altitude_m: int = 0, angle_deg: int = 0, satellites: int = 0,
-                            priority: int = 0) -> bytes:
-    """
-    Build an AVL packet payload according to Codec 8 structure.
-    Returns bytes from CodecID .. NumberOfData2 (CRC is calculated separately).
-    We'll produce NumberOfData1 = 1, a single AVL record, with no IO elements (simplest valid packet).
-    """
-
-    # Codec ID for Codec 8
-    codec_id = b'\x08'
-    number_of_data_1 = b'\x01'  # one record
-
-    # Timestamp in milliseconds (8 bytes, big-endian)
+                            priority: int = 0, io_elements: dict | None = None) -> bytes:
+    # Διατηρούμε Codec 8 και μία εγγραφή ανά πακέτο.
     timestamp_ms = int(time.time() * 1000)
-    timestamp_bytes = struct.pack(">Q", timestamp_ms)
 
-    # Priority (1 byte)
-    priority_byte = struct.pack("B", priority & 0xFF)
+    gps_part = (
+        struct.pack(">i", pack_int32_deg7(longitude))
+        + struct.pack(">i", pack_int32_deg7(latitude))
+        + struct.pack(">h", int(altitude_m))
+        + struct.pack(">H", int(angle_deg))
+        + struct.pack("B", satellites)
+        + struct.pack(">H", int(speed_kmh))
+    )
 
-    # GPS element
-    lon_i = pack_int32_deg7(longitude)
-    lat_i = pack_int32_deg7(latitude)
-    lon_bytes = struct.pack(">i", lon_i)
-    lat_bytes = struct.pack(">i", lat_i)
+    avl_record = (
+        struct.pack(">Q", timestamp_ms)
+        + struct.pack("B", priority)
+        + gps_part
+        + build_codec8_io(io_elements)
+    )
 
-    altitude_bytes = struct.pack(">h", int(altitude_m) & 0xFFFF)  # 2 bytes
-    angle_bytes = struct.pack(">H", int(angle_deg) & 0xFFFF)      # 2 bytes
-    satellites_byte = struct.pack("B", satellites & 0xFF)         # 1 byte
-    speed_bytes = struct.pack(">H", int(speed_kmh) & 0xFFFF)      # 2 bytes
-
-    gps_part = lon_bytes + lat_bytes + altitude_bytes + angle_bytes + satellites_byte + speed_bytes
-
-    # IO element minimal: Event IO ID (1 byte), N of total ID (1 byte), then N1,N2,N4,N8 (all zero)
-    event_io_id = b'\x00'
-    n_total_id = b'\x00'
-    n1 = b'\x00'
-    n2 = b'\x00'
-    n4 = b'\x00'
-    n8 = b'\x00'
-
-    # Compose AVL Data (single record)
-    avl_record = timestamp_bytes + priority_byte + gps_part + event_io_id + n_total_id + n1 + n2 + n4 + n8
-
-    # Number of Data 2 (should equal Number of Data 1)
-    number_of_data_2 = number_of_data_1
-
-    payload = codec_id + number_of_data_1 + avl_record + number_of_data_2
-    return payload  # CRC not included here
+    return b"\x08\x01" + avl_record + b"\x01"
 
 def build_full_tcp_packet(codec_payload: bytes) -> bytes:
     """
@@ -234,6 +240,10 @@ def receive_exact(sock: socket.socket, length: int) -> bytes:
 
 
 def run_simulator(args):
+    obd_simulation = None
+
+    if args.device_type == "obd":
+        obd_simulation = ObdSimulation()
     simulation = None
 
     while simulation is None:
@@ -274,14 +284,30 @@ def run_simulator(args):
                     now = time.monotonic()
 
                     if last_update is not None:
-                        simulation.advance(now - last_update)
+                        elapsed_seconds = now - last_update
+
+                        # Ενημερώνουμε τα OBD στοιχεία με την κατάσταση του προηγούμενου διαστήματος.
+                        if obd_simulation is not None:
+                            previous_position = simulation.snapshot()
+
+                            obd_simulation.advance(
+                                elapsed_seconds,
+                                previous_position[2],
+                                previous_position[4],
+                            )
+
+                        simulation.advance(elapsed_seconds)
 
                     last_update = now
 
                     if pending_packet is None and now >= next_send:
                         pending_position = simulation.snapshot()
-
                         latitude, longitude, speed, angle, state = pending_position
+
+                        io_elements = None
+
+                        if obd_simulation is not None:
+                            io_elements = obd_simulation.build_io_elements(speed, state)
 
                         payload = build_codec8_avl_packet(
                             latitude=latitude,
@@ -291,6 +317,7 @@ def run_simulator(args):
                             angle_deg=angle,
                             satellites=10,
                             priority=0,
+                            io_elements=io_elements,
                         )
 
                         pending_packet = build_full_tcp_packet(payload)
@@ -367,6 +394,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stop-every-seconds", type=float, default=180)
     parser.add_argument("--stop-seconds", type=float, default=30)
 
+    parser.add_argument("--device-type", choices=("gps", "obd"), default="gps")
     args = parser.parse_args()
 
     if len(args.imei) != 15 or not args.imei.isascii() or not args.imei.isdigit():

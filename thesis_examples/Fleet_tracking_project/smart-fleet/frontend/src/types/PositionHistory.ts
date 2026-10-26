@@ -1,5 +1,9 @@
+
 // Το ιστορικό περιέχει τα πεδία που αποθηκεύονται στο TimescaleDB.
 // Δεν απαιτεί τα επιπλέον πεδία του ζωντανού telemetry.
+
+import type { ObdData } from "./ObdData";
+
 export interface HistoricalPosition {
     timestamp_ms: number;
     imei: string;
@@ -10,6 +14,8 @@ export interface HistoricalPosition {
     altitude_m: number | null;
     angle_deg: number | null;
     satellites: number | null;
+    device_model?: string | null;
+    obd?: ObdData | null;
 }
 
 export interface PositionHistoryCursor {

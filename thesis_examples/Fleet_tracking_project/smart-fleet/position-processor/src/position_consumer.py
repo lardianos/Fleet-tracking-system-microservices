@@ -19,6 +19,8 @@ from db_repository import PositionRepository
 from threading import Event
 from contextlib import ExitStack
 
+from obd_decoder import decode_fmc003_obd
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -122,6 +124,7 @@ def consume_positions(stop_event: Event):
                             position_repository.save_imei_vehicle_mapping(
                                 device_imei=event["device_imei"],
                                 vehicle_id=event["vehicle_id"],
+                                device_model=event.get("device_model", "GPS"),
                             )
 
                         continue
@@ -133,12 +136,35 @@ def consume_positions(stop_event: Event):
                     if not telemetry.get("imei"):
                         telemetry["imei"] = imei
 
-                    vehicle_id = position_repository.find_vehicle_id_by_imei(telemetry["imei"])
-                    telemetry["vehicle_id"] = vehicle_id
+                    device_mapping = position_repository.find_device_mapping_by_imei(
+                        telemetry["imei"]
+                    )
 
+                    # Χωρίς καταχώριση δεν υποθέτουμε ούτε όχημα ούτε μοντέλο.
+                    telemetry["vehicle_id"] = None
+                    telemetry["device_model"] = None
+                    telemetry["obd"] = None
+
+                    if device_mapping is not None:
+                        telemetry["vehicle_id"] = device_mapping["vehicle_id"]
+                        telemetry["device_model"] = device_mapping["device_model"]
+
+                        # Η αποκωδικοποίηση OBD ενεργοποιείται μόνο για καταχωρισμένο FMC003.
+                        if device_mapping["device_model"] == "FMC003":
+                            io_elements = telemetry.get("io_elements")
+
+                            if isinstance(io_elements, dict):
+                                telemetry["obd"] = decode_fmc003_obd(io_elements)
                     # Αποθηκεύουμε τη θέση πριν τη δημοσιεύσουμε στα υπόλοιπα services.
                     position_repository.save_position(telemetry)
                     position_event_producer.publish_position(telemetry)
+
+                    if telemetry["obd"] is not None:
+                        logger.info(
+                            "Decoded OBD: imei=%s data=%s",
+                            telemetry["imei"],
+                            telemetry["obd"],
+                        )
 
                     logger.info(
                         "Processed telemetry: imei=%s lat=%s lon=%s speed=%s vehicle_id=%s",

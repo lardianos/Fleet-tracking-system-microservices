@@ -19,6 +19,7 @@ interface VehicleCreateForm {
     model: string;
     year: string;
     device_imei: string;
+    device_model: Vehicle["device_model"];
     driver_id: string;
 }
 
@@ -28,6 +29,7 @@ const emptyVehicleForm: VehicleCreateForm = {
     model: "",
     year: "",
     device_imei: "",
+    device_model: "GPS",
     driver_id: "",
 };
 
@@ -197,6 +199,7 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
         const payload: {
             plate_number: string;
             device_imei: string;
+            device_model: Vehicle["device_model"];
             brand: string | null;
             model: string | null;
             year: number | null;
@@ -204,6 +207,7 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
         } = {
             plate_number: plateNumber,
             device_imei: deviceImei,
+            device_model: vehicleForm.device_model,
             brand: null,
             model: null,
             year,
@@ -294,6 +298,7 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
             model: "",
             year: "",
             device_imei: vehicle.device_imei,
+            device_model: vehicle.device_model,
             driver_id: "",
         };
 
@@ -350,12 +355,14 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
         const payload: {
             plate_number: string;
             device_imei: string;
+            device_model: Vehicle["device_model"];
             brand: string | null;
             model: string | null;
             year: number | null;
         } = {
             plate_number: plateNumber,
             device_imei: deviceImei,
+            device_model: editVehicleForm.device_model,
             brand: null,
             model: null,
             year,
@@ -570,6 +577,20 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
                                onChange={(event) => setVehicleForm({...vehicleForm, device_imei: event.target.value,})} />
                     </div>
 
+                    <div>
+                        <label htmlFor="manager-vehicle-device-model">Device Model</label>
+                        <select id="manager-vehicle-device-model" value={vehicleForm.device_model}
+                                onChange={(event) => {
+                                    const value = event.target.value;
+                                    if (value === "GPS" || value === "FMC003") {
+                                        setVehicleForm({...vehicleForm, device_model: value});
+                                    }
+                                }}>
+                            <option value="GPS">GPS</option>
+                            <option value="FMC003">Teltonika FMC003 — GPS + OBD</option>
+                        </select>
+                    </div>
+
                     {/* Η λίστα περιέχει τους Drivers του Fleet του Manager. */}
                     <div>
                         <label htmlFor="manager-vehicle-driver">Driver</label>
@@ -690,6 +711,20 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
                                onChange={(event) => setEditVehicleForm({...editVehicleForm, device_imei: event.target.value,})} />
                     </div>
 
+                    <div>
+                        <label htmlFor="manager-edit-device-model">Device Model</label>
+                        <select id="manager-edit-device-model" value={editVehicleForm.device_model}
+                                onChange={(event) => {
+                                    const value = event.target.value;
+                                    if (value === "GPS" || value === "FMC003") {
+                                        setEditVehicleForm({...editVehicleForm, device_model: value});
+                                    }
+                                }}>
+                            <option value="GPS">GPS</option>
+                            <option value="FMC003">Teltonika FMC003 — GPS + OBD</option>
+                        </select>
+                    </div>
+
                     {editVehicleError !== "" && (<p role="alert">{editVehicleError}</p>)}
 
                     <button type="submit" disabled={isUpdatingVehicle || isCreatingVehicle || isAssigningDriver}> Save Changes </button>
@@ -739,6 +774,7 @@ function FleetVehicles({ vehicles, drivers, onTrackVehicle, onVehicleUpdated, on
                     <p>Model: {displayVehicleValue(selectedVehicle.model)}</p>
                     <p>Year: {displayVehicleValue(selectedVehicle.year)}</p>
                     <p>Device IMEI: {selectedVehicle.device_imei}</p>
+                    <p>Device Model: {selectedVehicle.device_model}</p>
                     <p>Driver ID: {displayVehicleValue(selectedVehicle.driver_id)}</p>
                     <p>Fleet ID: {displayVehicleValue(selectedVehicle.fleet_id)}</p>
                     <p>Status: {selectedVehicle.status}</p>

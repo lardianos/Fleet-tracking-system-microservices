@@ -51,6 +51,7 @@ interface VehicleCreateForm {
     model: string;
     year: string;
     device_imei: string;
+    device_model: Vehicle["device_model"];
     driver_id: string;
     fleet_id: string;
 }
@@ -134,6 +135,7 @@ const emptyVehicleForm: VehicleCreateForm = {
     model: "",
     year: "",
     device_imei: "",
+    device_model: "GPS",
     driver_id: "",
     fleet_id: "",
 };
@@ -2294,6 +2296,7 @@ function AdminDashboard() {
         const payload: {
             plate_number: string;
             device_imei: string;
+            device_model: Vehicle["device_model"];
             brand: string | null;
             model: string | null;
             year: number | null;
@@ -2302,6 +2305,7 @@ function AdminDashboard() {
         } = {
             plate_number: plateNumber,
             device_imei: deviceImei,
+            device_model: vehicleForm.device_model,
             brand: null,
             model: null,
             year,
@@ -2401,6 +2405,7 @@ function AdminDashboard() {
             model: "",
             year: "",
             device_imei: vehicle.device_imei,
+            device_model: vehicle.device_model,
             driver_id: "",
             fleet_id: "",
         };
@@ -2467,6 +2472,7 @@ function AdminDashboard() {
         const payload: {
             plate_number: string;
             device_imei: string;
+            device_model: Vehicle["device_model"];
             brand: string | null;
             model: string | null;
             year: number | null;
@@ -2475,6 +2481,7 @@ function AdminDashboard() {
         } = {
             plate_number: plateNumber,
             device_imei: deviceImei,
+            device_model: editVehicleForm.device_model,
             brand: null,
             model: null,
             year,
@@ -2961,6 +2968,7 @@ function AdminDashboard() {
                 <p>Model: {vehicle.model}</p>
                 <p>Year: {vehicle.year}</p>
                 <p>Device IMEI: {vehicle.device_imei}</p>
+                <p>Device Model: {vehicle.device_model}</p>
                 <p>Fleet ID: {fleetName}</p>
                 <p>Driver ID: {driverName}</p>
                 <p>Status: {vehicle.status}</p>
@@ -3013,6 +3021,20 @@ function AdminDashboard() {
                     <input id="edit-vehicle-imei" required value={editVehicleForm.device_imei}
                            onChange={(event) =>
                                setEditVehicleForm({...editVehicleForm, device_imei: event.target.value,})} />
+                </div>
+
+                <div>
+                    <label htmlFor="edit-vehicle-device-model">Device Model</label>
+                    <select id="edit-vehicle-device-model" value={editVehicleForm.device_model}
+                            onChange={(event) => {
+                                const value = event.target.value;
+                                if (value === "GPS" || value === "FMC003") {
+                                    setEditVehicleForm({...editVehicleForm, device_model: value});
+                                }
+                            }}>
+                        <option value="GPS">GPS</option>
+                        <option value="FMC003">Teltonika FMC003 — GPS + OBD</option>
+                    </select>
                 </div>
 
                 {/* Η αλλαγή Fleet καθαρίζει την προηγούμενη επιλογή Driver. */}
@@ -3558,6 +3580,20 @@ function AdminDashboard() {
                                             <input id="vehicle-imei" required value={vehicleForm.device_imei}
                                                    onChange={(event) =>
                                                        setVehicleForm({...vehicleForm, device_imei: event.target.value,})} />
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="vehicle-device-model">Device Model</label>
+                                            <select id="vehicle-device-model" value={vehicleForm.device_model}
+                                                    onChange={(event) => {
+                                                        const value = event.target.value;
+                                                        if (value === "GPS" || value === "FMC003") {
+                                                            setVehicleForm({...vehicleForm, device_model: value});
+                                                        }
+                                                    }}>
+                                                <option value="GPS">GPS</option>
+                                                <option value="FMC003">Teltonika FMC003 — GPS + OBD</option>
+                                            </select>
                                         </div>
 
                                         {/* Χρησιμοποιούμε τη λίστα Fleets που έχει ήδη φορτωθεί. */}

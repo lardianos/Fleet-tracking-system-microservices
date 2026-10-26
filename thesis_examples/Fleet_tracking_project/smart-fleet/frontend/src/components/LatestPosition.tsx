@@ -1,4 +1,5 @@
 import type { Position } from "../types/Position";
+import ObdDetails from "./ObdDetails";
 
 interface LatestPositionProps {
   position: Position;
@@ -20,6 +21,7 @@ function LatestPosition({ position }: LatestPositionProps) {
       <p>Time: {timestamp}</p>
       <p>Vehicle ID: {position.vehicle_id}</p>
       <p>IMEI: {position.imei}</p>
+      <ObdDetails obd={position.obd}/>
     </div>
   );
 }

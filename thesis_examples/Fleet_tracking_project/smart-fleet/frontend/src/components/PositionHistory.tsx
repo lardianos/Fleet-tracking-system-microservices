@@ -5,6 +5,7 @@ import type { DriverAssignmentPeriodsResponse, HistoricalPosition, PositionHisto
 import { buildVehicleHistorySegments, fetchPositionHistoryJson, loadAllVehiclePositions } from "../services/positionHistory";
 import PositionHistoryMap from "./PositionHistoryMap";
 import { authenticatedFetch } from "../auth/session";
+import ObdDetails from "./ObdDetails";
 
 interface PositionHistoryProps {
     vehicles: { id: string; plate_number: string }[];
@@ -350,6 +351,7 @@ function PositionHistory({ vehicles, drivers }: PositionHistoryProps) {
                             <p>Time: {new Date(selectedEntry.position.timestamp_ms).toLocaleString()}</p>
                             <p>Speed: {selectedSpeed} km/h | IMEI: {selectedEntry.position.imei}</p>
                             <p>Coordinates: {selectedEntry.position.latitude}, {selectedEntry.position.longitude}</p>
+                            <ObdDetails obd={selectedEntry.position.obd}/>
                         </div>
                     )}
 

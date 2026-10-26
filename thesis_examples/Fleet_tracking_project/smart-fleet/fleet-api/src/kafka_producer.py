@@ -62,6 +62,7 @@ class FleetEventProducer:
             "event_type": "vehicle.created",
             "vehicle_id": str(vehicle["_id"]),
             "device_imei": vehicle["device_imei"],
+            "device_model": vehicle.get("device_model", "GPS"),
         }
 
         future = self.producer.send(
@@ -86,6 +87,7 @@ class FleetEventProducer:
             "event_type": "vehicle.mapping.updated",
             "vehicle_id": str(vehicle["_id"]),
             "device_imei": vehicle["device_imei"],
+            "device_model": vehicle.get("device_model", "GPS"),
         }
 
         future = self.producer.send(

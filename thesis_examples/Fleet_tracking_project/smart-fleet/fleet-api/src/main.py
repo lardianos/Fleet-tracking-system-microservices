@@ -19,7 +19,7 @@ import os
 import logging
 import time
 
-from typing import Optional, List
+from typing import Optional, List, Literal
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field, ConfigDict
 from pymongo import MongoClient
@@ -28,6 +28,7 @@ from datetime import date
 from pydantic import BaseModel, EmailStr
 from datetime import datetime, timezone
 from uuid import uuid4
+
 
 from pymongo.errors import DuplicateKeyError
 
@@ -148,6 +149,7 @@ class VehicleCreate(BaseModel):
     model: str | None = None
     year: int | None = None
     device_imei: str
+    device_model: Literal["GPS", "FMC003"] = "GPS"
     driver_id: str | None = None
     fleet_id: str | None = None
    # status: str = "ACTIVE"
@@ -169,6 +171,7 @@ class VehicleUpdate(BaseModel):
     model: str | None = None
     year: int | None = None
     device_imei: str | None = None
+    device_model: Literal["GPS", "FMC003"] | None = None
     driver_id: str | None = None
     fleet_id: str | None = None
     #status: str | None = None
@@ -309,6 +312,7 @@ class FleetManagerResponse(FleetManagerCreate):
     id: str
     # Ο Manager μπορεί να παραμένει χωρίς ανατεθειμένο Fleet.
     fleet_id: str | None
+
 class FleetManagerUpdate(BaseModel):
     """
     Μοντέλο για μερική ενημέρωση ενός Fleet Manager Profile.
@@ -479,6 +483,7 @@ def vehicle_document_to_response(document: dict) -> VehicleResponse:
         model=document.get("model"),
         year=document.get("year"),
         device_imei=document["device_imei"],
+        device_model=document.get("device_model", "GPS"),
         driver_id=document.get("driver_id"),
         fleet_id=document.get("fleet_id"),
         status=document.get("status", "ACTIVE"),
@@ -578,46 +583,6 @@ def validate_fleet_exists(fleet_id: str | None) -> None:
             status_code=400,
             detail=f"Fleet with fleet_id '{fleet_id}' does not exist",
         )
-
-# def get_driver_for_vehicle_assignment(driver_id: str) -> dict:
-#     """
-#     Επιστρέφει τον Driver που πρόκειται να ανατεθεί σε Vehicle.
-#
-#     Για να μπορεί ένας Driver να αναλάβει Vehicle:
-#     - πρέπει να υπάρχει,
-#     - πρέπει να ανήκει ήδη σε Fleet.
-#
-#     Το Fleet του Driver καθορίζει το Fleet του Vehicle τη στιγμή
-#     που πραγματοποιείται η ανάθεση.
-#     """
-#
-#     driver_document = drivers_collection.find_one({
-#         "driver_id": driver_id
-#     })
-#
-#     if driver_document is None:
-#         raise HTTPException(
-#             status_code=400,
-#             detail=f"Driver with driver_id '{driver_id}' does not exist",
-#         )
-#
-#     driver_fleet_id = driver_document.get("fleet_id")
-#
-#     if driver_fleet_id is None:
-#         raise HTTPException(
-#             status_code=400,
-#             detail=(
-#                 f"Driver with driver_id '{driver_id}' cannot be assigned "
-#                 "to a vehicle because the driver does not belong to a fleet"
-#             ),
-#         )
-#
-#     # Παρόλο που ο Driver κανονικά πρέπει ήδη να δείχνει σε υπαρκτό Fleet,
-#     # κάνουμε τον έλεγχο και εδώ ώστε να μη δημιουργηθεί νέα ασυνεπής
-#     # ανάθεση αν υπάρχουν παλαιότερα μη έγκυρα δεδομένα στη βάση.
-#     validate_fleet_exists(driver_fleet_id)
-#
-#     return driver_document
 
 def create_audit_log(audit_log: AuditLogCreate) -> AuditLogResponse:
     """
@@ -780,6 +745,17 @@ def create_vehicle(vehicle: VehicleCreate):
         ),
     }
 
+    # Καταγράφουμε την αρχική αντιστοίχιση της συσκευής.
+    audit_changes["device_imei"] = AuditChange(
+        from_value=None,
+        to_value=created_vehicle["device_imei"],
+    )
+
+    audit_changes["device_model"] = AuditChange(
+        from_value=None,
+        to_value=created_vehicle["device_model"],
+    )
+
     if created_vehicle.get("fleet_id") is not None:
         audit_changes["fleet_id"] = AuditChange(
             from_value=None,
@@ -861,6 +837,11 @@ def update_vehicle(vehicle_id: str, vehicle: VehicleUpdate):
         )
 
     update_data = vehicle.model_dump(exclude_unset=True)
+
+    # Η απουσία του πεδίου αφήνει την καταχώριση ανέπαφη.
+    # Το ρητό null δεν αποτελεί έγκυρη επιλογή μοντέλου.
+    if "device_model" in update_data and update_data["device_model"] is None:
+        raise HTTPException(status_code=422, detail="Device model cannot be null.")
 
     if not update_data:
         raise HTTPException( status_code=400, detail="No update data provided", )
@@ -1022,8 +1003,15 @@ def update_vehicle(vehicle_id: str, vehicle: VehicleUpdate):
             )
         )
 
-    # Ενημερώνουμε το mapping όταν αλλάζει η συσκευή του οχήματος.
-    if existing_vehicle.get("device_imei") != updated_vehicle.get("device_imei"):
+    # Ενημερώνουμε τα υπόλοιπα services όταν αλλάζει το IMEI ή το μοντέλο.
+    imei_changed = existing_vehicle.get("device_imei") != updated_vehicle.get("device_imei")
+
+    model_changed = (
+            existing_vehicle.get("device_model", "GPS")
+            != updated_vehicle.get("device_model", "GPS")
+    )
+
+    if imei_changed or model_changed:
         fleet_event_producer.publish_vehicle_mapping(updated_vehicle)
 
     return vehicle_document_to_response(updated_vehicle)

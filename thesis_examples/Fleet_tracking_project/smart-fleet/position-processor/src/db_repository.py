@@ -43,15 +43,37 @@ class PositionRepository:
 
         logger.info("Connected to TimescaleDB at %s:%s", self.db_host, self.db_port)
 
+    def find_device_mapping_by_imei(self, device_imei: str) -> dict | None:
+        # Διαβάζουμε την καταχωρισμένη αντιστοίχιση χωρίς να μαντεύουμε το μοντέλο.
+        query = """
+            SELECT vehicle_id, device_model
+            FROM imei_vehicle_mappings
+            WHERE device_imei = %s;
+        """
+
+        with self.connection.cursor() as cursor:
+            cursor.execute(query, (device_imei,))
+            row = cursor.fetchone()
+
+        if row is None:
+            logger.warning("No device mapping for imei=%s", device_imei)
+            return None
+
+        return {
+            "vehicle_id": row[0],
+            "device_model": row[1],
+        }
+
     def save_position(self, telemetry: dict):
-        # Μετατρέπουμε το timestamp από milliseconds σε UTC datetime.
-        # Το Kafka message έχει timestamp_ms από τη συσκευή Teltonika.
-        timestamp_ms = telemetry.get("timestamp_ms")
+        # Η θέση και οι OBD μετρήσεις αποθηκεύονται στην ίδια χρονική εγγραφή.
+        timestamp_ms = telemetry["timestamp_ms"]
         position_time = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
 
-        # Εισάγουμε την ιστορική θέση στον πίνακα vehicle_positions.
-        # Το ON CONFLICT χρησιμοποιείται για να μη σκάει το insert αν έρθει διπλότυπο
-        # με ίδιο time και ίδιο imei.
+        obd = telemetry.get("obd")
+
+        if not isinstance(obd, dict):
+            obd = {}
+
         query = """
             INSERT INTO vehicle_positions (
                 time,
@@ -62,9 +84,19 @@ class PositionRepository:
                 speed_kmh,
                 altitude_m,
                 angle_deg,
-                satellites
+                satellites,
+                device_model,
+                ignition_on,
+                engine_rpm,
+                coolant_temperature_c,
+                fuel_level_percent,
+                dtc_count
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s
+            )
             ON CONFLICT (time, imei) DO NOTHING;
         """
 
@@ -78,21 +110,28 @@ class PositionRepository:
             telemetry.get("altitude_m"),
             telemetry.get("angle_deg"),
             telemetry.get("satellites"),
+            telemetry.get("device_model"),
+            obd.get("ignition_on"),
+            obd.get("engine_rpm"),
+            obd.get("coolant_temperature_c"),
+            obd.get("fuel_level_percent"),
+            obd.get("dtc_count"),
         )
 
         with self.connection.cursor() as cursor:
             cursor.execute(query, values)
 
         logger.info(
-            "Saved historical position to TimescaleDB: imei=%s time=%s",
+            "Saved historical position to TimescaleDB: imei=%s time=%s device_model=%s",
             telemetry.get("imei"),
             position_time,
+            telemetry.get("device_model"),
         )
 
-    def save_imei_vehicle_mapping(self, device_imei: str, vehicle_id: str):
-        # Κρατάμε την τρέχουσα συσκευή του οχήματος.
-        # Αφαιρούμε προηγούμενα IMEI του ίδιου οχήματος και αποθηκεύουμε το νέο
-        # μέσα στην ίδια SQL εντολή, ώστε η αλλαγή να είναι ατομική.
+
+    def save_imei_vehicle_mapping(self, device_imei: str, vehicle_id: str, device_model: str = "GPS"):
+        # Αποθηκεύουμε μαζί το όχημα και το μοντέλο της συσκευής.
+        # Τα παλαιότερα events χωρίς μοντέλο αντιμετωπίζονται ως GPS.
         query = """
             WITH removed_mappings AS (
                 DELETE FROM imei_vehicle_mappings
@@ -102,12 +141,14 @@ class PositionRepository:
             INSERT INTO imei_vehicle_mappings (
                 device_imei,
                 vehicle_id,
+                device_model,
                 updated_at
             )
-            VALUES (%s, %s, now())
+            VALUES (%s, %s, %s, now())
             ON CONFLICT (device_imei)
             DO UPDATE SET
                 vehicle_id = EXCLUDED.vehicle_id,
+                device_model = EXCLUDED.device_model,
                 updated_at = now();
         """
 
@@ -116,15 +157,17 @@ class PositionRepository:
             device_imei,
             device_imei,
             vehicle_id,
+            device_model,
         )
 
         with self.connection.cursor() as cursor:
             cursor.execute(query, values)
 
         logger.info(
-            "Saved IMEI mapping: device_imei=%s vehicle_id=%s",
+            "Saved IMEI mapping: device_imei=%s vehicle_id=%s device_model=%s",
             device_imei,
             vehicle_id,
+            device_model,
         )
 
     def find_vehicle_id_by_imei(self, device_imei: str):
@@ -153,7 +196,9 @@ class PositionRepository:
         # ακόμη και αν έχει χρησιμοποιήσει διαφορετικές συσκευές.
         query = """
             SELECT time, imei, vehicle_id, latitude, longitude,
-                   speed_kmh, altitude_m, angle_deg, satellites
+                   speed_kmh, altitude_m, angle_deg, satellites,
+                   device_model, ignition_on, engine_rpm,
+                   coolant_temperature_c, fuel_level_percent, dtc_count
             FROM vehicle_positions
             WHERE vehicle_id = %s
               AND time >= %s
@@ -182,6 +227,19 @@ class PositionRepository:
         positions = []
 
         for row in rows:
+            obd = None
+
+            # Επιστρέφουμε τις μετρήσεις που αποθηκεύτηκαν στη συγκεκριμένη εγγραφή.
+            # Δεν χρησιμοποιούμε το σημερινό μοντέλο συσκευής για παλιές θέσεις.
+            if row[9] == "FMC003":
+                obd = {
+                    "ignition_on": row[10],
+                    "engine_rpm": row[11],
+                    "coolant_temperature_c": row[12],
+                    "fuel_level_percent": row[13],
+                    "dtc_count": row[14],
+                }
+
             positions.append({
                 "timestamp_ms": int(row[0].timestamp() * 1000),
                 "imei": row[1],
@@ -192,6 +250,8 @@ class PositionRepository:
                 "altitude_m": row[6],
                 "angle_deg": row[7],
                 "satellites": row[8],
+                "device_model": row[9],
+                "obd": obd,
             })
 
         next_cursor = None

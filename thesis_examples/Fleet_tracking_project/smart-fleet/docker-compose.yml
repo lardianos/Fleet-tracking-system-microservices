@@ -90,6 +90,7 @@ services:
       --destination-longitude 23.8110
       --max-speed 140
       --destination-wait-seconds 1800
+      --device-type obd
     depends_on:
       - device-gateway
       - simulator-routing

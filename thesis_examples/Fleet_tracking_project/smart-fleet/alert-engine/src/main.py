@@ -11,7 +11,11 @@ from kafka.errors import KafkaError
 from kafka.structs import OffsetAndMetadata, TopicPartition
 
 from kafka_producer import AlertEventProducer
+
 from rules.speed_limit_rule import SpeedLimitRule
+from rules.engine_started_rule import EngineStartedRule
+from rules.high_coolant_temperature_rule import HighCoolantTemperatureRule
+from rules.low_fuel_rule import LowFuelRule
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -92,6 +96,15 @@ def run_alert_engine():
                         speed_limit=float(os.getenv("SPEED_LIMIT_KMH", "100")),
                         duration_seconds=float(os.getenv("SPEED_DURATION_SECONDS", "10")),
                         max_gap_seconds=float(os.getenv("MAX_POSITION_GAP_SECONDS", "15")),
+                    ),
+                    EngineStartedRule(
+                        max_gap_seconds=float(os.getenv("ENGINE_STARTED_MAX_GAP_SECONDS", "15")),
+                    ),
+                    HighCoolantTemperatureRule(
+                        temperature_limit_c=float(os.getenv("COOLANT_TEMPERATURE_LIMIT_C", "100")),
+                    ),
+                    LowFuelRule(
+                        fuel_limit_percent=float(os.getenv("FUEL_LIMIT_PERCENT", "20")),
                     ),
                 ]
 

@@ -243,20 +243,20 @@ def run_simulator(args):
     obd_simulation = None
 
     if args.device_type == "obd":
-        obd_simulation = ObdSimulation()
+        obd_simulation = ObdSimulation(
+            initial_fuel_percent=args.initial_fuel_percent,
+            target_coolant_temperature=args.target_coolant_temperature,
+        )
+
+    # Η προσομοίωση διαδρομής αρχικοποιείται και για τους δύο τύπους συσκευής.
     simulation = None
 
     while simulation is None:
         try:
             simulation = VehicleSimulation(args)
         except OSError as error:
-            logger.warning(
-                "Routing unavailable: %s; retrying in 5 seconds",
-                error,
-            )
-
+            logger.warning("Routing unavailable: %s; retrying in 5 seconds", error)
             time.sleep(5)
-
     logger.info(
         "Routes ready: imei=%s outbound=%.0fm return=%.0fm",
         args.imei,
@@ -395,6 +395,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stop-seconds", type=float, default=30)
 
     parser.add_argument("--device-type", choices=("gps", "obd"), default="gps")
+
+    parser.add_argument("--initial-fuel-percent", type=float, default=75)
+    parser.add_argument("--target-coolant-temperature", type=float, default=90)
     args = parser.parse_args()
 
     if len(args.imei) != 15 or not args.imei.isascii() or not args.imei.isdigit():
@@ -435,6 +438,15 @@ def parse_args() -> argparse.Namespace:
 
         if not math.isfinite(value) or abs(value) > maximum:
             parser.error(f"Invalid coordinate: {name}.")
+
+    if not math.isfinite(args.initial_fuel_percent) or not 0 <= args.initial_fuel_percent <= 100:
+        parser.error("Initial fuel level must be between 0 and 100 percent.")
+
+    if (
+        not math.isfinite(args.target_coolant_temperature)
+        or not 25 <= args.target_coolant_temperature <= 127
+    ):
+        parser.error("Target coolant temperature must be between 25 and 127 °C.")
 
     return args
 

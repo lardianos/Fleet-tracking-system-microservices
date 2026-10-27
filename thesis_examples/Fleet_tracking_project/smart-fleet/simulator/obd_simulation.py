@@ -1,22 +1,29 @@
 class ObdSimulation:
-    def __init__(self):
+    def __init__(self, initial_fuel_percent: float = 75, target_coolant_temperature: float = 90):
         self.coolant_temperature_c = 25.0
-        self.fuel_level_percent = 75.0
+        self.fuel_level_percent = initial_fuel_percent
+        self.target_coolant_temperature_c = target_coolant_temperature
 
     def advance(self, seconds: float, speed_kmh: int, state: str):
-        # Στη μεγάλη στάση ο κινητήρας είναι σβηστός.
+        # Στη μεγάλη στάση ο κινητήρας σβήνει.
         # Στις σύντομες στάσεις της διαδρομής παραμένει στο ρελαντί.
         engine_running = state not in ("DESTINATION_WAIT", "AT_BASE")
 
         if engine_running:
-            # Η θερμοκρασία πλησιάζει σταδιακά τους 90 βαθμούς.
-            self.coolant_temperature_c = min(
-                90.0,
-                self.coolant_temperature_c + seconds * 0.15,
-            )
+            # Η θερμοκρασία πλησιάζει σταδιακά τον στόχο του σεναρίου.
+            if self.coolant_temperature_c < self.target_coolant_temperature_c:
+                self.coolant_temperature_c = min(
+                    self.target_coolant_temperature_c,
+                    self.coolant_temperature_c + seconds * 0.15,
+                )
+            else:
+                self.coolant_temperature_c = max(
+                    self.target_coolant_temperature_c,
+                    self.coolant_temperature_c - seconds * 0.03,
+                )
 
-            # Απλή παραδοχή προσομοίωσης:
-            # ρεζερβουάρ 50 λίτρων, κατανάλωση 8 λίτρα/100 km και 0.8 λίτρα/ώρα στο ρελαντί.
+            # Παραδοχές προσομοίωσης:
+            # ρεζερβουάρ 50 λίτρων, 8 λίτρα/100 km και 0.8 λίτρα/ώρα στο ρελαντί.
             distance_km = speed_kmh * seconds / 3600
             consumed_litres = distance_km * 0.08
 
@@ -28,6 +35,7 @@ class ObdSimulation:
                 self.fuel_level_percent - consumed_litres / 50 * 100,
             )
         else:
+            # Με σβηστό κινητήρα η θερμοκρασία επιστρέφει προς τους 25 °C.
             self.coolant_temperature_c = max(
                 25.0,
                 self.coolant_temperature_c - seconds * 0.03,
@@ -43,8 +51,6 @@ class ObdSimulation:
             ignition = 1
             engine_rpm = min(4500, 800 + speed_kmh * 25)
 
-        # Κάθε IO ID συνοδεύεται από τα bytes της τιμής του.
-        # Η θερμοκρασία είναι signed, ώστε να υποστηρίζονται και αρνητικές τιμές.
         return {
             239: ignition.to_bytes(1, byteorder="big"),
             32: round(self.coolant_temperature_c).to_bytes(1, byteorder="big", signed=True),

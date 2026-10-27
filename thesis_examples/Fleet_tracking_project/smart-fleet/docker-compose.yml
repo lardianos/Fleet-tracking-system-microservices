@@ -91,6 +91,8 @@ services:
       --max-speed 140
       --destination-wait-seconds 1800
       --device-type obd
+      --initial-fuel-percent 21
+      --target-coolant-temperature 110
     depends_on:
       - device-gateway
       - simulator-routing
@@ -176,6 +178,9 @@ services:
       SPEED_LIMIT_KMH: "100"
       SPEED_DURATION_SECONDS: "10"
       MAX_POSITION_GAP_SECONDS: "15"
+      ENGINE_STARTED_MAX_GAP_SECONDS: "15"
+      COOLANT_TEMPERATURE_LIMIT_C: "100"
+      FUEL_LIMIT_PERCENT: "20"
     depends_on:
       - kafka
     restart: unless-stopped

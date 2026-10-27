@@ -3,6 +3,8 @@ import os
 
 from datetime import datetime, timezone
 from urllib.parse import quote
+from alert_policies import get_alert_policy
+
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +38,9 @@ class AlertRecipientResolver:
         return response.json()
 
     def resolve_alert_recipients(self, alert: dict) -> dict:
+        policy = get_alert_policy(alert["rule_id"])
+        recipient_channels = policy["recipients"]
+
         vehicle_id = quote(alert["vehicle_id"], safe="")
         event_time = datetime.fromtimestamp(alert["timestamp_ms"] / 1000, tz=timezone.utc)
 
@@ -112,24 +117,18 @@ class AlertRecipientResolver:
 
             recipients[user_id]["channels"].update(channels)
 
-        # Ο Admin προκύπτει από τις ρυθμίσεις του Notification.
-        add_recipient(
-            self.admin_user_id,
-            self.admin_email,
-            ["email", "dashboard"],
-        )
+        # Ο Admin λαμβάνει μόνο τους κανόνες που τον περιλαμβάνουν στην πολιτική.
+        if "admin" in recipient_channels:
+            add_recipient( self.admin_user_id, self.admin_email, recipient_channels["admin"], )
 
-        if not deleted and "fleet_id" in known_fields and assignment["fleet_id"] is not None:
+
+        if ( "fleet_manager" in recipient_channels and not deleted and "fleet_id" in known_fields and assignment["fleet_id"] is not None ):
+            # Ανακτούμε τους Managers μόνο όταν τους περιλαμβάνει η πολιτική.
             managers = self.read_fleet_data("/fleet-managers")
 
-            # Οι ενεργοί Managers του αντίστοιχου fleet λαμβάνουν και email.
             for manager in managers:
                 if manager["status"] == "ACTIVE" and manager.get("fleet_id") == assignment["fleet_id"]:
-                    add_recipient(
-                        manager.get("keycloak_user_id"),
-                        manager.get("email"),
-                        ["email", "dashboard"],
-                    )
+                    add_recipient( manager.get("keycloak_user_id"), manager.get("email"), recipient_channels["fleet_manager"],)
 
         if not deleted and "driver_id" in known_fields and assignment["driver_id"] is not None:
             drivers = self.read_fleet_data("/drivers")
@@ -154,8 +153,8 @@ class AlertRecipientResolver:
                     if full_name:
                         driver_name = full_name
 
-                    if driver["status"] == "ACTIVE":
-                        add_recipient(driver.get("keycloak_user_id"), None, ["dashboard"])
+                    if driver["status"] == "ACTIVE" and "driver" in recipient_channels:
+                        add_recipient( driver.get("keycloak_user_id"), driver.get("email"), recipient_channels["driver"], )
 
         for field in assignment:
             if field not in known_fields:

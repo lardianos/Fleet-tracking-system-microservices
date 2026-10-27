@@ -73,9 +73,7 @@ def consume_account_notifications(consumer, keycloak_notifications, completed_ev
                 # Επιβεβαιώνουμε μόνο το μήνυμα που ολοκληρώθηκε.
                 partition = TopicPartition(message.topic, message.partition)
 
-                consumer.commit({
-                    partition: OffsetAndMetadata(message.offset + 1, ""),
-                })
+                consumer.commit( { partition: OffsetAndMetadata(message.offset + 1, ""), } )
 
 
 def run_notification_service():
@@ -109,10 +107,7 @@ def run_notification_service():
                 )
 
         except (KafkaError, httpx.HTTPError, RuntimeError):
-            logger.exception(
-                "Account notification failed. Reconnecting in 5 seconds."
-            )
-
+            logger.exception( "Account notification failed. Reconnecting in 5 seconds." )
             # Το αποτυχημένο μήνυμα δεν έχει επιβεβαιωθεί,
             # επομένως μπορεί να ανακτηθεί ξανά από το Kafka.
             stop_event.wait(5)

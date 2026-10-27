@@ -5,6 +5,7 @@ import smtplib
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from uuid import NAMESPACE_URL, uuid5
+from alert_policies import build_alert_text
 
 logger = logging.getLogger(__name__)
 
@@ -12,20 +13,9 @@ logger = logging.getLogger(__name__)
 def deliver_alert(alert, context, producer, completed):
     plate = context["plate_number"]
 
-    title = f"Fleet alert: {alert['rule_id']} - {plate}"
-    message = f"Rule {alert['rule_id']} was triggered for vehicle {plate}."
+    title, message = build_alert_text(alert, context)
 
-    if alert["rule_id"] == "SPEED_LIMIT":
-        title = f"Speed limit exceeded - {plate}"
-        message = (
-            f"Speed {alert['speed_kmh']} km/h exceeded "
-            f"the {alert['speed_limit_kmh']} km/h limit."
-        )
-
-    event_time = datetime.fromtimestamp(
-        alert["timestamp_ms"] / 1000,
-        timezone.utc,
-    ).isoformat()
+    event_time = datetime.fromtimestamp( alert["timestamp_ms"] / 1000, timezone.utc, ).isoformat()
 
     for recipient in context["recipients"]:
         user_id = recipient["user_id"]

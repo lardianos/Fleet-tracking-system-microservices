@@ -1,5 +1,6 @@
 services:
   device-gateway:
+    image: smart-fleet-device-gateway:thesis-v1
     build:
       context: ./device-gateway
       dockerfile: Dockerfile
@@ -122,6 +123,7 @@ services:
     restart: unless-stopped
 
   fleet-api:
+    image: smart-fleet-fleet-api:thesis-v1
     build:
       context: fleet-api
       dockerfile: Dockerfile
@@ -143,6 +145,7 @@ services:
     restart: unless-stopped
 
   position-processor:
+    image: smart-fleet-position-processor:thesis-v1
     build:
       context: position-processor
       dockerfile: Dockerfile
@@ -166,10 +169,11 @@ services:
     restart: unless-stopped
 
   alert-engine:
+    image: smart-fleet-alert-engine:thesis-v1
     build:
       context: ./alert-engine
       dockerfile: Dockerfile
-    container_name: alert-engine
+#    container_name: alert-engine
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_TOPIC_PROCESSED_POSITIONS: processed.positions
@@ -187,6 +191,7 @@ services:
     stop_grace_period: 30s
 
   notification:
+    image: smart-fleet-notification:thesis-v1
     build:
       context: ./notification
       dockerfile: Dockerfile
@@ -219,6 +224,7 @@ services:
     stop_grace_period: 30s
 
   live-tracking-service:
+    image: smart-fleet-live-tracking-service:thesis-v1
     build:
       context: ./live-tracking-service
     container_name: live-tracking-service
@@ -234,6 +240,7 @@ services:
       - redis
 
   websocket-gateway:
+    image: smart-fleet-websocket-gateway:thesis-v1
     build:
       context: ./websocket-gateway
     container_name: websocket-gateway
@@ -254,6 +261,7 @@ services:
     restart: unless-stopped
 
   api-gateway:
+    image: smart-fleet-api-gateway:thesis-v1
     build:
       context: ./api-gateway
     container_name: api-gateway
@@ -315,6 +323,7 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
 
   frontend:
+    image: smart-fleet-frontend:thesis-v1
     build:
       context: ./frontend
     container_name: frontend

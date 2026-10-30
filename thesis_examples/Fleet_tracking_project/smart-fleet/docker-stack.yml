@@ -1,0 +1,359 @@
+version: "3.8"
+
+# Κοινές ρυθμίσεις για την αρχική εγκατάσταση στον υπάρχοντα κόμβο.
+x-service-defaults: &service-defaults
+  networks:
+    - fleet-network
+  stop_grace_period: 30s
+  deploy:
+    replicas: 1
+    placement:
+      constraints:
+        - node.hostname == docker-desktop
+    restart_policy:
+      condition: any
+      delay: 5s
+    update_config:
+      parallelism: 1
+      order: stop-first
+
+# Κοινό image για όλους τους simulators.
+x-simulator-defaults: &simulator-defaults
+  <<: *service-defaults
+  image: smart-fleet-simulator:thesis-v1
+  working_dir: /app
+
+services:
+  device-gateway:
+    <<: *service-defaults
+    image: smart-fleet-device-gateway:thesis-v1
+    environment:
+      GATEWAY_HOST: "0.0.0.0"
+      GATEWAY_PORT: "7494"
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_TELEMETRY: telemetry.positions
+    ports:
+      - "7494:7494"
+
+  simulator-routing:
+    <<: *service-defaults
+    image: ghcr.io/project-osrm/osrm-backend:v6.0.0
+    command: ["osrm-routed", "--algorithm", "mld", "--threads", "1", "/data/attica.osrm"]
+    volumes:
+      - type: bind
+        source: /run/desktop/mnt/host/c/Users/BeastBox/Documents/Fleet-tracking-system-microservices/thesis_examples/Fleet_tracking_project/smart-fleet/simulator/maps
+        target: /data
+        read_only: true
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == docker-desktop
+      restart_policy:
+        condition: any
+        delay: 5s
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  teltonika-simulator:
+    <<: *simulator-defaults
+    command: >
+      python -u teltonika_simulator.py
+      --host device-gateway
+      --port 7494
+      --imei 123456789012345
+      --interval 5
+      --base-latitude 37.9842
+      --base-longitude 23.7273
+      --destination-latitude 38.0080
+      --destination-longitude 23.7900
+      --max-speed 140
+      --destination-wait-seconds 1800
+
+  teltonika-simulator-2:
+    <<: *simulator-defaults
+    command: >
+      python -u teltonika_simulator.py
+      --host device-gateway
+      --port 7494
+      --imei 123456789012346
+      --interval 5
+      --base-latitude 37.9842
+      --base-longitude 23.7273
+      --destination-latitude 37.9440
+      --destination-longitude 23.6470
+      --max-speed 140
+      --destination-wait-seconds 1800
+
+  teltonika-simulator-3:
+    <<: *simulator-defaults
+    command: >
+      python -u teltonika_simulator.py
+      --host device-gateway
+      --port 7494
+      --imei 123456789012347
+      --interval 5
+      --base-latitude 37.9842
+      --base-longitude 23.7273
+      --destination-latitude 38.0740
+      --destination-longitude 23.8110
+      --max-speed 140
+      --destination-wait-seconds 1800
+      --device-type obd
+      --initial-fuel-percent 21
+      --target-coolant-temperature 110
+
+  teltonika-simulator-4:
+    <<: *simulator-defaults
+    command: >
+      python -u teltonika_simulator.py
+      --host device-gateway
+      --port 7494
+      --imei 123456789012232
+      --interval 5
+      --base-latitude 37.9842
+      --base-longitude 23.7273
+      --destination-latitude 38.0340
+      --destination-longitude 23.8210
+      --max-speed 140
+      --destination-wait-seconds 1800
+
+  fleet-api:
+    <<: *service-defaults
+    image: smart-fleet-fleet-api:thesis-v1
+    ports:
+      - "8000:8000"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_FLEET_VEHICLES: fleet.vehicles
+      KAFKA_TOPIC_ACCOUNTS: fleet.accounts
+      MONGO_HOST: mongodb
+      MONGO_PORT: "27017"
+      MONGO_USER: fleet_admin
+      MONGO_PASSWORD: fleet_password
+      MONGO_DB: fleet_tracking
+
+  position-processor:
+    <<: *service-defaults
+    image: smart-fleet-position-processor:thesis-v1
+    environment:
+      TIMESCALE_HOST: timescaledb
+      TIMESCALE_PORT: "5432"
+      TIMESCALE_DB: fleet_tracking
+      TIMESCALE_USER: fleet_user
+      TIMESCALE_PASSWORD: fleet_password
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_TELEMETRY: telemetry.positions
+      KAFKA_TOPIC_PROCESSED_POSITIONS: processed.positions
+      KAFKA_CONSUMER_GROUP: position-processor-group
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+
+  alert-engine:
+    <<: *service-defaults
+    image: smart-fleet-alert-engine:thesis-v1
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_PROCESSED_POSITIONS: processed.positions
+      KAFKA_TOPIC_ALERTS: fleet.alerts
+      KAFKA_CONSUMER_GROUP: alert-engine-group
+      SPEED_LIMIT_KMH: "100"
+      SPEED_DURATION_SECONDS: "10"
+      MAX_POSITION_GAP_SECONDS: "15"
+      ENGINE_STARTED_MAX_GAP_SECONDS: "15"
+      COOLANT_TEMPERATURE_LIMIT_C: "100"
+      FUEL_LIMIT_PERCENT: "20"
+
+  notification:
+    <<: *service-defaults
+    image: smart-fleet-notification:thesis-v1
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_ACCOUNTS: fleet.accounts
+      KAFKA_CONSUMER_GROUP: notification-accounts-group
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: smart-fleet
+      KEYCLOAK_CLIENT_ID: notification
+      KEYCLOAK_CLIENT_SECRET: ${NOTIFICATION_KEYCLOAK_CLIENT_SECRET:?Missing notification secret}
+      KEYCLOAK_FRONTEND_CLIENT_ID: smart-fleet-frontend
+      FRONTEND_URL: http://localhost:5173/
+      FLEET_API_URL: http://fleet-api:8000
+      KAFKA_TOPIC_ALERTS: fleet.alerts
+      NOTIFICATION_ALERTS_GROUP: notification-alerts-group
+      KAFKA_TOPIC_DASHBOARD_NOTIFICATIONS: notifications.dashboard
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_FROM: no-reply@smart-fleet.test
+      ADMIN_KEYCLOAK_USER_ID: ${ADMIN_KEYCLOAK_USER_ID:?Missing admin user ID}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Missing admin email}
+
+  live-tracking-service:
+    <<: *service-defaults
+    image: smart-fleet-live-tracking-service:thesis-v1
+    ports:
+      - "8002:8002"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_PROCESSED_POSITIONS: processed.positions
+
+  websocket-gateway:
+    <<: *service-defaults
+    image: smart-fleet-websocket-gateway:thesis-v1
+    ports:
+      - "8003:8003"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_PROCESSED_POSITIONS: processed.positions
+      LIVE_TRACKING_SERVICE_URL: http://live-tracking-service:8002
+      KAFKA_TOPIC_DASHBOARD_NOTIFICATIONS: notifications.dashboard
+      KEYCLOAK_ISSUER_URL: http://localhost:8081/realms/smart-fleet
+      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/smart-fleet/protocol/openid-connect/certs
+      KEYCLOAK_CLIENT_ID: smart-fleet-frontend
+      FRONTEND_ORIGIN: http://localhost:5173
+
+  api-gateway:
+    <<: *service-defaults
+    image: smart-fleet-api-gateway:thesis-v1
+    ports:
+      - "8004:8004"
+    environment:
+      FLEET_API_URL: http://fleet-api:8000
+      LIVE_TRACKING_SERVICE_URL: http://live-tracking-service:8002
+      POSITION_PROCESSOR_URL: http://position-processor:8001
+      KEYCLOAK_ISSUER_URL: http://localhost:8081/realms/smart-fleet
+      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/smart-fleet/protocol/openid-connect/certs
+      KEYCLOAK_CLIENT_ID: smart-fleet-frontend
+      KEYCLOAK_ADMIN_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_REALM: smart-fleet
+      KEYCLOAK_ADMIN_CLIENT_ID: smart-fleet-api-gateway
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?Missing API Gateway secret}
+
+  kafka:
+    <<: *service-defaults
+    image: apache/kafka:4.2.0
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: /tmp/kafka-logs
+    volumes:
+      - kafka_data:/tmp/kafka-logs
+
+  kafka-ui:
+    <<: *service-defaults
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+
+  frontend:
+    <<: *service-defaults
+    image: smart-fleet-frontend:thesis-v1
+    ports:
+      - "5173:5173"
+
+  redis:
+    <<: *service-defaults
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  timescaledb:
+    <<: *service-defaults
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_DB: fleet_tracking
+      POSTGRES_USER: fleet_user
+      POSTGRES_PASSWORD: fleet_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+
+  mongodb:
+    <<: *service-defaults
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: fleet_admin
+      MONGO_INITDB_ROOT_PASSWORD: fleet_password
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  keycloak-db:
+    <<: *service-defaults
+    image: postgres:16
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak_password
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+
+  keycloak:
+    <<: *service-defaults
+    image: quay.io/keycloak/keycloak:26.6.3
+    command: start-dev
+    ports:
+      - "8081:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak_password
+      KC_HOSTNAME: http://localhost:8081
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+
+  mailpit:
+    <<: *service-defaults
+    image: axllent/mailpit:v1.27.4
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    ports:
+      - "8025:8025"
+    volumes:
+      - mailpit_data:/data
+
+networks:
+  fleet-network:
+    driver: overlay
+    attachable: true
+
+# Χρησιμοποιούμε ακριβώς τα υπάρχοντα volumes.
+volumes:
+  kafka_data:
+    external: true
+    name: smart-fleet-kafka-data
+  timescale_data:
+    external: true
+    name: smart-fleet_timescale_data
+  mongo_data:
+    external: true
+    name: smart-fleet_mongo_data
+  keycloak_db_data:
+    external: true
+    name: smart-fleet_keycloak_db_data
+  mailpit_data:
+    external: true
+    name: smart-fleet_mailpit_data

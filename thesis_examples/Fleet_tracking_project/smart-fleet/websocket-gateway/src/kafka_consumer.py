@@ -22,9 +22,11 @@ async def create_position_consumer():
         "processed.positions",
     )
 
-    consumer = AIOKafkaConsumer( topic,
-        bootstrap_servers=os.getenv( "KAFKA_BOOTSTRAP_SERVERS", "kafka:9092", ),
-        group_id="websocket-gateway-group",
+    consumer = AIOKafkaConsumer(
+        topic,
+        bootstrap_servers=os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
+        group_id=None,
+        enable_auto_commit=False,
         auto_offset_reset="latest",
         value_deserializer=lambda value: json.loads(value.decode("utf-8")),
     )

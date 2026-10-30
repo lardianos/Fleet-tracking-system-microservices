@@ -13,7 +13,8 @@ import psycopg2
 from kafka import KafkaConsumer
 from redis import Redis
 from kafka_producer import PositionEventProducer
-from kafka.errors import NoBrokersAvailable
+from kafka.errors import NoBrokersAvailable, KafkaError
+from kafka.structs import OffsetAndMetadata, TopicPartition
 
 from db_repository import PositionRepository
 from threading import Event
@@ -61,7 +62,7 @@ def connect_position_dependencies(stop_event: Event):
                     bootstrap_servers=kafka_bootstrap_servers,
                     group_id=group_id,
                     auto_offset_reset="earliest",
-                    enable_auto_commit=True,
+                    enable_auto_commit=False,
                     value_deserializer=lambda value: json.loads(value.decode("utf-8")),
                     key_deserializer=lambda key: key.decode("utf-8") if key else None,
                 )
@@ -99,92 +100,104 @@ def connect_position_dependencies(stop_event: Event):
     return None
 
 def consume_positions(stop_event: Event):
-    connections = connect_position_dependencies(stop_event)
+    while not stop_event.is_set():
+        connections = connect_position_dependencies(stop_event)
 
-    if connections is None:
-        return
+        if connections is None:
+            return
 
-    consumer, position_repository, position_event_producer, fleet_topic = connections
-    # -------------------------
-    # Main Processing Loop
-    # -------------------------
-    try:
-        while not stop_event.is_set():
-            # Περιμένουμε έως ένα δευτερόλεπτο για νέα μηνύματα.
-            # Έτσι ελέγχουμε το σήμα τερματισμού ακόμη και χωρίς telemetry.
-            message_batches = consumer.poll(timeout_ms=1000, max_records=100)
+        consumer, position_repository, position_event_producer, fleet_topic = connections
 
-            for messages in message_batches.values():
-                for message in messages:
-                    if message.topic == fleet_topic:
-                        event = message.value
+        try:
+            while not stop_event.is_set():
+                message_batches = consumer.poll(timeout_ms=1000, max_records=100)
 
-                        # Ενημερώνουμε την αντιστοίχιση IMEI και οχήματος.
-                        if event.get("event_type") in ("vehicle.created", "vehicle.mapping.updated"):
-                            position_repository.save_imei_vehicle_mapping(
-                                device_imei=event["device_imei"],
-                                vehicle_id=event["vehicle_id"],
-                                device_model=event.get("device_model", "GPS"),
+                for messages in message_batches.values():
+                    for message in messages:
+                        if stop_event.is_set():
+                            return
+
+                        if message.topic == fleet_topic:
+                            event = message.value
+
+                            if event.get("event_type") in ("vehicle.created", "vehicle.mapping.updated"):
+                                # Το fleet event ολοκληρώνεται όταν αποθηκευτεί η αντιστοίχιση.
+                                position_repository.save_imei_vehicle_mapping(
+                                    device_imei=event["device_imei"],
+                                    vehicle_id=event["vehicle_id"],
+                                    device_model=event.get("device_model", "GPS"),
+                                )
+
+                        else:
+                            telemetry = message.value
+
+                            if not telemetry.get("imei"):
+                                telemetry["imei"] = message.key
+
+                            device_mapping = position_repository.find_device_mapping_by_imei(
+                                telemetry["imei"]
                             )
 
-                        continue
+                            telemetry["vehicle_id"] = None
+                            telemetry["device_model"] = None
+                            telemetry["obd"] = None
 
-                    imei = message.key
-                    telemetry = message.value
+                            if device_mapping is not None:
+                                telemetry["vehicle_id"] = device_mapping["vehicle_id"]
+                                telemetry["device_model"] = device_mapping["device_model"]
 
-                    # Χρησιμοποιούμε το Kafka key αν λείπει το IMEI από το payload.
-                    if not telemetry.get("imei"):
-                        telemetry["imei"] = imei
+                                if device_mapping["device_model"] == "FMC003":
+                                    io_elements = telemetry.get("io_elements")
 
-                    device_mapping = position_repository.find_device_mapping_by_imei(
-                        telemetry["imei"]
-                    )
+                                    if isinstance(io_elements, dict):
+                                        telemetry["obd"] = decode_fmc003_obd(io_elements)
 
-                    # Χωρίς καταχώριση δεν υποθέτουμε ούτε όχημα ούτε μοντέλο.
-                    telemetry["vehicle_id"] = None
-                    telemetry["device_model"] = None
-                    telemetry["obd"] = None
+                            # Πρώτα ολοκληρώνεται η αποθήκευση της ιστορικής εγγραφής.
+                            position_repository.save_position(telemetry)
 
-                    if device_mapping is not None:
-                        telemetry["vehicle_id"] = device_mapping["vehicle_id"]
-                        telemetry["device_model"] = device_mapping["device_model"]
+                            # Μετά περιμένουμε επιβεβαίωση δημοσίευσης στο Kafka.
+                            position_event_producer.publish_position(telemetry)
 
-                        # Η αποκωδικοποίηση OBD ενεργοποιείται μόνο για καταχωρισμένο FMC003.
-                        if device_mapping["device_model"] == "FMC003":
-                            io_elements = telemetry.get("io_elements")
+                            if telemetry["obd"] is not None:
+                                logger.info(
+                                    "Decoded OBD: imei=%s data=%s",
+                                    telemetry["imei"],
+                                    telemetry["obd"],
+                                )
 
-                            if isinstance(io_elements, dict):
-                                telemetry["obd"] = decode_fmc003_obd(io_elements)
-                    # Αποθηκεύουμε τη θέση πριν τη δημοσιεύσουμε στα υπόλοιπα services.
-                    position_repository.save_position(telemetry)
-                    position_event_producer.publish_position(telemetry)
+                            logger.info(
+                                "Processed telemetry: imei=%s lat=%s lon=%s speed=%s vehicle_id=%s",
+                                telemetry["imei"],
+                                telemetry.get("latitude"),
+                                telemetry.get("longitude"),
+                                telemetry.get("speed_kmh"),
+                                telemetry.get("vehicle_id"),
+                            )
 
-                    if telemetry["obd"] is not None:
-                        logger.info(
-                            "Decoded OBD: imei=%s data=%s",
-                            telemetry["imei"],
-                            telemetry["obd"],
-                        )
+                        # Επιβεβαιώνουμε μόνο τη συγκεκριμένη εγγραφή που ολοκληρώθηκε.
+                        # Δεν επιβεβαιώνουμε άλλα μηνύματα του batch πριν επεξεργαστούν.
+                        partition = TopicPartition(message.topic, message.partition)
 
-                    logger.info(
-                        "Processed telemetry: imei=%s lat=%s lon=%s speed=%s vehicle_id=%s",
-                        imei,
-                        telemetry.get("latitude"),
-                        telemetry.get("longitude"),
-                        telemetry.get("speed_kmh"),
-                        telemetry.get("vehicle_id"),
-                    )
+                        consumer.commit({
+                            partition: OffsetAndMetadata(message.offset + 1, ""),
+                        })
 
-            # Ολοκληρώνουμε την επεξεργασία των μηνυμάτων που παραλάβαμε
-            # πριν ελέγξουμε ξανά αν ζητήθηκε τερματισμός.
-    finally:
-        # Κλείνουμε κάθε σύνδεση ακόμη και αν αποτύχει το προηγούμενο κλείσιμο.
-        try:
-            consumer.close()
+        except (KafkaError, psycopg2.Error):
+            logger.exception(
+                "Position processing failed. Uncommitted messages will be retried after reconnect."
+            )
+
         finally:
+            # Κλείνουμε τις παλιές συνδέσεις πριν δημιουργήσουμε καινούριες.
             try:
-                position_event_producer.close()
+                consumer.close()
             finally:
-                position_repository.close()
+                try:
+                    position_event_producer.close()
+                finally:
+                    position_repository.close()
 
-        logger.info("Position consumption stopped.")
+        if not stop_event.is_set():
+            stop_event.wait(5)
+
+    logger.info("Position consumption stopped.")

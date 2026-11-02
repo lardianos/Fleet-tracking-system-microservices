@@ -1,0 +1,275 @@
+<?xml version='1.0' encoding='utf-8'?>
+<b:Sources xmlns:b="http://schemas.openxmlformats.org/officeDocument/2006/bibliography">
+  <b:Source>
+    <b:Tag>Ref27</b:Tag>
+    <b:SourceType>Report</b:SourceType>
+    <b:Guid>{C73A50B1-2F07-4A76-9C6E-000000000027}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Hardt</b:Last>
+            <b:First>Dick</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>The OAuth 2.0 Authorization Framework</b:Title>
+    <b:Year>2012</b:Year>
+    <b:Month>October</b:Month>
+    <b:Publisher>Internet Engineering Task Force</b:Publisher>
+    <b:StandardNumber>RFC 6749</b:StandardNumber>
+    <b:URL>https://www.rfc-editor.org/rfc/rfc6749.html</b:URL>
+    <b:Accessed>2026-11-02</b:Accessed>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref28</b:Tag>
+    <b:SourceType>Report</b:SourceType>
+    <b:Guid>{C73A50B1-2F07-4A76-9C6E-000000000028}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Sakimura</b:Last>
+            <b:First>Nat</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Bradley</b:Last>
+            <b:First>John</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Agarwal</b:Last>
+            <b:First>Naveen</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Proof Key for Code Exchange by OAuth Public Clients</b:Title>
+    <b:Year>2015</b:Year>
+    <b:Month>September</b:Month>
+    <b:Publisher>Internet Engineering Task Force</b:Publisher>
+    <b:StandardNumber>RFC 7636</b:StandardNumber>
+    <b:URL>https://www.rfc-editor.org/rfc/rfc7636.html</b:URL>
+    <b:Accessed>2026-11-02</b:Accessed>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref29</b:Tag>
+    <b:SourceType>Report</b:SourceType>
+    <b:Guid>{C73A50B1-2F07-4A76-9C6E-000000000029}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Lodderstedt</b:Last>
+            <b:First>Torsten</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Bradley</b:Last>
+            <b:First>John</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Labunets</b:Last>
+            <b:First>Andrey</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Fett</b:Last>
+            <b:First>Daniel</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Best Current Practice for OAuth 2.0 Security</b:Title>
+    <b:Year>2025</b:Year>
+    <b:Month>January</b:Month>
+    <b:Publisher>Internet Engineering Task Force</b:Publisher>
+    <b:StandardNumber>RFC 9700; BCP 240</b:StandardNumber>
+    <b:URL>https://www.rfc-editor.org/rfc/rfc9700.html</b:URL>
+    <b:Accessed>2026-11-02</b:Accessed>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref30</b:Tag>
+    <b:SourceType>InternetSite</b:SourceType>
+    <b:Guid>{C73A50B1-2F07-4A76-9C6E-000000000030}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Sakimura</b:Last>
+            <b:First>Nat</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Bradley</b:Last>
+            <b:First>John</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Jones</b:Last>
+            <b:First>Michael</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>de Medeiros</b:Last>
+            <b:First>Breno</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Mortimore</b:Last>
+            <b:First>Chuck</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>OpenID Connect Core 1.0 incorporating errata set 2</b:Title>
+    <b:Year>2023</b:Year>
+    <b:Month>December</b:Month>
+    <b:Publisher>OpenID Foundation</b:Publisher>
+    <b:URL>https://openid.net/specs/openid-connect-core-1_0.html</b:URL>
+    <b:Accessed>2026-11-02</b:Accessed>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref31</b:Tag>
+    <b:SourceType>Report</b:SourceType>
+    <b:Guid>{C73A50B1-2F07-4A76-9C6E-000000000031}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Jones</b:Last>
+            <b:First>Michael</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Bradley</b:Last>
+            <b:First>John</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Sakimura</b:Last>
+            <b:First>Nat</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>JSON Web Token (JWT)</b:Title>
+    <b:Year>2015</b:Year>
+    <b:Month>May</b:Month>
+    <b:Publisher>Internet Engineering Task Force</b:Publisher>
+    <b:StandardNumber>RFC 7519</b:StandardNumber>
+    <b:URL>https://www.rfc-editor.org/rfc/rfc7519.html</b:URL>
+    <b:Accessed>2026-11-02</b:Accessed>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref32</b:Tag>
+    <b:SourceType>Report</b:SourceType>
+    <b:Guid>{C73A50B1-2F07-4A76-9C6E-000000000032}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Sheffer</b:Last>
+            <b:First>Yaron</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Hardt</b:Last>
+            <b:First>Dick</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Jones</b:Last>
+            <b:First>Michael</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>JSON Web Token Best Current Practices</b:Title>
+    <b:Year>2020</b:Year>
+    <b:Month>February</b:Month>
+    <b:Publisher>Internet Engineering Task Force</b:Publisher>
+    <b:StandardNumber>RFC 8725; BCP 225</b:StandardNumber>
+    <b:URL>https://www.rfc-editor.org/rfc/rfc8725.html</b:URL>
+    <b:Accessed>2026-11-02</b:Accessed>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref33</b:Tag>
+    <b:SourceType>ConferenceProceedings</b:SourceType>
+    <b:Guid>{C73A50B1-2F07-4A76-9C6E-000000000033}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Sandhu</b:Last>
+            <b:First>Ravi</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Ferraiolo</b:Last>
+            <b:First>David F.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Kuhn</b:Last>
+            <b:First>D. Richard</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>The NIST Model for Role-Based Access Control: Towards a Unified Standard</b:Title>
+    <b:Year>2000</b:Year>
+    <b:BookTitle>Proceedings of the Fifth ACM Workshop on Role-Based Access Control</b:BookTitle>
+    <b:Publisher>ACM</b:Publisher>
+    <b:URL>https://www.nist.gov/publications/nist-model-role-based-access-control-towards-unified-standard</b:URL>
+    <b:Accessed>2026-11-02</b:Accessed>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref34</b:Tag>
+    <b:SourceType>InternetSite</b:SourceType>
+    <b:Guid>{C73A50B1-2F07-4A76-9C6E-000000000034}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:Corporate>Keycloak</b:Corporate>
+      </b:Author>
+    </b:Author>
+    <b:Title>Securing Applications and Services</b:Title>
+    <b:Year>2026</b:Year>
+    <b:URL>https://www.keycloak.org/securing-apps/overview</b:URL>
+    <b:Accessed>2026-11-02</b:Accessed>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref35</b:Tag>
+    <b:SourceType>InternetSite</b:SourceType>
+    <b:Guid>{C73A50B1-2F07-4A76-9C6E-000000000035}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:Corporate>OWASP Foundation</b:Corporate>
+      </b:Author>
+    </b:Author>
+    <b:Title>API1:2023 Broken Object Level Authorization</b:Title>
+    <b:Year>2023</b:Year>
+    <b:URL>https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/</b:URL>
+    <b:Accessed>2026-11-02</b:Accessed>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref36</b:Tag>
+    <b:SourceType>InternetSite</b:SourceType>
+    <b:Guid>{C73A50B1-2F07-4A76-9C6E-000000000036}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:Corporate>Apache Software Foundation</b:Corporate>
+      </b:Author>
+    </b:Author>
+    <b:Title>Apache Kafka 4.2 — Security</b:Title>
+    <b:Year>2026</b:Year>
+    <b:URL>https://kafka.apache.org/42/security/</b:URL>
+    <b:Accessed>2026-11-02</b:Accessed>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref37</b:Tag>
+    <b:SourceType>Report</b:SourceType>
+    <b:Guid>{C73A50B1-2F07-4A76-9C6E-000000000037}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:Corporate>European Parliament and Council of the European Union</b:Corporate>
+      </b:Author>
+    </b:Author>
+    <b:Title>Regulation (EU) 2016/679 of 27 April 2016 on the protection of natural persons with regard to the processing of personal data and on the free movement of such data (General Data Protection Regulation)</b:Title>
+    <b:Year>2016</b:Year>
+    <b:Month>April</b:Month>
+    <b:Day>27</b:Day>
+    <b:Publisher>Official Journal of the European Union</b:Publisher>
+    <b:StandardNumber>Regulation (EU) 2016/679</b:StandardNumber>
+    <b:URL>https://eur-lex.europa.eu/eli/reg/2016/679/oj</b:URL>
+    <b:Accessed>2026-11-02</b:Accessed>
+  </b:Source>
+</b:Sources>

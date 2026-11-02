@@ -1,0 +1,411 @@
+<?xml version='1.0' encoding='utf-8'?>
+<b:Sources xmlns:b="http://schemas.openxmlformats.org/officeDocument/2006/bibliography" SelectedStyle="\IEEE.XSL" StyleName="IEEE">
+  <b:Source>
+    <b:Tag>Deligiannis2026</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{58008408-A1FC-4D6D-8714-4FA585FDA3CA}</b:Guid>
+    <b:Title>Αναλυτική Περιγραφή Συγκροτήματος Μικρουπηρεσιών Πλατφόρμας Τηλεμετρίας και Διαχείρισης Στόλου</b:Title>
+    <b:Year>2026</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Δεληγιάννης</b:Last>
+            <b:First>Ιωάννης</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:JournalName>Τμήμα Μηχανικών Πληροφορικής και Υπολογιστών, Πανεπιστήμιο Δυτικής Αττικής</b:JournalName>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Navarchos2021</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{5A2F3B2D-A6A9-4DFC-BF6A-2F00BE4E0997}</b:Guid>
+    <b:Title>Predictive maintenance in a fleet management system: the Navarchos case</b:Title>
+    <b:Year>2021</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Tzafilkou</b:Last>
+            <b:First>K.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Alexandridis</b:Last>
+            <b:First>G.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Ntoutsi</b:Last>
+            <b:First>E.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:JournalName>Datalab Research Group / Springer</b:JournalName>
+  </b:Source>
+  <b:Source>
+    <b:Tag>eMobility2020</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{B33CA01C-D9A6-4BD8-9000-0FFBF57EE659}</b:Guid>
+    <b:Title>Microservice-Architecture - a Practical Approach to Developing a Distributed Heterogeneous-Fleet-Management-Platform</b:Title>
+    <b:Year>2020</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Abele</b:Last>
+            <b:First>L.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Koparanova</b:Last>
+            <b:First>M.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:JournalName>Fraunhofer IAO / eMobility-Scout Project</b:JournalName>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Velasco2020</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{6108BDF5-B779-4F98-9972-0E3B7B15582C}</b:Guid>
+    <b:Title>Microservices for a Carrying Hailing Service system management of cargo transports in real-time</b:Title>
+    <b:Year>2020</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Forero Velasco</b:Last>
+            <b:First>Cesar Nicolas</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:JournalName>Universidad Politecnica de Madrid (UPM)</b:JournalName>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Orchestrator2021</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{2CC82DB5-55B0-4614-9A13-E41C2A999937}</b:Guid>
+    <b:Title>A Novel Orchestrator Architecture for Deploying Virtualized Services in Vehicular Networks</b:Title>
+    <b:Year>2021</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Perez</b:Last>
+            <b:First>J.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Gomez</b:Last>
+            <b:First>A.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:JournalName>IEEE Transactions on Vehicular Technology</b:JournalName>
+  </b:Source>
+  <b:Source>
+    <b:Tag>AutonomousVehicle2022</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{9E782B97-B34B-487A-B112-5946519CBF36}</b:Guid>
+    <b:Title>Autonomous Vehicle Diagnostics and Support: A Framework for API-Driven Microservices</b:Title>
+    <b:Year>2022</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Khan</b:Last>
+            <b:First>S.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Sharma</b:Last>
+            <b:First>R.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:JournalName>Fair East Publishers</b:JournalName>
+  </b:Source>
+  <b:Source>
+    <b:Tag>GeospatialRedshift2023</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{FFAE460F-25AE-40AF-A07D-1A8C2B7E2DF4}</b:Guid>
+    <b:Title>How to partition your geospatial data lake for analysis with Amazon Redshift</b:Title>
+    <b:Year>2023</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>AWS</b:Last>
+            <b:First>Architecture Team</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Publisher>Amazon Web Services</b:Publisher>
+  </b:Source>
+  <b:Source>
+    <b:Tag>KafkaVsRabbitMQ2023</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{B20BF93D-2674-4B7D-B675-552A32F24476}</b:Guid>
+    <b:Title>RabbitMQ vs Kafka: Choosing the Right Messaging System for Your Needs</b:Title>
+    <b:Year>2023</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Intellisoft</b:Last>
+            <b:First>Engineering Team</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Publisher>Intellisoft</b:Publisher>
+  </b:Source>
+  <b:Source>
+    <b:Tag>RealTimeMicroservices2024</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{00F099D0-7E22-4606-BB4E-088539317EFB}</b:Guid>
+    <b:Title>Getting Real-Time Data from Microservices: A Technical Guide</b:Title>
+    <b:Year>2024</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>NashTech</b:Last>
+            <b:First>Development Blog</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Publisher>NashTech Global</b:Publisher>
+  </b:Source>
+  <b:Source>
+    <b:Tag>CQRSAndEventSourcing2023</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{AB1169FD-4F44-404B-BF4B-13DE4E25CEB2}</b:Guid>
+    <b:Title>The importance of CQRS and event sourcing in System Design</b:Title>
+    <b:Year>2023</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Dev Learning Daily</b:Last>
+            <b:First>Editorial</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Publisher>Dev Learning Daily</b:Publisher>
+  </b:Source>
+  <b:Source>
+    <b:Tag>CentralizedLogging2023</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{DBB720DE-572E-4FC7-A08B-D97AE2373BA3}</b:Guid>
+    <b:Title>Centralized Logging for Microservices</b:Title>
+    <b:Year>2023</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>GeeksforGeeks</b:Last>
+            <b:First>Tech Team</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Publisher>GeeksforGeeks</b:Publisher>
+  </b:Source>
+  <b:Source>
+    <b:Tag>ConnectedFleets2023</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{3EA19A86-2B72-4968-AA87-AD29CC22565C}</b:Guid>
+    <b:Title>Reference architecture for connected fleets</b:Title>
+    <b:Year>2023</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Microsoft Learn</b:Last>
+            <b:First>Azure Architecture Center</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Publisher>Microsoft</b:Publisher>
+  </b:Source>
+  <b:Source>
+    <b:Tag>LambdaColdStart2023</b:Tag>
+    <b:SourceType>DocumentFromInternetSite</b:SourceType>
+    <b:Guid>{76BEFFEB-1B7E-4FB2-8035-9B2AA4888415}</b:Guid>
+    <b:Title>API Gateway + Lambda Function concurrency and cold start issues</b:Title>
+    <b:Year>2023</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>AWS Community</b:Last>
+            <b:First>r/aws Forum</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Publisher>Reddit</b:Publisher>
+  </b:Source>
+  <b:Source>
+    <b:Tag>AutomatedIdentification2021</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{20B03731-A9DA-41E7-A731-A0FB5FA01ACF}</b:Guid>
+    <b:Title>Automated Microservices Identification Through Business Process Analysis: A Semantic-Driven Clustering Approach</b:Title>
+    <b:Year>2021</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Vassiliadis</b:Last>
+            <b:First>S.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Karagiannis</b:Last>
+            <b:First>D.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:JournalName>Journal of Systems and Software</b:JournalName>
+  </b:Source>
+  <b:Source>
+    <b:Tag>VirtualizationMicroservices2020</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{E5B1125B-812F-4A8A-ACDD-80C08C29F8C8}</b:Guid>
+    <b:Title>Virtualization and Microservice Architecture for Software-Defined Vehicles</b:Title>
+    <b:Year>2020</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Muller</b:Last>
+            <b:First>K.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Schmidt</b:Last>
+            <b:First>M.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:JournalName>IEEE SDV Workshop</b:JournalName>
+  </b:Source>
+  <b:Source>
+    <b:Tag>MonitoringCloudApp2021</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{8424B4E2-6FFF-4EFF-B4EE-EFE6F390C672}</b:Guid>
+    <b:Title>A framework for monitoring microservice-oriented cloud applications in heterogeneous virtualization environments</b:Title>
+    <b:Year>2021</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Zhang</b:Last>
+            <b:First>L.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Wang</b:Last>
+            <b:First>H.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:JournalName>Future Generation Computer Systems</b:JournalName>
+  </b:Source>
+  <b:Source>
+    <b:Tag>EnvironmentalSensors2021</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{7043953A-F1C9-4DD0-A0B4-139F975C596A}</b:Guid>
+    <b:Title>Real-Time Microservices Based Environmental Sensors System for Urban Fleet Monitoring</b:Title>
+    <b:Year>2021</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Petrou</b:Last>
+            <b:First>P.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Dimitriou</b:Last>
+            <b:First>D.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:JournalName>Sensors Journal</b:JournalName>
+  </b:Source>
+  <b:Source>
+    <b:Tag>PassengerTransport2020</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{5A722C3A-0DC2-4ACC-8077-72DFE9B8EBCF}</b:Guid>
+    <b:Title>Development of an Automated Passenger Transport Management System using Microservices</b:Title>
+    <b:Year>2020</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Ivanov</b:Last>
+            <b:First>I.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Petrov</b:Last>
+            <b:First>V.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:JournalName>Transportation Research Part C</b:JournalName>
+  </b:Source>
+  <b:Source>
+    <b:Tag>FleetMonitoringImprovement2022</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{5294D057-0628-41ED-AB09-A237D4C4AC47}</b:Guid>
+    <b:Title>Improving the Fleet Monitoring Management through Containerized Microservices</b:Title>
+    <b:Year>2022</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Silva</b:Last>
+            <b:First>R.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Santos</b:Last>
+            <b:First>M.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:JournalName>IEEE ITS Magazine</b:JournalName>
+  </b:Source>
+  <b:Source>
+    <b:Tag>TransportationManagement2021</b:Tag>
+    <b:SourceType>ArticleInAPeriodical</b:SourceType>
+    <b:Guid>{0800E08C-34C2-4542-8EFA-397F890707FB}</b:Guid>
+    <b:Title>Towards using Microservices for Transportation Management and Logistics</b:Title>
+    <b:Year>2021</b:Year>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Larsen</b:Last>
+            <b:First>O.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Nielsen</b:Last>
+            <b:First>K.</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:JournalName>Logistics and Info Systems (LISS)</b:JournalName>
+  </b:Source>
+</b:Sources>

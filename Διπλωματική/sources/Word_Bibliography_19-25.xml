@@ -1,0 +1,150 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<b:Sources xmlns:b="http://schemas.openxmlformats.org/officeDocument/2006/bibliography" SelectedStyle="" StyleName="IEEE">
+  <b:Source>
+    <b:Tag>Ref19</b:Tag>
+    <b:SourceType>Report</b:SourceType>
+    <b:Guid>{A66B2026-0000-4000-8000-000000000019}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Eddy</b:Last>
+            <b:First>Wesley</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Transmission Control Protocol (TCP)</b:Title>
+    <b:Year>2022</b:Year>
+    <b:Publisher>Internet Engineering Task Force (IETF)</b:Publisher>
+    <b:StandardNumber>RFC 9293</b:StandardNumber>
+    <b:URL>https://www.rfc-editor.org/rfc/rfc9293.html</b:URL>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref20</b:Tag>
+    <b:SourceType>Report</b:SourceType>
+    <b:Guid>{A66B2026-0000-4000-8000-000000000020}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Fielding</b:Last>
+            <b:First>Roy T.</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Nottingham</b:Last>
+            <b:First>Mark</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Reschke</b:Last>
+            <b:First>Julian</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>HTTP Semantics</b:Title>
+    <b:Year>2022</b:Year>
+    <b:Publisher>Internet Engineering Task Force (IETF)</b:Publisher>
+    <b:StandardNumber>RFC 9110</b:StandardNumber>
+    <b:URL>https://www.rfc-editor.org/rfc/rfc9110.html</b:URL>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref21</b:Tag>
+    <b:SourceType>Report</b:SourceType>
+    <b:Guid>{A66B2026-0000-4000-8000-000000000021}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Banks</b:Last>
+            <b:First>Andrew</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Briggs</b:Last>
+            <b:First>Ed</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Borgendale</b:Last>
+            <b:First>Ken</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Gupta</b:Last>
+            <b:First>Rahul</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>MQTT Version 5.0</b:Title>
+    <b:Year>2019</b:Year>
+    <b:Publisher>OASIS</b:Publisher>
+    <b:URL>https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html</b:URL>
+    <b:Comments>OASIS Standard; editors</b:Comments>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref22</b:Tag>
+    <b:SourceType>Report</b:SourceType>
+    <b:Guid>{A66B2026-0000-4000-8000-000000000022}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Fette</b:Last>
+            <b:First>Ian</b:First>
+          </b:Person>
+          <b:Person>
+            <b:Last>Melnikov</b:Last>
+            <b:First>Alexey</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>The WebSocket Protocol</b:Title>
+    <b:Year>2011</b:Year>
+    <b:Publisher>Internet Engineering Task Force (IETF)</b:Publisher>
+    <b:StandardNumber>RFC 6455</b:StandardNumber>
+    <b:URL>https://www.rfc-editor.org/rfc/rfc6455.html</b:URL>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref23</b:Tag>
+    <b:SourceType>InternetSite</b:SourceType>
+    <b:Guid>{A66B2026-0000-4000-8000-000000000023}</b:Guid>
+    <b:Author>
+      <b:Corporate>Teltonika Telematics</b:Corporate>
+    </b:Author>
+    <b:Title>Teltonika AVL Protocols</b:Title>
+    <b:URL>https://wiki.teltonika-gps.com/view/Teltonika_AVL_Protocols</b:URL>
+    <b:Comments>Online technical documentation; publication year not specified</b:Comments>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref24</b:Tag>
+    <b:SourceType>InternetSite</b:SourceType>
+    <b:Guid>{A66B2026-0000-4000-8000-000000000024}</b:Guid>
+    <b:Author>
+      <b:Corporate>Teltonika Telematics</b:Corporate>
+    </b:Author>
+    <b:Title>Which Data Protocol to Choose: Codec 8 or Codec 8 Extended</b:Title>
+    <b:URL>https://wiki.teltonika-gps.com/view/Which_data_protocol_to_choose_Codec_8_or_Codec_8_Extended</b:URL>
+    <b:Comments>Online technical documentation; publication year not specified</b:Comments>
+  </b:Source>
+  <b:Source>
+    <b:Tag>Ref25</b:Tag>
+    <b:SourceType>Report</b:SourceType>
+    <b:Guid>{A66B2026-0000-4000-8000-000000000025}</b:Guid>
+    <b:Author>
+      <b:Author>
+        <b:NameList>
+          <b:Person>
+            <b:Last>Fielding</b:Last>
+            <b:First>Roy Thomas</b:First>
+          </b:Person>
+        </b:NameList>
+      </b:Author>
+    </b:Author>
+    <b:Title>Architectural Styles and the Design of Network-based Software Architectures</b:Title>
+    <b:Year>2000</b:Year>
+    <b:Publisher>University of California, Irvine</b:Publisher>
+    <b:City>Irvine, CA</b:City>
+    <b:URL>https://ics.uci.edu/~fielding/pubs/dissertation/top.htm</b:URL>
+    <b:Comments>Ph.D. dissertation</b:Comments>
+  </b:Source>
+</b:Sources>
